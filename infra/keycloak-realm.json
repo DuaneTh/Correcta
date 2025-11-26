@@ -1,0 +1,44 @@
+{
+    "realm": "correcta-realm",
+    "enabled": true,
+    "users": [
+        {
+            "username": "prof@demo-sso.edu",
+            "email": "prof@demo-sso.edu",
+            "firstName": "Jean",
+            "lastName": "Dupont",
+            "enabled": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "prof123"
+                }
+            ],
+            "clientRoles": {
+                "correcta-client": [
+                    "TEACHER"
+                ]
+            }
+        }
+    ],
+    "clients": [
+        {
+            "clientId": "correcta-client",
+            "secret": "correcta-secret-key",
+            "redirectUris": [
+                "http://localhost:3000/api/auth/callback/oidc",
+                "http://localhost:3000/login"
+            ],
+            "webOrigins": [
+                "http://localhost:3000"
+            ],
+            "attributes": {
+                "post.logout.redirect.uris": "http://localhost:3000 http://localhost:3000/*"
+            },
+            "protocol": "openid-connect",
+            "publicClient": false,
+            "standardFlowEnabled": true,
+            "directAccessGrantsEnabled": true
+        }
+    ]
+}
