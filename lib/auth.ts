@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars, @typescript-eslint/ban-ts-comment */
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
@@ -5,6 +6,79 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 
 // Force rebuild
+
+type SsoConfig = {
+    type?: 'oidc' | 'saml'
+    issuer?: string
+    clientId?: string
+    clientSecret?: string
+    roleClaim?: string
+    roleMapping?: Record<string, string>
+    defaultRole?: string
+    enabled?: boolean
+}
+
+const normalizeClaimValues = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value.map((entry) => String(entry).trim()).filter(Boolean)
+    }
+
+    if (typeof value === 'string') {
+        return value
+            .split(',')
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+    }
+
+    if (value === null || value === undefined) {
+        return []
+    }
+
+    return [String(value)]
+}
+
+const resolveRoleFromProfile = (profile: any, sso: SsoConfig): string => {
+    const roleClaim = sso.roleClaim ?? 'roles'
+    const rawClaims =
+        profile?.[roleClaim] ??
+        profile?.roles ??
+        profile?.groups ??
+        profile?.eduPersonAffiliation
+
+    const candidates = normalizeClaimValues(rawClaims).map((entry) => entry.toLowerCase())
+    const roleMapping = Object.entries(sso.roleMapping ?? {}).reduce<Record<string, string>>((acc, [key, value]) => {
+        acc[key.toLowerCase()] = value
+        return acc
+    }, {})
+
+    for (const candidate of candidates) {
+        const mapped = roleMapping[candidate]
+        if (mapped && mapped !== 'PLATFORM_ADMIN') {
+            return mapped
+        }
+    }
+
+    const fallbackMapping: Record<string, string> = {
+        faculty: 'TEACHER',
+        instructor: 'TEACHER',
+        professor: 'TEACHER',
+        teacher: 'TEACHER',
+        staff: 'TEACHER',
+        student: 'STUDENT',
+        alumni: 'STUDENT',
+        admin: 'SCHOOL_ADMIN',
+        administrator: 'SCHOOL_ADMIN',
+    }
+
+    for (const candidate of candidates) {
+        const fallbackRole = fallbackMapping[candidate]
+        if (fallbackRole) {
+            return fallbackRole
+        }
+    }
+
+    return sso.defaultRole ?? 'STUDENT'
+}
 
 export const buildAuthOptions = async (institutionId?: string): Promise<NextAuthOptions> => {
     const providers: any[] = [
@@ -23,7 +97,7 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     where: { email: credentials.email }
                 })
 
-                if (!user || !user.passwordHash) {
+                if (!user || !user.passwordHash || user.archivedAt) {
                     return null
                 }
 
@@ -54,9 +128,11 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
         })
 
         if (institution?.ssoConfig) {
-            const sso = institution.ssoConfig as any
+            const sso = institution.ssoConfig as SsoConfig
             console.log(`[Auth] Found SSO config type: ${sso.type}`)
-            if (sso.type === 'oidc') {
+            if (sso.enabled === false) {
+                console.log(`[Auth] SSO config disabled for institution`)
+            } else if (sso.type === 'oidc') {
                 console.log(`[Auth] Adding OIDC provider: ${sso.issuer}`)
                 providers.push({
                     id: 'oidc',
@@ -72,11 +148,43 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     allowDangerousEmailAccountLinking: true,
                     profile(profile: any) {
                         console.log(`[Auth] OIDC Profile received:`, profile.email)
+                        const role = resolveRoleFromProfile(profile, sso)
                         return {
                             id: profile.sub,
-                            name: profile.name || profile.preferred_username,
+                            name: profile.name || profile.preferred_username || profile.email,
                             email: profile.email,
-                            role: 'STUDENT', // Default, will be updated by JIT logic
+                            role,
+                            institutionId: institution.id
+                        }
+                    }
+                })
+            } else if (sso.type === 'saml') {
+                console.log(`[Auth] Adding SAML provider via BoxyHQ: ${sso.issuer}`)
+                providers.push({
+                    id: 'boxyhq-saml',
+                    name: institution.name,
+                    type: 'oauth',
+                    wellKnown: undefined,
+                    issuer: sso.issuer,
+                    clientId: sso.clientId,
+                    clientSecret: sso.clientSecret,
+                    checks: ["pkce", "state"],
+                    authorization: {
+                        url: `${sso.issuer}/api/oauth/authorize`,
+                        params: {
+                            provider: 'saml',
+                        },
+                    },
+                    token: `${sso.issuer}/api/oauth/token`,
+                    userinfo: `${sso.issuer}/api/oauth/userinfo`,
+                    profile(profile: any) {
+                        console.log(`[Auth] SAML Profile received:`, profile.email)
+                        const role = resolveRoleFromProfile(profile, sso)
+                        return {
+                            id: profile.id || profile.sub,
+                            name: profile.name || [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email,
+                            email: profile.email,
+                            role,
                             institutionId: institution.id
                         }
                     }
@@ -105,7 +213,31 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
         providers,
         callbacks: {
             async signIn({ user, account, profile }) {
-                if (account?.provider === 'oidc') {
+                const existingUser = user?.id
+                    ? await prisma.user.findUnique({ where: { id: user.id } })
+                    : null
+                if (existingUser?.archivedAt) {
+                    return false
+                }
+
+                if (account?.provider === 'oidc' || account?.provider === 'boxyhq-saml') {
+                    const institution = institutionId
+                        ? await prisma.institution.findUnique({ where: { id: institutionId } })
+                        : null
+
+                    const ssoConfig = institution?.ssoConfig as SsoConfig | undefined
+                    if (institution && ssoConfig) {
+                        const role = resolveRoleFromProfile(profile, ssoConfig)
+                        const name = profile?.name || profile?.preferred_username || user.name || user.email
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                role,
+                                institutionId: institution.id,
+                                name,
+                            }
+                        })
+                    }
                     return true
                 }
                 return true

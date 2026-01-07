@@ -6,7 +6,6 @@ export default function SignOutButton() {
     const { data: session } = useSession()
 
     const handleLogout = async () => {
-        // @ts-ignore
         const isOidc = session?.user?.provider === 'oidc'
 
         if (isOidc) {

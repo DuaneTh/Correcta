@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { parseContent, serializeContent } from "@/lib/content"
+import { getExamPermissions } from "@/lib/exam-permissions"
 
 export async function GET(
     req: Request,
@@ -30,12 +32,21 @@ export async function GET(
             }
         })
 
-        if (!section || section.examId !== examId) {
+        if (!section || section.examId !== examId || section.exam.archivedAt || section.exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
         if (section.exam.course.institutionId !== session.user.institutionId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        }
+
+        const { canEdit } = await getExamPermissions(examId, {
+            id: session.user.id,
+            institutionId: session.user.institutionId,
+            role: session.user.role,
+        })
+        if (!canEdit) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
 
         const questions = await prisma.question.findMany({
@@ -44,10 +55,11 @@ export async function GET(
                 segments: {
                     include: {
                         rubric: true
-                    }
+                    },
+                    orderBy: { order: 'asc' }
                 }
             },
-            orderBy: { order: 'asc' }
+            orderBy: [{ order: 'asc' }, { id: 'asc' }]
         })
 
         return NextResponse.json(questions)
@@ -84,7 +96,7 @@ export async function POST(
             }
         })
 
-        if (!section || section.examId !== examId) {
+        if (!section || section.examId !== examId || section.exam.archivedAt || section.exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -92,18 +104,10 @@ export async function POST(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Check if exam is locked (T-10 rule)
-        const { isExamLocked } = await import("@/lib/exam-lock")
-        const locked = await isExamLocked(examId)
-        if (locked) {
-            return NextResponse.json(
-                { error: "Exam is locked less than 10 minutes before start time" },
-                { status: 403 }
-            )
-        }
+        // Allow edits during live exams; changes will be tracked separately.
 
         const body = await req.json()
-        const { content, type, order } = body
+        const { content, answerTemplate, answerTemplateLocked, type, order } = body
 
         if (!content || !type) {
             return NextResponse.json({ error: "Missing content or type" }, { status: 400 })
@@ -116,7 +120,9 @@ export async function POST(
         const question = await prisma.question.create({
             data: {
                 sectionId,
-                content,
+                content: serializeContent(parseContent(content)),
+                answerTemplate: serializeContent(parseContent(answerTemplate ?? '')),
+                answerTemplateLocked: Boolean(answerTemplateLocked),
                 type,
                 order: order ?? 0
             },

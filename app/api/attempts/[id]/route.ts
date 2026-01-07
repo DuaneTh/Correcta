@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isStudent } from "@/lib/api-auth"
 import { assertAttemptContentEditable, AttemptNotEditableError } from "@/lib/attemptPermissions"
+import { getExamEndAt } from "@/lib/exam-time"
 
 // GET /api/attempts/[id] - Get attempt details
 export async function GET(
@@ -56,6 +57,15 @@ export async function GET(
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
+        // Students should not access attempts for DRAFT exams or exams without valid duration/start date
+        if (isStudent(session)) {
+            const hasValidDuration = attempt.exam.durationMinutes !== null && attempt.exam.durationMinutes > 0
+            const hasValidStartDate = attempt.exam.startAt !== null && attempt.exam.startAt > new Date('2000-01-01')
+            if (attempt.exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
+                return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+            }
+        }
+
         // Verify ownership (students can only access their own attempts, teachers can access all)
         if (isStudent(session) && attempt.studentId !== session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
@@ -93,6 +103,13 @@ export async function PUT(
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
+        // Students should not access attempts for DRAFT exams or exams without valid duration/start date
+        const hasValidDuration = attempt.exam.durationMinutes !== null && attempt.exam.durationMinutes > 0
+        const hasValidStartDate = attempt.exam.startAt !== null && attempt.exam.startAt > new Date('2000-01-01')
+        if (attempt.exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
         if (attempt.studentId !== session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
@@ -112,15 +129,24 @@ export async function PUT(
 
         // Check time window
         const now = new Date()
-        if (now < attempt.exam.startAt) {
+        if (attempt.exam.startAt && now < attempt.exam.startAt) {
             return NextResponse.json({ error: "Exam has not started yet" }, { status: 400 })
         }
-        if (attempt.exam.endAt && now > attempt.exam.endAt) {
+        const examEndAt = getExamEndAt(attempt.exam.startAt || new Date(), attempt.exam.durationMinutes, attempt.exam.endAt)
+        if (examEndAt && now > examEndAt) {
             return NextResponse.json({ error: "Exam has ended" }, { status: 400 })
         }
 
         const body = await req.json()
-        const { questionId, segmentId, content } = body
+        const { questionId, segmentId, content, honorStatementText } = body
+
+        if (honorStatementText !== undefined) {
+            const updatedAttempt = await prisma.attempt.update({
+                where: { id },
+                data: { honorStatementText: String(honorStatementText) }
+            })
+            return NextResponse.json({ success: true, attempt: updatedAttempt })
+        }
 
         if (!questionId || !segmentId || content === undefined) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 })

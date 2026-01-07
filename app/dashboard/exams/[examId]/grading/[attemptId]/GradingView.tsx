@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Save, Check, AlertCircle, ExternalLink, Clock } from 'lucide-react'
+import { ArrowLeft, Check, ExternalLink, Clock } from 'lucide-react'
 import Link from 'next/link'
 
 interface GradingData {
@@ -94,7 +94,7 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                     message: data.message || 'Erreur lors du lancement de la correction IA.'
                 })
             }
-        } catch (error) {
+        } catch {
             setAiStatus({
                 type: 'error',
                 message: 'Erreur de connexion.'
@@ -104,12 +104,7 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
         }
     }
 
-    useEffect(() => {
-        fetchData()
-        fetchAntiCheatData()
-    }, [attemptId])
-
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         try {
             const res = await fetch(`/api/attempts/${attemptId}/grading`)
             if (res.ok) {
@@ -122,9 +117,9 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
         } finally {
             setLoading(false)
         }
-    }
+    }, [attemptId])
 
-    const fetchAntiCheatData = async () => {
+    const fetchAntiCheatData = useCallback(async () => {
         try {
             const res = await fetch(`/api/attempts/${attemptId}/anti-cheat`)
             if (res.ok) {
@@ -136,7 +131,12 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
         } finally {
             setAntiCheatLoading(false)
         }
-    }
+    }, [attemptId])
+
+    useEffect(() => {
+        fetchData()
+        fetchAntiCheatData()
+    }, [attemptId, fetchData, fetchAntiCheatData])
 
     const initializeState = (data: GradingData) => {
         const initialGrades: Record<string, number> = {}
@@ -330,7 +330,7 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                             {antiCheatData.copyPasteAnalysis.strongPairs > 0 && (
                                 <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
                                     <p className="text-sm text-red-800 font-medium">
-                                        ⚠️ Pattern de triche copy/paste détecté ({antiCheatData.copyPasteAnalysis.strongPairs} occurrence{antiCheatData.copyPasteAnalysis.strongPairs > 1 ? 's' : ''} avec changement d'onglet ou perte de focus entre copie et collage et longueurs différentes).
+                                        ⚠️ Pattern de triche copy/paste détecté ({antiCheatData.copyPasteAnalysis.strongPairs} occurrence{antiCheatData.copyPasteAnalysis.strongPairs > 1 ? 's' : ''} avec changement d&apos;onglet ou perte de focus entre copie et collage et longueurs différentes).
                                     </p>
                                 </div>
                             )}
@@ -376,7 +376,9 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
             <div className="space-y-8 pb-20">
                 {data.exam.sections.map(section => (
                     <div key={section.id} className="space-y-6">
-                        <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">{section.title}</h2>
+                        {section.title?.trim() && (
+                            <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">{section.title}</h2>
+                        )}
                         {section.questions.map((question, index) => {
                             const answerId = question.answer?.id
                             if (!answerId) return null // Should not happen for submitted attempts usually

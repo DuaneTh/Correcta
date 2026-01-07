@@ -1,580 +1,690 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Edit2, ChevronDown, ChevronUp, Save, X, GripVertical } from 'lucide-react'
+import ExamPreview from '@/components/exams/ExamPreview'
+import { ExamLayout } from '@/components/exams/builder/ExamLayout'
+import { ExamMetadataHeader } from '@/components/exams/builder/ExamMetadataHeader'
+import { PreviewToggle } from '@/components/exams/builder/PreviewToggle'
+import { SectionList } from '@/components/exams/builder/SectionList'
+import { useExamBuilderData } from '@/components/exams/hooks/useExamBuilderData'
+import { Exam, ExamChange } from '@/types/exams'
 
-interface Rubric {
-    id: string
-    criteria: string
-    levels: any
-    examples?: any
-}
-
-interface Segment {
-    id: string
-    instruction: string
-    maxPoints: number
-    rubric?: Rubric | null
-}
-
-interface Question {
-    id: string
-    content: string
-    type: 'TEXT' | 'MCQ' | 'CODE'
-    order: number
-    segments: Segment[]
-}
-
-interface Section {
-    id: string
-    title: string
-    order: number
-    questions: Question[]
-}
-
-interface Exam {
-    id: string
-    title: string
-    startAt: string
-    durationMinutes: number
-    course: {
-        code: string
-        name: string
+type ExamBuilderDictionary = {
+    teacher: {
+        examBuilderPage: Record<string, string>
     }
-    sections: Section[]
 }
 
 interface ExamBuilderProps {
     examId: string
     initialData: Exam
     isLocked?: boolean
+    dictionary: ExamBuilderDictionary
+    locale?: string
 }
 
-export default function ExamBuilder({ examId, initialData, isLocked = false }: ExamBuilderProps) {
+export default function ExamBuilder({ examId, initialData, isLocked = false, dictionary, locale = 'fr' }: ExamBuilderProps) {
     const router = useRouter()
-    const [exam, setExam] = useState<Exam>(initialData)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
-    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
-    const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
-    const [editingSection, setEditingSection] = useState<string | null>(null)
-    const [editingQuestion, setEditingQuestion] = useState<string | null>(null)
-    const [editingSegment, setEditingSegment] = useState<string | null>(null)
+    const dict = dictionary.teacher.examBuilderPage
+    const isLiveExam = isLocked
+    const [liveEditEnabled, setLiveEditEnabled] = useState(false)
+    const isEditingLocked = isLiveExam && !liveEditEnabled
+    const canEdit = initialData.canEdit !== false
+    const isReadOnly = isEditingLocked || !canEdit
+    const [viewMode, setViewMode] = useState<'default' | 'focus'>('default')
+    const [previewEnabled, setPreviewEnabled] = useState(true)
 
-    const reloadExam = async () => {
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/full`)
-            if (res.ok) {
-                const data = await res.json()
-                setExam(data)
-                setError(null)
-            } else {
-                setError('Failed to load exam')
+    useEffect(() => {
+        if (!isLiveExam && liveEditEnabled) {
+            setLiveEditEnabled(false)
+        }
+    }, [isLiveExam, liveEditEnabled])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        const storedViewMode = window.localStorage.getItem('examBuilder:viewMode')
+        const storedPreview = window.localStorage.getItem('examBuilder:previewEnabled')
+        if (storedViewMode === 'focus' || storedViewMode === 'default') {
+            setViewMode(storedViewMode)
+        }
+        if (storedPreview === 'true' || storedPreview === 'false') {
+            setPreviewEnabled(storedPreview === 'true')
+        }
+    }, [])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem('examBuilder:viewMode', viewMode)
+    }, [viewMode])
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        window.localStorage.setItem('examBuilder:previewEnabled', String(previewEnabled))
+    }, [previewEnabled])
+
+    const {
+        exam,
+        liveExam,
+        loading,
+        error,
+        setError,
+        validationErrors,
+        validationDetails,
+        showValidationUI,
+        reloadExam,
+        addSection,
+        addQuestion,
+        updateSection,
+        updateQuestion,
+        deleteQuestion,
+        deleteSection,
+        deleteExam,
+        addSegment,
+        updateSegment,
+        deleteSegment,
+        handlePublish,
+        handlePublishWithPolicy,
+        handleUnpublish,
+        handleToggleHonorCommitment,
+        handleUpdateAllowedMaterials,
+        handleUpdateGradingConfig,
+        handleUpdateMetadata,
+        updateLiveQuestionContent,
+        updateLiveQuestionAnswerTemplate,
+        updateLiveQuestionAnswerTemplateLocked,
+        updateLiveQuestionStudentTools,
+        updateLiveQuestionLabel,
+        updateLiveQuestionMaxPoints,
+        updateLiveQuestionRequireAllCorrect,
+        updateLiveQuestionShuffleOptions,
+        updateLiveSegmentInstruction,
+        updateLiveSegmentOrder,
+        updateLiveSegmentPoints,
+        updateLiveSegmentCorrect,
+        updateLiveSegmentCriteria,
+        updateLiveSegmentPerfectAnswer,
+        updateLiveSectionTitle,
+        updateLiveSectionLabel,
+        updateLiveSectionIntro,
+        updateLiveAllowedMaterials,
+        updateLiveTitle,
+        updateLiveDate,
+        updateLiveDuration,
+        updateLiveHonorCommitment,
+        updateLiveGradingConfig,
+        canPublish,
+    } = useExamBuilderData({ examId, initialData, dict, locale })
+
+    const [previewMode, setPreviewMode] = useState<'student' | 'correction'>('student')
+    const [selectedPreviewNodeId, setSelectedPreviewNodeId] = useState<string | null>(null)
+    const isFocusMode = viewMode === 'focus'
+    const hidePreviewSectionHeader =
+        isFocusMode &&
+        (selectedPreviewNodeId?.startsWith('question:') || selectedPreviewNodeId?.startsWith('qcm:'))
+    const previewLabel = locale === 'fr' ? 'Prévisualisation' : 'Preview'
+    type LiveEditOp =
+        | { type: 'updateExam'; data: { title?: string; startAt?: string | null; durationMinutes?: number | null; requireHonorCommitment?: boolean; allowedMaterials?: string | null; gradingConfig?: Exam['gradingConfig'] } }
+        | { type: 'updateSection'; data: { sectionId: string; patch: Parameters<typeof updateSection>[1] } }
+        | { type: 'updateQuestion'; data: { sectionId: string; questionId: string; patch: Parameters<typeof updateQuestion>[2] } }
+        | { type: 'updateSegment'; data: { questionId: string; segmentId: string; patch: Parameters<typeof updateSegment>[2] } }
+    const [pendingLiveOps, setPendingLiveOps] = useState<LiveEditOp[]>([])
+    const hasPerfectExamples = useMemo(() => {
+        return liveExam.sections.some((section) =>
+            section.questions.some((question) =>
+                question.segments.some((segment) => {
+                    const examples = segment.rubric?.examples
+                    if (Array.isArray(examples)) {
+                        return examples.some((example) => example?.trim())
+                    }
+                    if (typeof examples === 'string') {
+                        return examples.trim().length > 0
+                    }
+                    return false
+                })
+            )
+        )
+    }, [liveExam.sections])
+
+    useEffect(() => {
+        if (!hasPerfectExamples && previewMode === 'correction') {
+            setPreviewMode('student')
+        }
+    }, [hasPerfectExamples, previewMode])
+
+    const handleExamDelete = async () => {
+        const success = await deleteExam()
+        if (success) router.push(`/teacher/courses/${exam.courseId}`)
+    }
+
+    const pendingPreviewChanges = useMemo(() => {
+        if (!isLiveExam || !liveEditEnabled || pendingLiveOps.length === 0) return [] as ExamChange[]
+        const changeMap = new Map<string, ExamChange>()
+        const now = new Date().toISOString()
+
+        const findSection = (source: Exam, sectionId: string) =>
+            source.sections.find((section) => section.id === sectionId)
+        const findQuestion = (source: Exam, questionId: string) =>
+            source.sections.flatMap((section) => section.questions).find((question) => question.id === questionId)
+        const findSegment = (source: Exam, segmentId: string) =>
+            source.sections
+                .flatMap((section) => section.questions)
+                .flatMap((question) => question.segments)
+                .find((segment) => segment.id === segmentId)
+
+        const pushChange = (change: ExamChange) => {
+            const key = `${change.entityType}:${change.entityId}:${change.field}`
+            changeMap.set(key, change)
+        }
+
+        for (const op of pendingLiveOps) {
+            if (op.type === 'updateExam') {
+                if (op.data.title !== undefined) {
+                    pushChange({
+                        id: `preview-exam-title`,
+                        entityType: 'EXAM',
+                        entityId: exam.id,
+                        entityLabel: exam.title,
+                        field: 'title',
+                        beforeValue: exam.title,
+                        afterValue: liveExam.title,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.allowedMaterials !== undefined) {
+                    pushChange({
+                        id: `preview-exam-materials`,
+                        entityType: 'EXAM',
+                        entityId: exam.id,
+                        entityLabel: exam.title,
+                        field: 'allowedMaterials',
+                        beforeValue: exam.allowedMaterials ?? null,
+                        afterValue: liveExam.allowedMaterials ?? null,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.requireHonorCommitment !== undefined) {
+                    pushChange({
+                        id: `preview-exam-honor`,
+                        entityType: 'EXAM',
+                        entityId: exam.id,
+                        entityLabel: exam.title,
+                        field: 'requireHonorCommitment',
+                        beforeValue: exam.requireHonorCommitment ?? false,
+                        afterValue: liveExam.requireHonorCommitment ?? false,
+                        createdAt: now,
+                    })
+                }
             }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
-        }
-    }
 
-    const toggleSection = (sectionId: string) => {
-        const newExpanded = new Set(expandedSections)
-        if (newExpanded.has(sectionId)) {
-            newExpanded.delete(sectionId)
-        } else {
-            newExpanded.add(sectionId)
-        }
-        setExpandedSections(newExpanded)
-    }
+            if (op.type === 'updateSection') {
+                const beforeSection = findSection(exam, op.data.sectionId)
+                const afterSection = findSection(liveExam, op.data.sectionId)
+                if (!beforeSection || !afterSection) continue
+                const sectionLabel = afterSection.customLabel || afterSection.title || beforeSection.title
 
-    const toggleQuestion = (questionId: string) => {
-        const newExpanded = new Set(expandedQuestions)
-        if (newExpanded.has(questionId)) {
-            newExpanded.delete(questionId)
-        } else {
-            newExpanded.add(questionId)
-        }
-        setExpandedQuestions(newExpanded)
-    }
+                if (op.data.patch.title !== undefined) {
+                    pushChange({
+                        id: `preview-section-title-${afterSection.id}`,
+                        entityType: 'SECTION',
+                        entityId: afterSection.id,
+                        entityLabel: sectionLabel,
+                        field: 'title',
+                        beforeValue: beforeSection.title,
+                        afterValue: afterSection.title,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.patch.customLabel !== undefined) {
+                    pushChange({
+                        id: `preview-section-label-${afterSection.id}`,
+                        entityType: 'SECTION',
+                        entityId: afterSection.id,
+                        entityLabel: sectionLabel,
+                        field: 'customLabel',
+                        beforeValue: beforeSection.customLabel ?? null,
+                        afterValue: afterSection.customLabel ?? null,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.patch.introContent !== undefined) {
+                    pushChange({
+                        id: `preview-section-intro-${afterSection.id}`,
+                        entityType: 'SECTION',
+                        entityId: afterSection.id,
+                        entityLabel: sectionLabel,
+                        field: 'introContent',
+                        beforeValue: beforeSection.introContent ?? null,
+                        afterValue: afterSection.introContent ?? null,
+                        createdAt: now,
+                    })
+                }
+            }
 
-    // Section Operations
-    const addSection = async () => {
+            if (op.type === 'updateQuestion') {
+                const beforeQuestion = findQuestion(exam, op.data.questionId)
+                const afterQuestion = findQuestion(liveExam, op.data.questionId)
+                if (!beforeQuestion || !afterQuestion) continue
+                const questionLabel = afterQuestion.customLabel || `Question ${afterQuestion.order + 1}`
+
+                if (op.data.patch.content !== undefined) {
+                    pushChange({
+                        id: `preview-question-content-${afterQuestion.id}`,
+                        entityType: 'QUESTION',
+                        entityId: afterQuestion.id,
+                        entityLabel: questionLabel,
+                        field: 'content',
+                        beforeValue: beforeQuestion.content,
+                        afterValue: afterQuestion.content,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.patch.answerTemplate !== undefined) {
+                    pushChange({
+                        id: `preview-question-template-${afterQuestion.id}`,
+                        entityType: 'QUESTION',
+                        entityId: afterQuestion.id,
+                        entityLabel: questionLabel,
+                        field: 'answerTemplate',
+                        beforeValue: beforeQuestion.answerTemplate ?? null,
+                        afterValue: afterQuestion.answerTemplate ?? null,
+                        createdAt: now,
+                    })
+                }
+                if (op.data.patch.studentTools !== undefined) {
+                    pushChange({
+                        id: `preview-question-tools-${afterQuestion.id}`,
+                        entityType: 'QUESTION',
+                        entityId: afterQuestion.id,
+                        entityLabel: questionLabel,
+                        field: 'studentTools',
+                        beforeValue: beforeQuestion.studentTools ?? null,
+                        afterValue: afterQuestion.studentTools ?? null,
+                        createdAt: now,
+                    })
+                }
+            }
+
+            if (op.type === 'updateSegment') {
+                const beforeSegment = findSegment(exam, op.data.segmentId)
+                const afterSegment = findSegment(liveExam, op.data.segmentId)
+                const afterQuestion = findQuestion(liveExam, op.data.questionId)
+                if (!beforeSegment || !afterSegment || !afterQuestion) continue
+                const questionLabel = afterQuestion.customLabel || `Question ${afterQuestion.order + 1}`
+
+                if (op.data.patch.instruction !== undefined) {
+                    pushChange({
+                        id: `preview-segment-instruction-${afterSegment.id}`,
+                        entityType: 'SEGMENT',
+                        entityId: afterSegment.id,
+                        entityLabel: questionLabel,
+                        field: 'instruction',
+                        beforeValue: beforeSegment.instruction,
+                        afterValue: afterSegment.instruction,
+                        createdAt: now,
+                    })
+                }
+            }
+        }
+
+        return Array.from(changeMap.values())
+    }, [exam, liveExam, isLiveExam, liveEditEnabled, pendingLiveOps])
+
+    const deferLiveEdits = isLiveExam && liveEditEnabled
+    const hasPendingLiveEdits = pendingLiveOps.length > 0
+
+    const queueLiveOp = useCallback((op: LiveEditOp) => {
+        setPendingLiveOps((prev) => [...prev, op])
+    }, [])
+
+    const commitLiveEdits = useCallback(async () => {
+        if (pendingLiveOps.length === 0) {
+            setLiveEditEnabled(false)
+            await reloadExam()
+            return
+        }
         try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/sections`, {
+            setError(null)
+            const res = await fetch(`/api/exams/${examId}/batch`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    title: 'New Section',
-                    order: exam.sections.length
-                })
+                body: JSON.stringify({ ops: pendingLiveOps }),
             })
-            if (res.ok) {
-                await reloadExam()
-            } else {
-                setError('Failed to create section')
+            if (!res.ok) {
+                const text = await res.text()
+                throw new Error(text || 'Failed to apply live edits')
             }
+            setPendingLiveOps([])
+            setLiveEditEnabled(false)
+            await reloadExam()
         } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
+            setError(err instanceof Error ? err.message : 'Failed to apply live edits')
         }
-    }
+    }, [examId, pendingLiveOps, reloadExam, setError])
 
-    const updateSection = async (sectionId: string, title: string) => {
-        try {
-            const res = await fetch(`/api/exams/${examId}/sections/${sectionId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title })
+    const discardLiveEdits = useCallback(async () => {
+        setPendingLiveOps([])
+        setLiveEditEnabled(false)
+        await reloadExam()
+    }, [reloadExam])
+
+    const updateSectionQueued = useCallback(async (...args: Parameters<typeof updateSection>) => {
+        if (deferLiveEdits) {
+            const [sectionId, patch] = args
+            queueLiveOp({ type: 'updateSection', data: { sectionId, patch } })
+            return
+        }
+        await updateSection(...args)
+    }, [deferLiveEdits, queueLiveOp, updateSection])
+
+    const updateQuestionQueued = useCallback(async (...args: Parameters<typeof updateQuestion>) => {
+        if (deferLiveEdits) {
+            const [sectionId, questionId, patch] = args
+            queueLiveOp({ type: 'updateQuestion', data: { sectionId, questionId, patch } })
+            return
+        }
+        await updateQuestion(...args)
+    }, [deferLiveEdits, queueLiveOp, updateQuestion])
+
+    const updateSegmentQueued = useCallback(async (...args: Parameters<typeof updateSegment>) => {
+        if (deferLiveEdits) {
+            const [questionId, segmentId, patch] = args
+            queueLiveOp({ type: 'updateSegment', data: { questionId, segmentId, patch } })
+            return
+        }
+        await updateSegment(...args)
+    }, [deferLiveEdits, queueLiveOp, updateSegment])
+
+    const handleUpdateMetadataQueued = useCallback(async (...args: Parameters<typeof handleUpdateMetadata>) => {
+        if (deferLiveEdits) {
+            const [field, payload, onWarning] = args
+            if (field === 'title') {
+                updateLiveTitle(payload.title || '')
+                queueLiveOp({ type: 'updateExam', data: { title: payload.title || '' } })
+            }
+            if (field === 'date') {
+                const nextDate = payload.date ?? null
+                updateLiveDate(nextDate ? nextDate.toISOString() : null)
+                const isPast = nextDate ? nextDate < new Date() : false
+                onWarning?.(isPast ? dict.validationDatePast : null)
+                queueLiveOp({ type: 'updateExam', data: { startAt: nextDate ? nextDate.toISOString() : null } })
+            }
+            if (field === 'duration') {
+                const durationValue = payload.duration ? parseInt(payload.duration, 10) : null
+                updateLiveDuration(Number.isNaN(durationValue ?? 0) ? null : durationValue)
+                queueLiveOp({ type: 'updateExam', data: { durationMinutes: Number.isNaN(durationValue ?? 0) ? null : durationValue } })
+            }
+            return true
+        }
+        return handleUpdateMetadata(...args)
+    }, [deferLiveEdits, dict.validationDatePast, handleUpdateMetadata, queueLiveOp, updateLiveDate, updateLiveDuration, updateLiveTitle])
+
+    const handleToggleHonorCommitmentQueued = useCallback(async (checked: boolean) => {
+        if (deferLiveEdits) {
+            updateLiveHonorCommitment(checked)
+            queueLiveOp({ type: 'updateExam', data: { requireHonorCommitment: checked } })
+            return
+        }
+        await handleToggleHonorCommitment(checked)
+    }, [deferLiveEdits, handleToggleHonorCommitment, queueLiveOp, updateLiveHonorCommitment])
+
+    const handleUpdateAllowedMaterialsQueued = useCallback(async (value: string) => {
+        if (deferLiveEdits) {
+            const trimmed = value.trim() || null
+            updateLiveAllowedMaterials(trimmed)
+            queueLiveOp({ type: 'updateExam', data: { allowedMaterials: trimmed } })
+            return
+        }
+        await handleUpdateAllowedMaterials(value)
+    }, [deferLiveEdits, handleUpdateAllowedMaterials, queueLiveOp, updateLiveAllowedMaterials])
+
+    const handleUpdateGradingConfigQueued = useCallback(async (gradingConfig: Exam['gradingConfig']) => {
+        if (deferLiveEdits) {
+            updateLiveGradingConfig(gradingConfig ?? null)
+            queueLiveOp({ type: 'updateExam', data: { gradingConfig: gradingConfig ?? null } })
+            return true
+        }
+        return handleUpdateGradingConfig(gradingConfig)
+    }, [deferLiveEdits, handleUpdateGradingConfig, queueLiveOp, updateLiveGradingConfig])
+
+    const basePreviewExam = useMemo(() => {
+        return {
+            ...liveExam,
+            changes: pendingPreviewChanges.length > 0 ? pendingPreviewChanges : exam.changes,
+        }
+    }, [exam.changes, liveExam, pendingPreviewChanges])
+
+    const previewQuestionLabels = useMemo(() => {
+        const map = new Map<string, string>()
+        const sortedSections = [...basePreviewExam.sections].sort((a, b) => {
+            const orderA = typeof a.order === 'number' ? a.order : 0
+            const orderB = typeof b.order === 'number' ? b.order : 0
+            return orderA !== orderB ? orderA - orderB : a.id.localeCompare(b.id)
+        })
+        let globalIndex = 0
+        sortedSections.forEach((section) => {
+            const sortedQuestions = [...section.questions].sort((a, b) => {
+                const orderA = typeof a.order === 'number' ? a.order : 0
+                const orderB = typeof b.order === 'number' ? b.order : 0
+                return orderA !== orderB ? orderA - orderB : a.id.localeCompare(b.id)
             })
-            if (res.ok) {
-                await reloadExam()
-                setEditingSection(null)
-            } else {
-                setError('Failed to update section')
-            }
-        } catch (err) {
-            setError('Network error')
-        }
-    }
-
-    const deleteSection = async (sectionId: string) => {
-        if (!confirm('Delete this section and all its questions? This cannot be undone.')) return
-
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/sections/${sectionId}`, {
-                method: 'DELETE'
+            sortedQuestions.forEach((question) => {
+                globalIndex += 1
+                map.set(question.id, `${globalIndex}.`)
             })
-            if (res.ok) {
-                await reloadExam()
-            } else {
-                setError('Failed to delete section')
+        })
+        return map
+    }, [basePreviewExam.sections])
+
+    const previewExam = useMemo(() => {
+        const applyGlobalLabels = (section: Exam['sections'][number]) => ({
+            ...section,
+            questions: section.questions.map((question) => {
+                const fallback = previewQuestionLabels.get(question.id)
+                const customLabel = question.customLabel?.trim()
+                return {
+                    ...question,
+                    customLabel: customLabel ? question.customLabel : fallback ?? question.customLabel,
+                }
+            }),
+        })
+
+        if (!isFocusMode || !selectedPreviewNodeId) return basePreviewExam
+        const [kind, id] = selectedPreviewNodeId.split(':')
+        if (!kind || !id) return basePreviewExam
+        if (kind === 'part') {
+            const section = basePreviewExam.sections.find((item) => item.id === id)
+            if (!section) return basePreviewExam
+            return {
+                ...basePreviewExam,
+                sections: [applyGlobalLabels(section)],
             }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
         }
-    }
-
-    // Question Operations
-    const addQuestion = async (sectionId: string) => {
-        try {
-            setLoading(true)
-            const section = exam.sections.find(s => s.id === sectionId)
-            const res = await fetch(`/api/exams/${examId}/sections/${sectionId}/questions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    content: 'New question',
-                    type: 'TEXT',
-                    order: section?.questions.length || 0
-                })
-            })
-            if (res.ok) {
-                await reloadExam()
-                setExpandedSections(new Set([...expandedSections, sectionId]))
-            } else {
-                setError('Failed to create question')
+        if (kind === 'question' || kind === 'qcm') {
+            const section = basePreviewExam.sections.find((item) => item.questions.some((q) => q.id === id))
+            if (!section) return basePreviewExam
+            return {
+                ...basePreviewExam,
+                sections: [
+                    applyGlobalLabels({
+                        ...section,
+                        questions: section.questions.filter((q) => q.id === id),
+                    }),
+                ],
             }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
         }
-    }
+        return basePreviewExam
+    }, [basePreviewExam, isFocusMode, previewQuestionLabels, selectedPreviewNodeId])
 
-    const updateQuestion = async (sectionId: string, questionId: string, data: Partial<Question>) => {
-        try {
-            const res = await fetch(`/api/exams/${examId}/sections/${sectionId}/questions/${questionId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            if (res.ok) {
-                await reloadExam()
-                setEditingQuestion(null)
-            } else {
-                setError('Failed to update question')
-            }
-        } catch (err) {
-            setError('Network error')
-        }
-    }
-
-    const deleteQuestion = async (sectionId: string, questionId: string) => {
-        if (!confirm('Delete this question and all its segments? This cannot be undone.')) return
-
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/sections/${sectionId}/questions/${questionId}`, {
-                method: 'DELETE'
-            })
-            if (res.ok) {
-                await reloadExam()
-            } else {
-                setError('Failed to delete question')
-            }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    // Segment Operations
-    const addSegment = async (questionId: string) => {
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/questions/${questionId}/segments`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    instruction: 'New segment instruction',
-                    maxPoints: 1
-                })
-            })
-            if (res.ok) {
-                await reloadExam()
-                setExpandedQuestions(new Set([...expandedQuestions, questionId]))
-            } else {
-                setError('Failed to create segment')
-            }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const updateSegment = async (questionId: string, segmentId: string, data: { instruction?: string, maxPoints?: number, rubric?: any }) => {
-        try {
-            const res = await fetch(`/api/exams/${examId}/questions/${questionId}/segments/${segmentId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-            if (res.ok) {
-                await reloadExam()
-                setEditingSegment(null)
-            } else {
-                setError('Failed to update segment')
-            }
-        } catch (err) {
-            setError('Network error')
-        }
-    }
-
-    const deleteSegment = async (questionId: string, segmentId: string) => {
-        if (!confirm('Delete this segment? This cannot be undone.')) return
-
-        try {
-            setLoading(true)
-            const res = await fetch(`/api/exams/${examId}/questions/${questionId}/segments/${segmentId}`, {
-                method: 'DELETE'
-            })
-            if (res.ok) {
-                await reloadExam()
-            } else {
-                setError('Failed to delete segment')
-            }
-        } catch (err) {
-            setError('Network error')
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    return (
-        <div className="max-w-5xl mx-auto py-8 px-4">
-            {/* Header */}
-            <div className="mb-8">
+    const previewPanelBody = (
+        <div className="relative z-0">
+            <div className="mt-1 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 text-xs font-semibold text-gray-700">
                 <button
-                    onClick={() => router.push('/dashboard/exams')}
-                    className="text-indigo-600 hover:text-indigo-800 mb-4 flex items-center"
+                    type="button"
+                    onClick={() => setPreviewMode('student')}
+                    className={`px-3 py-1 rounded-full transition ${
+                        previewMode === 'student' ? 'bg-white shadow-sm text-brand-900 border border-brand-100' : ''
+                    }`}
                 >
-                    ← Back to Exams
+                    {locale === 'fr' ? 'Sujet' : 'Student view'}
                 </button>
-                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">{exam.title}</h1>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">{exam.course.code}</span>
-                        <span>{new Date(exam.startAt).toLocaleDateString()}</span>
-                        <span>{exam.durationMinutes} minutes</span>
-                    </div>
+                <div className="relative group">
+                    <button
+                        type="button"
+                        onClick={() => setPreviewMode('correction')}
+                        disabled={!hasPerfectExamples}
+                        className={`px-3 py-1 rounded-full transition ${
+                            previewMode === 'correction' ? 'bg-white shadow-sm text-brand-900 border border-brand-100' : ''
+                        } ${!hasPerfectExamples ? 'text-gray-400 cursor-not-allowed' : ''}`}
+                    >
+                        {locale === 'fr' ? 'Corrigé' : 'Correction'}
+                    </button>
+                    {!hasPerfectExamples && (
+                        <span className="pointer-events-none absolute left-0 top-9 z-[9999] w-56 rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] text-gray-700 shadow-lg opacity-0 transition group-hover:opacity-100">
+                            {locale === 'fr'
+                                ? 'Aucun élément de correction à afficher'
+                                : 'No correction content to display'}
+                        </span>
+                    )}
                 </div>
             </div>
+            <p className="text-sm text-gray-500 mt-1">
+                {previewMode === 'correction'
+                    ? (locale === 'fr'
+                        ? 'Vue corrigée envoyée aux étudiants après l\'examen'
+                        : 'Correction view shared after the exam')
+                    : (locale === 'fr'
+                        ? 'Vue étudiante de l\'examen'
+                        : 'Student view of the exam')}
+            </p>
+            <div className="mt-4">
+                <ExamPreview
+                    exam={previewExam}
+                    dictionary={dictionary}
+                    locale={locale}
+                    viewMode={previewMode}
+                    hideHeader={isFocusMode}
+                    hideSectionHeader={hidePreviewSectionHeader}
+                    hideHonorCommitment={isFocusMode}
+                />
+            </div>
+        </div>
+    )
 
-            {/* Lock Banner */}
-            {isLocked && (
-                <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                    <p className="text-orange-800 font-medium">
-                        🔒 Cet examen est verrouillé : il n'est plus modifiable moins de 10 minutes avant le début.
-                    </p>
-                </div>
+    const previewHeader = (
+        <div className="flex items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold text-brand-900">{previewLabel}</h2>
+            {!isFocusMode && (
+                <PreviewToggle
+                    label={previewLabel}
+                    checked={previewEnabled}
+                    onChange={setPreviewEnabled}
+                    labelClassName="sr-only"
+                />
             )}
+        </div>
+    )
 
-            {/* Error Banner */}
+    const previewContent = (
+        <div className="space-y-3">
+            {previewHeader}
+            {previewPanelBody}
+        </div>
+    )
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12 space-y-6">
+            <ExamMetadataHeader
+                exam={exam}
+                liveExam={liveExam}
+                dict={dict}
+                locale={locale}
+                isLocked={isReadOnly}
+                isLiveExam={isLiveExam}
+                liveEditEnabled={liveEditEnabled}
+                hasPendingLiveEdits={hasPendingLiveEdits}
+                onConfirmLiveEdits={commitLiveEdits}
+                onDiscardLiveEdits={discardLiveEdits}
+                onToggleLiveEdit={(enabled) => {
+                    if (!enabled) {
+                        setLiveEditEnabled(false)
+                        return
+                    }
+                    setLiveEditEnabled(true)
+                }}
+                loading={loading}
+                validationDetails={validationDetails}
+                validationErrors={validationErrors}
+                canPublish={canPublish()}
+                onPublish={handlePublish}
+                onPublishWithPolicy={handlePublishWithPolicy}
+                onUnpublish={handleUnpublish}
+                onDelete={handleExamDelete}
+                onUpdateMetadata={handleUpdateMetadataQueued}
+                onToggleHonor={handleToggleHonorCommitmentQueued}
+                onUpdateAllowedMaterials={handleUpdateAllowedMaterialsQueued}
+                onUpdateGradingConfig={handleUpdateGradingConfigQueued}
+                onLiveAllowedMaterials={updateLiveAllowedMaterials}
+                setError={setError}
+                onReload={reloadExam}
+                canEdit={canEdit}
+            />
+
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-4 flex justify-between">
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded mb-2 flex justify-between">
                     <span>{error}</span>
                     <button onClick={() => setError(null)}>×</button>
                 </div>
             )}
 
-            {/* Loading Overlay */}
-            {loading && (
-                <div className="fixed inset-0 bg-black bg-opacity-10 flex items-center justify-center z-50">
-                    <div className="bg-white px-6 py-3 rounded-lg shadow-lg">
-                        <span className="text-gray-700">Saving...</span>
-                    </div>
-                </div>
-            )}
-
-            {/* Sections */}
-            <div className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Exam Content</h2>
-                    <button
-                        onClick={addSection}
-                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={loading || isLocked}
-                    >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Add Section
-                    </button>
-                </div>
-
-                {exam.sections.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                        <p className="text-gray-500">No sections yet. Add your first section to start building the exam.</p>
-                    </div>
-                ) : (
-                    exam.sections.map((section, sectionIdx) => (
-                        <div key={section.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-                            {/* Section Header */}
-                            <div className="p-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                                <div className="flex items-center space-x-3 flex-1">
-                                    <button
-                                        onClick={() => toggleSection(section.id)}
-                                        className="text-gray-600 hover:text-gray-800"
-                                    >
-                                        {expandedSections.has(section.id) ? (
-                                            <ChevronDown className="w-5 h-5" />
-                                        ) : (
-                                            <ChevronUp className="w-5 h-5" />
-                                        )}
-                                    </button>
-                                    {editingSection === section.id ? (
-                                        <input
-                                            type="text"
-                                            defaultValue={section.title}
-                                            onBlur={(e) => updateSection(section.id, e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    updateSection(section.id, e.currentTarget.value)
-                                                }
-                                            }}
-                                            autoFocus
-                                            className="flex-1 px-2 py-1 border border-indigo-300 rounded focus:ring-indigo-500"
-                                        />
-                                    ) : (
-                                        <h3 className="text-lg font-semibold text-gray-900">
-                                            {sectionIdx + 1}. {section.title}
-                                        </h3>
-                                    )}
-                                    <span className="text-sm text-gray-500">
-                                        ({section.questions.length} question{section.questions.length !== 1 ? 's' : ''})
-                                    </span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <button
-                                        onClick={() => setEditingSection(section.id)}
-                                        className="p-2 text-gray-400 hover:text-indigo-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                        title="Edit title"
-                                        disabled={isLocked}
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => deleteSection(section.id)}
-                                        className="p-2 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
-                                        title="Delete section"
-                                        disabled={isLocked}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Section Content (Questions) */}
-                            {expandedSections.has(section.id) && (
-                                <div className="p-4 space-y-4">
-                                    <button
-                                        onClick={() => addQuestion(section.id)}
-                                        className="flex items-center px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        disabled={loading || isLocked}
-                                    >
-                                        <Plus className="w-4 h-4 mr-2" />
-                                        Add Question
-                                    </button>
-
-                                    {section.questions.map((question, questionIdx) => (
-                                        <div key={question.id} className="border border-gray-200 rounded-lg">
-                                            {/* Question Header */}
-                                            <div className="p-3 bg-gray-50 flex items-center justify-between">
-                                                <div className="flex items-center space-x-3 flex-1">
-                                                    <button
-                                                        onClick={() => toggleQuestion(question.id)}
-                                                        className="text-gray-600 hover:text-gray-800"
-                                                    >
-                                                        {expandedQuestions.has(question.id) ? (
-                                                            <ChevronDown className="w-4 h-4" />
-                                                        ) : (
-                                                            <ChevronUp className="w-4 h-4" />
-                                                        )}
-                                                    </button>
-                                                    <span className="text-sm font-medium text-gray-700">
-                                                        Q{questionIdx + 1}
-                                                    </span>
-                                                    <select
-                                                        value={question.type}
-                                                        onChange={(e) => updateQuestion(section.id, question.id, { type: e.target.value as any })}
-                                                        className="text-xs px-2 py-1 border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        disabled={isLocked}
-                                                    >
-                                                        <option value="TEXT">Text</option>
-                                                        <option value="MCQ">MCQ</option>
-                                                        <option value="CODE">Code</option>
-                                                    </select>
-                                                    {editingQuestion === question.id ? (
-                                                        <input
-                                                            type="text"
-                                                            defaultValue={question.content}
-                                                            onBlur={(e) => updateQuestion(section.id, question.id, { content: e.target.value })}
-                                                            onKeyDown={(e) => {
-                                                                if (e.key === 'Enter') {
-                                                                    updateQuestion(section.id, question.id, { content: e.currentTarget.value })
-                                                                }
-                                                            }}
-                                                            autoFocus
-                                                            className="flex-1 px-2 py-1 text-sm border border-indigo-300 rounded"
-                                                        />
-                                                    ) : (
-                                                        <span className="text-sm text-gray-900">{question.content}</span>
-                                                    )}
-                                                    <span className="text-xs text-gray-500">
-                                                        ({question.segments.length} segment{question.segments.length !== 1 ? 's' : ''})
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <button
-                                                        onClick={() => setEditingQuestion(question.id)}
-                                                        className="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                        title="Edit question"
-                                                        disabled={isLocked}
-                                                    >
-                                                        <Edit2 className="w-3 h-3" />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => deleteQuestion(section.id, question.id)}
-                                                        className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                        title="Delete question"
-                                                        disabled={isLocked}
-                                                    >
-                                                        <Trash2 className="w-3 h-3" />
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Question Content (Segments) */}
-                                            {expandedQuestions.has(question.id) && (
-                                                <div className="p-3 space-y-2 bg-white">
-                                                    <button
-                                                        onClick={() => addSegment(question.id)}
-                                                        className="flex items-center px-2 py-1 bg-gray-50 text-gray-600 rounded text-xs hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                        disabled={loading || isLocked}
-                                                    >
-                                                        <Plus className="w-3 h-3 mr-1" />
-                                                        Add Segment
-                                                    </button>
-
-                                                    {question.segments.map((segment, segmentIdx) => (
-                                                        <div key={segment.id} className="border border-gray-200 rounded p-3 bg-gray-50">
-                                                            <div className="flex items-start justify-between mb-2">
-                                                                <div className="flex-1 space-y-2">
-                                                                    <div className="flex items-center space-x-2">
-                                                                        <span className="text-xs font-medium text-gray-600">
-                                                                            Segment {segmentIdx + 1}
-                                                                        </span>
-                                                                        {editingSegment === segment.id ? (
-                                                                            <input
-                                                                                type="number"
-                                                                                step="0.5"
-                                                                                defaultValue={segment.maxPoints}
-                                                                                onBlur={(e) => updateSegment(question.id, segment.id, { maxPoints: parseFloat(e.target.value) })}
-                                                                                className="w-16 px-2 py-1 text-xs border border-indigo-300 rounded"
-                                                                                placeholder="Points"
-                                                                            />
-                                                                        ) : (
-                                                                            <span className="text-xs text-indigo-600 font-semibold">
-                                                                                {segment.maxPoints} pts
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                    {editingSegment === segment.id ? (
-                                                                        <textarea
-                                                                            defaultValue={segment.instruction}
-                                                                            onBlur={(e) => updateSegment(question.id, segment.id, { instruction: e.target.value })}
-                                                                            className="w-full px-2 py-1 text-xs border border-indigo-300 rounded"
-                                                                            rows={2}
-                                                                        />
-                                                                    ) : (
-                                                                        <p className="text-xs text-gray-700">{segment.instruction}</p>
-                                                                    )}
-                                                                    {segment.rubric && (
-                                                                        <div className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
-                                                                            <span className="font-medium">Rubric: </span>
-                                                                            {segment.rubric.criteria || 'No criteria set'}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex items-center space-x-1 ml-2">
-                                                                    <button
-                                                                        onClick={() => setEditingSegment(segment.id)}
-                                                                        className="p-1 text-gray-400 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                        title="Edit segment"
-                                                                        disabled={isLocked}
-                                                                    >
-                                                                        <Edit2 className="w-3 h-3" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => deleteSegment(question.id, segment.id)}
-                                                                        className="p-1 text-gray-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                                                        title="Delete segment"
-                                                                        disabled={isLocked}
-                                                                    >
-                                                                        <Trash2 className="w-3 h-3" />
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))
-                )}
-            </div>
+            <ExamLayout
+                left={
+                    <SectionList
+                        exam={exam}
+                        liveExam={liveExam}
+                        dict={dict}
+                        locale={locale}
+                        isLocked={isReadOnly}
+                        loading={loading}
+                        showValidationUI={showValidationUI}
+                        validationDetails={validationDetails}
+                        viewMode={viewMode}
+                        onViewModeChange={setViewMode}
+                        focusPreview={isFocusMode && previewEnabled ? previewContent : null}
+                        onSelectedNodeChange={setSelectedPreviewNodeId}
+                        previewEnabled={previewEnabled}
+                        onPreviewToggle={setPreviewEnabled}
+                        addSection={addSection}
+                        addQuestion={addQuestion}
+                        addSegment={addSegment}
+                        updateSection={updateSectionQueued}
+                        updateQuestion={updateQuestionQueued}
+                        updateSegment={updateSegmentQueued}
+                        deleteSegment={deleteSegment}
+                        deleteQuestion={deleteQuestion}
+                        deleteSection={deleteSection}
+                        updateLiveQuestionContent={updateLiveQuestionContent}
+                        updateLiveQuestionAnswerTemplate={updateLiveQuestionAnswerTemplate}
+                        updateLiveQuestionAnswerTemplateLocked={updateLiveQuestionAnswerTemplateLocked}
+                        updateLiveQuestionStudentTools={updateLiveQuestionStudentTools}
+                        updateLiveQuestionLabel={updateLiveQuestionLabel}
+                        updateLiveQuestionMaxPoints={updateLiveQuestionMaxPoints}
+                        updateLiveQuestionRequireAllCorrect={updateLiveQuestionRequireAllCorrect}
+                        updateLiveQuestionShuffleOptions={updateLiveQuestionShuffleOptions}
+                        updateLiveSegmentInstruction={updateLiveSegmentInstruction}
+                        updateLiveSegmentOrder={updateLiveSegmentOrder}
+                        updateLiveSegmentPoints={updateLiveSegmentPoints}
+                        updateLiveSegmentCorrect={updateLiveSegmentCorrect}
+                        updateLiveSegmentCriteria={updateLiveSegmentCriteria}
+                        updateLiveSegmentPerfectAnswer={updateLiveSegmentPerfectAnswer}
+                        updateLiveSectionTitle={updateLiveSectionTitle}
+                        updateLiveSectionLabel={updateLiveSectionLabel}
+                        updateLiveSectionIntro={updateLiveSectionIntro}
+                    />
+                }
+                right={!isFocusMode && previewEnabled ? previewContent : null}
+            />
         </div>
     )
 }
+

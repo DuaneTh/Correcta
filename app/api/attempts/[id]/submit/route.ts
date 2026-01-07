@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isStudent } from "@/lib/api-auth"
+import { getExamEndAt } from "@/lib/exam-time"
 
 // POST /api/attempts/[id]/submit - Submit exam attempt
 export async function POST(
@@ -26,6 +27,13 @@ export async function POST(
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
+        // Students should not access attempts for DRAFT exams or exams without valid duration/start date
+        const hasValidDuration = attempt.exam.durationMinutes !== null && attempt.exam.durationMinutes > 0
+        const hasValidStartDate = attempt.exam.startAt !== null && attempt.exam.startAt > new Date('2000-01-01')
+        if (attempt.exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
         if (attempt.studentId !== session.user.id) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
@@ -39,12 +47,13 @@ export async function POST(
         const now = new Date()
         const gracePeriodSeconds = 60
 
-        if (now < attempt.exam.startAt) {
+        if (attempt.exam.startAt && now < attempt.exam.startAt) {
             return NextResponse.json({ error: "Exam has not started yet" }, { status: 400 })
         }
 
-        if (attempt.exam.endAt) {
-            const endAtWithGrace = new Date(attempt.exam.endAt.getTime() + gracePeriodSeconds * 1000)
+        const examEndAt = getExamEndAt(attempt.exam.startAt, attempt.exam.durationMinutes, attempt.exam.endAt)
+        if (examEndAt) {
+            const endAtWithGrace = new Date(examEndAt.getTime() + gracePeriodSeconds * 1000)
             if (now > endAtWithGrace) {
                 return NextResponse.json({ error: "Exam has ended, submission not allowed" }, { status: 400 })
             }

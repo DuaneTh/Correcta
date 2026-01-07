@@ -2,6 +2,7 @@ import { getAuthSession } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
 import { redirect } from "next/navigation"
 import ResultsView from "./ResultsView"
+import { getDictionary } from "@/lib/i18n/server"
 
 export default async function StudentResultsPage({
     params
@@ -32,5 +33,7 @@ export default async function StudentResultsPage({
         return <div>Unauthorized</div>
     }
 
-    return <ResultsView attemptId={attemptId} />
+    const dictionary = await getDictionary()
+
+    return <ResultsView attemptId={attemptId} dictionary={dictionary} />
 }

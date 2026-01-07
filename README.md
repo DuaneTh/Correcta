@@ -2,7 +2,54 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+### Prérequis
+
+- Node.js installé
+- Docker Desktop installé et en cours d'exécution
+
+### 1. Démarrer les services Docker
+
+Avant de lancer l'application, vous devez démarrer les services Docker (PostgreSQL, Redis, MinIO) :
+
+**Sur Windows (PowerShell):**
+```powershell
+.\scripts\start-services.ps1
+```
+
+**Sur Linux/Mac:**
+```bash
+chmod +x scripts/start-services.sh
+./scripts/start-services.sh
+```
+
+**Ou manuellement:**
+```bash
+cd infra
+docker-compose up -d
+```
+
+### 2. Vérifier la configuration
+
+Assurez-vous que le fichier `.env` existe et contient la bonne configuration. Le fichier `env_config` peut être utilisé comme référence.
+
+### 3. Installer les dépendances
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+```
+
+### 4. Configurer la base de données
+
+```bash
+npx prisma generate
+npx prisma migrate dev
+```
+
+### 5. Lancer le serveur de développement
 
 ```bash
 npm run dev

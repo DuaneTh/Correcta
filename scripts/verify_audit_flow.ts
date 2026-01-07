@@ -1,4 +1,5 @@
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { prisma } from '@/lib/prisma'
 import { Queue } from 'bullmq'
 import { AttemptStatus, QuestionType, UserRole } from '@prisma/client'

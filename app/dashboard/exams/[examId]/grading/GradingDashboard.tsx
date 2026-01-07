@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 
@@ -35,11 +35,7 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
     const [releaseMessage, setReleaseMessage] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null)
     const [isReleasing, setIsReleasing] = useState(false)
 
-    useEffect(() => {
-        fetchAttempts()
-    }, [examId])
-
-    const fetchAttempts = async () => {
+    const fetchAttempts = useCallback(async () => {
         try {
             setLoading(true)
             const res = await fetch(`/api/exams/${examId}/grading`)
@@ -54,7 +50,11 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         } finally {
             setLoading(false)
         }
-    }
+    }, [examId])
+
+    useEffect(() => {
+        fetchAttempts()
+    }, [fetchAttempts])
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -65,7 +65,7 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         }
     }
 
-    const sortedAttempts = [...attempts].sort((a, b) => {
+    const sortedAttempts = useMemo(() => [...attempts].sort((a, b) => {
         let comparison = 0
 
         switch (sortField) {
@@ -85,7 +85,7 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         }
 
         return sortOrder === 'asc' ? comparison : -comparison
-    })
+    }), [attempts, sortField, sortOrder])
 
     const handleReleaseResults = async () => {
         setIsReleasing(true)
@@ -179,7 +179,7 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                         className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
-                        Retour à l'examen
+                        Retour à l&apos;examen
                     </button>
                     <div className="flex items-center justify-between">
                         <div>

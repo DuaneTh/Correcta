@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, ArrowLeft } from 'lucide-react'
+import { Exam } from '@/types/exams'
 
 interface ExamEditorProps {
-    initialData?: any
+    initialData?: Exam
     courses: { id: string, code: string, name: string }[]
 }
 

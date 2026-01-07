@@ -37,7 +37,7 @@ export default async function EditExamPage({ params }: { params: Promise<{ examI
 
     return (
         <div className="max-w-5xl mx-auto py-8 px-4">
-            <ExamEditor initialData={exam} courses={courses} />
+            <ExamEditor initialData={exam as any} courses={courses} />
         </div>
     )
 }

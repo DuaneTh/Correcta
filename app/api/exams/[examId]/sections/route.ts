@@ -2,10 +2,33 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getExamPermissions } from "@/lib/exam-permissions"
 
-export async function GET(req: Request, { params }: { params: Promise<{ examId: string }> }) {
+type ExamParams = { examId?: string }
+
+const resolveExamId = (req: Request, params: ExamParams) => {
+    const paramExamId = params?.examId
+    const urlExamId = (() => {
+        try {
+            const path = new URL(req.url).pathname
+            const parts = path.split('/').filter(Boolean)
+            // .../exams/:examId/sections
+            return parts[parts.length - 2]
+        } catch {
+            return undefined
+        }
+    })()
+    const examId = paramExamId && paramExamId !== 'undefined' && paramExamId !== 'null' ? paramExamId : urlExamId
+    return examId
+}
+
+export async function GET(req: Request, { params }: { params: Promise<ExamParams> }) {
     try {
-        const { examId } = await params
+        const resolvedParams = await params
+        const examId = resolveExamId(req, resolvedParams)
+        if (!examId) {
+            return NextResponse.json({ error: "Invalid exam id" }, { status: 400 })
+        }
         const cookieStore = req.headers.get('cookie') || ''
         const match = cookieStore.match(/correcta-institution=([^;]+)/)
         const institutionId = match ? match[1] : undefined
@@ -23,12 +46,21 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
             include: { course: true }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
         if (exam.course.institutionId !== session.user.institutionId) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        }
+
+        const { canEdit } = await getExamPermissions(examId, {
+            id: session.user.id,
+            institutionId: session.user.institutionId,
+            role: session.user.role,
+        })
+        if (!canEdit) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
 
         const sections = await prisma.examSection.findMany({
@@ -43,9 +75,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
     }
 }
 
-export async function POST(req: Request, { params }: { params: Promise<{ examId: string }> }) {
+export async function POST(req: Request, { params }: { params: Promise<ExamParams> }) {
     try {
-        const { examId } = await params
+        const resolvedParams = await params
+        const examId = resolveExamId(req, resolvedParams)
+        if (!examId) {
+            return NextResponse.json({ error: "Invalid exam id" }, { status: 400 })
+        }
         const cookieStore = req.headers.get('cookie') || ''
         const match = cookieStore.match(/correcta-institution=([^;]+)/)
         const institutionId = match ? match[1] : undefined
@@ -63,7 +99,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ examId:
             include: { course: true }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -71,34 +107,214 @@ export async function POST(req: Request, { params }: { params: Promise<{ examId:
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Check if exam is locked (T-10 rule)
-        const { isExamLocked } = await import("@/lib/exam-lock")
-        const locked = await isExamLocked(examId)
-        if (locked) {
-            return NextResponse.json(
-                { error: "Exam is locked less than 10 minutes before start time" },
-                { status: 403 }
-            )
+        // Allow edits during live exams; changes will be tracked separately.
+
+        let body: unknown
+        try {
+            body = await req.json()
+        } catch (parseError) {
+            console.error("[API] Create Section - Failed to parse request body:", parseError)
+            return NextResponse.json({ 
+                error: "Invalid request body" 
+            }, { status: 400 })
+        }
+        
+        const { title, order, customLabel, afterQuestionId, afterSectionId, isDefault } = (body ?? {}) as {
+            title?: string
+            order?: number
+            customLabel?: string | null
+            afterQuestionId?: string | null
+            afterSectionId?: string | null
+            isDefault?: boolean
         }
 
-        const body = await req.json()
-        const { title, order } = body
+        console.log("[API] Create Section - Body received:", JSON.stringify(body, null, 2))
 
-        if (!title) {
+        if (title === undefined || title === null) {
             return NextResponse.json({ error: "Missing title" }, { status: 400 })
         }
 
-        const section = await prisma.examSection.create({
-            data: {
-                examId,
-                title,
-                order: order ?? 0
+        console.log("[API] Create Section - Body received:", JSON.stringify(body, null, 2))
+
+        const sectionDataBase = {
+            examId,
+            title,
+            customLabel: customLabel && customLabel.trim() !== '' ? customLabel : undefined,
+            isDefault: Boolean(isDefault),
+        }
+
+        if (afterSectionId && !afterQuestionId) {
+            const created = await prisma.$transaction(async (tx) => {
+                const refSection = await tx.examSection.findUnique({
+                    where: { id: afterSectionId },
+                })
+
+                if (!refSection || refSection.examId !== examId) {
+                    throw new Error("Invalid reference section")
+                }
+
+                const refOrder = refSection.order
+                const sectionsToShift = await tx.examSection.findMany({
+                    where: { examId, order: { gte: refOrder + 1 } },
+                    orderBy: { order: 'desc' },
+                    select: { id: true, order: true },
+                })
+
+                for (const s of sectionsToShift) {
+                    await tx.examSection.update({
+                        where: { id: s.id },
+                        data: { order: s.order + 1 },
+                    })
+                }
+
+                const mainSection = await tx.examSection.create({
+                    data: {
+                        ...sectionDataBase,
+                        order: refOrder + 1,
+                    },
+                })
+
+                return { section: mainSection }
+            })
+
+            console.log("[API] Create Section - Success (afterSectionId)")
+            return NextResponse.json(created)
+        }
+
+        if (!afterQuestionId) {
+            const sectionData: {
+                examId: string
+                title: string
+                order: number
+                customLabel?: string
+            } = {
+                ...sectionDataBase,
+                order: order ?? 0,
             }
+
+            const section = await prisma.examSection.create({
+                data: sectionData
+            })
+
+            console.log("[API] Create Section - Success (no afterQuestionId)")
+            return NextResponse.json(section)
+        }
+
+        // Insert section relative to an existing question
+        const created = await prisma.$transaction(async (tx) => {
+            const referenceQuestion = await tx.question.findUnique({
+                where: { id: afterQuestionId },
+                include: {
+                    section: true,
+                },
+            })
+
+            if (!referenceQuestion || referenceQuestion.section.examId !== examId) {
+                throw new Error("Invalid reference question")
+            }
+
+            const refSection = referenceQuestion.section
+            const refOrder = refSection.order
+            const isDefaultStandalone = refSection.isDefault && !refSection.customLabel && !refSection.title
+
+            // Determine if we need to split a default standalone section
+            let splitDefault = false
+            let tailQuestions: { id: string; order: number }[] = []
+
+            if (isDefaultStandalone) {
+                const questionsInSection = await tx.question.findMany({
+                    where: { sectionId: refSection.id },
+                    orderBy: { order: 'asc' },
+                    select: { id: true, order: true },
+                })
+                const idx = questionsInSection.findIndex((q) => q.id === afterQuestionId)
+                if (idx !== -1 && idx < questionsInSection.length - 1) {
+                    splitDefault = true
+                    tailQuestions = questionsInSection.slice(idx + 1)
+                }
+            }
+
+            const shiftAmount = splitDefault ? 2 : 1
+
+            // Shift subsequent sections to make room
+            const sectionsToShift = await tx.examSection.findMany({
+                where: { examId, order: { gte: refOrder + 1 } },
+                orderBy: { order: 'desc' },
+                select: { id: true, order: true },
+            })
+
+            for (const s of sectionsToShift) {
+                await tx.examSection.update({
+                    where: { id: s.id },
+                    data: { order: s.order + shiftAmount },
+                })
+            }
+
+            const mainSection = await tx.examSection.create({
+                data: {
+                    ...sectionDataBase,
+                    order: refOrder + 1,
+                },
+            })
+
+            let newTailDefault: typeof mainSection | null = null
+
+            if (splitDefault && tailQuestions.length > 0) {
+                newTailDefault = await tx.examSection.create({
+                    data: {
+                        examId,
+                        title: '',
+                        order: refOrder + 2,
+                        isDefault: true,
+                    },
+                })
+
+                for (const q of tailQuestions) {
+                    await tx.question.update({
+                        where: { id: q.id },
+                        data: {
+                            sectionId: newTailDefault.id,
+                            order: q.order, // preserve relative order
+                        },
+                    })
+                }
+            }
+
+            return { section: mainSection, splitDefault, newTailDefault }
         })
 
-        return NextResponse.json(section)
-    } catch (error) {
+        console.log("[API] Create Section - Success (afterQuestionId)")
+        return NextResponse.json(created)
+    } catch (error: unknown) {
         console.error("[API] Create Section Error:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        console.error("[API] Create Section Error Details:", {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            code: (error as any)?.code,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            message: (error as any)?.message,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            meta: (error as any)?.meta,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            stack: (error as any)?.stack
+        })
+        
+        // Determine error message
+        let errorMessage = "Internal Server Error"
+        if ((error as any)?.message) {
+            errorMessage = (error as any).message
+        } else if ((error as any)?.code) {
+            // Handle Prisma-specific errors
+            if ((error as any).code === 'P2002') {
+                errorMessage = "A section with this configuration already exists"
+            } else if ((error as any).code === 'P2003') {
+                errorMessage = "Invalid exam reference"
+            } else {
+                errorMessage = `Database error: ${(error as any).code}`
+            }
+        }
+        
+        return NextResponse.json({ 
+            error: errorMessage
+        }, { status: 500 })
     }
 }

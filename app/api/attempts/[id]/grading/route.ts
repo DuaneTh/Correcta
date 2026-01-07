@@ -23,7 +23,7 @@ export async function GET(
                 },
                 exam: {
                     include: {
-                        course: { select: { institutionId: true } },
+                        course: { select: { institutionId: true, archivedAt: true } },
                         sections: {
                             include: {
                                 questions: {
@@ -46,7 +46,7 @@ export async function GET(
             }
         })
 
-        if (!attempt) {
+        if (!attempt || attempt.exam.archivedAt || attempt.exam.course.archivedAt) {
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
@@ -75,7 +75,7 @@ export async function GET(
                         const grade = answer?.grades?.[0] // Question-level grade
 
                         // Calculate max points for question (sum of segments)
-                        const maxPoints = question.segments.reduce((sum, seg) => sum + seg.maxPoints, 0)
+                        const maxPoints = question.segments.reduce((sum, seg) => sum + (seg.maxPoints || 0), 0)
 
                         return {
                             id: question.id,

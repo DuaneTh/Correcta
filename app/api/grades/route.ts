@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
         // Compute questionMaxPoints from segments
         const questionMaxPoints = answer.question.segments.reduce(
-            (sum, segment) => sum + segment.maxPoints,
+            (sum, segment) => sum + (segment.maxPoints || 0),
             0
         )
 

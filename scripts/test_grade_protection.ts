@@ -1,3 +1,4 @@
+/* eslint-disable prefer-const, @typescript-eslint/no-unused-vars */
 import { PrismaClient, AttemptStatus, UserRole } from '@prisma/client'
 import { aiGradingQueue, closeQueue } from '../lib/queue'
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isStudent } from "@/lib/api-auth"
+import { getExamEndAt } from "@/lib/exam-time"
+import { assertExamVariantShape, examAppliesToClassIds } from "@/lib/exam-variants"
 
 // POST /api/attempts - Start a new exam attempt
 export async function POST(req: NextRequest) {
@@ -29,9 +31,10 @@ export async function POST(req: NextRequest) {
                 course: {
                     include: {
                         classes: {
+                            where: { archivedAt: null },
                             include: {
                                 enrollments: {
-                                    where: { userId: session.user.id }
+                                    where: { userId: session.user.id, user: { archivedAt: null } }
                                 }
                             }
                         }
@@ -40,26 +43,44 @@ export async function POST(req: NextRequest) {
             }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 
-        // Check if student is enrolled in any class for this course
-        const hasAccess = exam.course.classes.some(
-            (cls) => cls.enrollments.length > 0
-        )
+        assertExamVariantShape(exam, { context: 'attempts-post' })
+
+        // Students should not access DRAFT exams or exams without valid duration/start date
+        const hasValidDuration = exam.durationMinutes !== null && exam.durationMinutes > 0
+        const hasValidStartDate = exam.startAt !== null && exam.startAt > new Date('2000-01-01')
+        if (exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
+            return NextResponse.json({ error: "Exam not found" }, { status: 404 })
+        }
+
+        const enrolledClassIds = exam.course.classes
+            .filter((cls) => cls.enrollments.length > 0)
+            .map((cls) => cls.id)
+        const hasAccess = enrolledClassIds.length > 0
 
         if (!hasAccess) {
             return NextResponse.json({ error: "You are not enrolled in this exam" }, { status: 403 })
         }
 
+        if (exam.parentExamId == null && exam.classId == null) {
+            if (!examAppliesToClassIds(exam, enrolledClassIds)) {
+                return NextResponse.json({ error: "Exam not found" }, { status: 404 })
+            }
+        } else if (exam.classId && !enrolledClassIds.includes(exam.classId)) {
+            return NextResponse.json({ error: "Exam not found" }, { status: 404 })
+        }
+
         // Check if exam is available
         const now = new Date()
-        if (now < exam.startAt) {
+        if (exam.startAt && now < exam.startAt) {
             return NextResponse.json({ error: "Exam has not started yet" }, { status: 400 })
         }
 
-        if (exam.endAt && now > exam.endAt) {
+        const examEndAt = getExamEndAt(exam.startAt, exam.durationMinutes, exam.endAt)
+        if (examEndAt && now > examEndAt) {
             return NextResponse.json({ error: "Exam has ended" }, { status: 400 })
         }
 

@@ -11,7 +11,6 @@ async function handler(req: NextRequest, ctx: { params: Promise<{ nextauth: stri
 
     const authOptions = await buildAuthOptions(institutionId)
 
-    // @ts-ignore - NextAuth types are tricky with App Router
     return NextAuth(req, ctx, authOptions)
 }
 

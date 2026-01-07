@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
+import { getCorrectionReleaseInfo } from "@/lib/correction-release"
 
 // GET /api/attempts/[id]/results - Get graded results for student
 export async function GET(
@@ -53,6 +54,15 @@ export async function GET(
         const isOwner = attempt.studentId === session.user.id
         const isTeacherUser = isTeacher(session)
 
+        // Students should not access attempts for DRAFT exams or exams without valid duration/start date
+        if (isOwner && !isTeacherUser) {
+            const hasValidDuration = attempt.exam.durationMinutes !== null && attempt.exam.durationMinutes > 0
+            const hasValidStartDate = attempt.exam.startAt !== null && attempt.exam.startAt > new Date('2000-01-01')
+            if (attempt.exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
+                return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+            }
+        }
+
         if (!isOwner && !isTeacherUser) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
@@ -66,14 +76,19 @@ export async function GET(
             }, { status: 403 })
         }
 
-        // Additional gate: check exam-level gradesReleased flag for students
-        // Students need both GRADED status AND gradesReleased=true
+        // Additional gate: check exam-level release rules for students
         if (isOwner && !isTeacherUser) {
-            const gradingConfig = (attempt.exam.gradingConfig as any) || {}
-            if (gradingConfig.gradesReleased !== true) {
+            const gradingConfig = (attempt.exam.gradingConfig as Record<string, unknown>) || {}
+            const releaseInfo = getCorrectionReleaseInfo({
+                gradingConfig,
+                startAt: attempt.exam.startAt,
+                durationMinutes: attempt.exam.durationMinutes,
+                endAt: attempt.exam.endAt,
+            })
+            if (!releaseInfo.isReleased) {
                 return NextResponse.json({
                     error: "RESULTS_NOT_RELEASED",
-                    message: "Les résultats de cet examen n'ont pas encore été rendus."
+                    message: "Les resultats de cet examen ne sont pas encore disponibles."
                 }, { status: 403 })
             }
         }
@@ -95,7 +110,7 @@ export async function GET(
                     const answer = attempt.answers.find(a => a.questionId === question.id)
                     const grade = answer?.grades?.[0]
 
-                    const maxPoints = question.segments.reduce((sum, seg) => sum + seg.maxPoints, 0)
+                    const maxPoints = question.segments.reduce((sum, seg) => sum + (seg.maxPoints || 0), 0)
                     totalMaxPoints += maxPoints
                     if (grade) totalScore += grade.score
 

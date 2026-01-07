@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
+import { getExamEndAt } from "@/lib/exam-time"
 
 // GET /api/exams/[examId]/anti-cheat-report - Download CSV report of anti-cheat data
 export async function GET(
@@ -20,12 +21,12 @@ export async function GET(
             where: { id: examId },
             include: {
                 course: {
-                    select: { institutionId: true }
+                    select: { institutionId: true, archivedAt: true }
                 }
             }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 
@@ -83,7 +84,8 @@ export async function GET(
 
             // Determine status
             const now = new Date()
-            const deadlineAt = new Date(attempt.startedAt.getTime() + exam.durationMinutes * 60 * 1000)
+            const examEndAt = getExamEndAt(exam.startAt, exam.durationMinutes, exam.endAt)
+            const deadlineAt = examEndAt ?? new Date(attempt.startedAt.getTime() + (exam.durationMinutes || 60) * 60 * 1000)
             let attemptStatus: string
             if (attempt.submittedAt) {
                 attemptStatus = 'submitted'

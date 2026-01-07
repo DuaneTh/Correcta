@@ -2,6 +2,31 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { parseContent } from "@/lib/content"
+
+const resolveCourseTeacherName = (course: {
+    classes?: Array<{
+        enrollments?: Array<{ user?: { name?: string | null } | null }>
+    }>
+}) =>
+    course.classes
+        ?.flatMap((cls) => cls.enrollments ?? [])
+        .map((enrollment) => enrollment.user?.name)
+        .find(Boolean) ?? null
+
+const mapExamContent = <T extends { sections: Array<{ questions: Array<{ content: unknown; answerTemplate?: unknown }> }> }>(
+    exam: T
+) => ({
+    ...exam,
+    sections: exam.sections.map((section) => ({
+        ...section,
+        questions: section.questions.map((question) => ({
+            ...question,
+            content: parseContent(question.content),
+            answerTemplate: parseContent(question.answerTemplate),
+        })),
+    })),
+})
 
 export async function GET(req: Request, { params }: { params: Promise<{ examId: string }> }) {
     try {
@@ -21,7 +46,33 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
         const exam = await prisma.exam.findUnique({
             where: { id: examId },
             include: {
-                course: true,
+                course: {
+                    select: {
+                        id: true,
+                        code: true,
+                        name: true,
+                        institutionId: true,
+                        archivedAt: true,
+                        classes: {
+                            where: { archivedAt: null },
+                            select: {
+                                enrollments: {
+                                    where: { role: 'TEACHER', user: { archivedAt: null } },
+                                    select: {
+                                        user: { select: { name: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                author: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
                 sections: {
                     include: {
                         questions: {
@@ -29,7 +80,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
                                 segments: {
                                     include: {
                                         rubric: true
-                                    }
+                                    },
+                                    orderBy: { order: 'asc' }
                                 }
                             },
                             orderBy: { order: 'asc' }
@@ -40,7 +92,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
             }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -49,7 +101,19 @@ export async function GET(req: Request, { params }: { params: Promise<{ examId: 
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        return NextResponse.json(exam)
+        const courseTeacherName = resolveCourseTeacherName(exam.course)
+        const mapped = mapExamContent(exam)
+        return NextResponse.json({
+            ...mapped,
+            course: {
+                id: exam.course.id,
+                code: exam.course.code,
+                name: exam.course.name,
+                teacherName: courseTeacherName ?? null,
+                institutionId: exam.course.institutionId
+            },
+            courseId: exam.course.id
+        })
     } catch (error) {
         console.error("[API] Get Full Exam Error:", error)
         return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })

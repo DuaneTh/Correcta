@@ -1,13 +1,13 @@
 "use client"
 
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Clock } from "lucide-react"
+import { ArrowLeft } from "lucide-react"
 
 interface ProctorEvent {
     id: string
     type: string
     timestamp: string
-    metadata: any
+    metadata: Record<string, unknown> | null
 }
 
 interface AttemptData {

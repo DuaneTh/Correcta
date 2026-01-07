@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
 import { prisma } from '@/lib/prisma'

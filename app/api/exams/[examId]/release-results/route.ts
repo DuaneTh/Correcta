@@ -20,7 +20,7 @@ export async function POST(
             where: { id: examId },
             include: {
                 course: {
-                    select: { institutionId: true }
+                    select: { institutionId: true, archivedAt: true }
                 },
                 attempts: {
                     select: { id: true, status: true }
@@ -28,7 +28,7 @@ export async function POST(
             }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 
@@ -48,7 +48,7 @@ export async function POST(
         }
 
         // Merge gradesReleased flag into existing gradingConfig
-        const existingConfig = (exam.gradingConfig as any) || {}
+        const existingConfig = (exam.gradingConfig as Record<string, unknown>) || {}
         const updatedConfig = {
             ...existingConfig,
             gradesReleased: true,

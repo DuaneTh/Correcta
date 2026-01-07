@@ -5,11 +5,29 @@
   --foreground: #171717;
 }
 
+/* Make all placeholder texts italic across the app */
+input::placeholder,
+textarea::placeholder {
+  font-style: italic;
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+/* Harmonise the exam builder example placeholders with the question title */
+.exam-placeholder::placeholder {
+  color: #9ca3af !important; /* tailwind gray-400 */
+  font-style: italic !important;
+  opacity: 1 !important;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --color-brand-900: #000040;
+  --color-brand-700: #1a1a66;
+  --color-brand-50: #f3f3ff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -23,4 +41,197 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+button,
+[role="button"] {
+  cursor: pointer;
+}
+
+/* Neutralise complètement le style du jour courant */
+.react-datepicker__day--today {
+  font-weight: normal !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Style UNIQUEMENT pour un jour réellement sélectionné */
+.react-datepicker__day--selected,
+.react-datepicker__day--selected.react-datepicker__day--keyboard-selected {
+  font-weight: 500 !important;
+  background-color: #000040 !important;
+  color: #ffffff !important;
+  border-radius: 9999px !important;
+}
+
+/* Un jour "keyboard-selected" mais PAS sélectionné reste neutre */
+.react-datepicker__day--keyboard-selected:not(.react-datepicker__day--selected) {
+  font-weight: normal !important;
+  background-color: transparent !important;
+  color: inherit !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* MathLive styles for question title editor */
+math-field {
+  --text-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --math-font-family: 'KaTeX_Math', 'Latin Modern Math', 'STIX Two Math', 'Computer Modern', serif;
+  --selection-background-color: rgba(17, 24, 39, 0.08);
+  --selection-color: inherit;
+  --placeholder-background-color: transparent;
+  --prompt-background-color: transparent;
+  --contains-highlight-background-color: rgba(17, 24, 39, 0.06);
+  --contains-highlight-color: inherit;
+  /* Remove blue background on plain text */
+  --text-background-color: transparent;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  min-height: 36px;
+  padding: 0.375rem 0.75rem;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  background-color: white;
+  color: #111827;
+  width: 100%;
+  display: block;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Remove blue highlight on plain text spans */
+math-field .ML__text {
+  background-color: transparent !important;
+  color: inherit;
+}
+
+math-field .ML__base {
+  background-color: transparent !important;
+}
+
+/* Remove highlight on editable placeholder slots */
+math-field .ML__placeholder,
+math-field .ML__prompt,
+math-field .ML__selection,
+math-field .ML__selected {
+  background-color: transparent !important;
+}
+
+
+math-field:focus {
+  outline: none;
+  border-color: #1a1a1a;
+  box-shadow: 0 0 0 2px rgba(26, 26, 26, 0.1);
+}
+
+math-field:disabled {
+  background-color: #f9fafb;
+  color: #6b7280;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+math-field::part(virtual-keyboard-toggle) {
+  display: none;
+}
+
+/* Hide MathLive's built-in menu/hamburger */
+math-field::part(menu-toggle),
+math-field::part(menu),
+math-field .ML__menu-toggle {
+  display: none !important;
+}
+
+/* Ensure text and math blend well together */
+math-field .ML__base {
+  font-family: var(--text-font-family);
+}
+
+math-field .ML__math {
+  font-family: var(--math-font-family);
+}
+
+math-field .ML__text {
+  font-family: var(--text-font-family);
+}
+
+/* Match placeholder styling */
+math-field::placeholder {
+  color: #6b7280 !important;
+  font-style: italic;
+  opacity: 1 !important;
+}
+
+/* MathJax content wrapping for long formulas */
+.math-chip-content {
+  display: inline !important;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+/* Keep inline wrapping only for inline math chips */
+.math-chip-content:not(.math-inline-display) mjx-container {
+  display: inline !important;
+  max-width: 100%;
+  white-space: normal !important;
+  word-break: break-all !important;
+  overflow-wrap: anywhere !important;
+  font-size: 1em !important;
+}
+
+.math-inline:not(.math-inline-display) mjx-container {
+  font-size: 1.15em !important;
+}
+
+.math-inline {
+  font-size: 1.15em !important;
+}
+
+.math-inline mjx-container {
+  transform: scale(1.15);
+  transform-origin: left center;
+}
+
+.math-chip-content:not(.math-inline-display) mjx-container[jax="CHTML"] {
+  display: inline !important;
+  white-space: normal !important;
+}
+
+.math-chip-content:not(.math-inline-display) mjx-math {
+  display: inline !important;
+  white-space: normal !important;
+  word-break: break-all !important;
+}
+
+.math-chip-content:not(.math-inline-display) mjx-mrow {
+  display: inline !important;
+  flex-wrap: wrap !important;
+  white-space: normal !important;
+}
+
+/* Keep display math inline when used for large operators */
+.math-inline-display mjx-container[display="true"] {
+  display: inline-block !important;
+  margin: 0 !important;
+  vertical-align: middle;
+}
+
+.math-inline-display mjx-math,
+.math-inline-display mjx-mrow {
+  display: inline-block !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+}
+
+/* Ensure math chips don't overflow their container */
+[data-math-id] {
+  display: inline-block !important;
+  max-width: 100%;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+  line-height: normal;
 }

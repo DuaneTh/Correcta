@@ -1,0 +1,18 @@
+/* Math segment styling for contentEditable question title */
+.editable-question-title .math-segment {
+  font-family: "Cambria Math", "STIX Two Math", "Latin Modern Math", serif;
+  font-style: normal;
+}
+
+/* Placeholder styling (when empty) */
+.editable-question-title:empty:before {
+  content: attr(data-placeholder);
+  color: #9ca3af; /* gray-400 */
+  pointer-events: none;
+}
+
+/* Ensure no resize handle appears */
+.editable-question-title {
+  resize: none;
+}
+

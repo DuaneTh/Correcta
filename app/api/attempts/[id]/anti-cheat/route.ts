@@ -33,14 +33,14 @@ export async function GET(
                 exam: {
                     include: {
                         course: {
-                            select: { institutionId: true }
+                            select: { institutionId: true, archivedAt: true }
                         }
                     }
                 }
             }
         })
 
-        if (!attempt) {
+        if (!attempt || attempt.exam.archivedAt || attempt.exam.course.archivedAt) {
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 

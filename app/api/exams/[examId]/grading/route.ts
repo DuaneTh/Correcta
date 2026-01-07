@@ -20,12 +20,12 @@ export async function GET(
             where: { id: examId },
             include: {
                 course: {
-                    select: { institutionId: true }
+                    select: { institutionId: true, archivedAt: true }
                 }
             }
         })
 
-        if (!exam) {
+        if (!exam || exam.archivedAt || exam.course.archivedAt) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 

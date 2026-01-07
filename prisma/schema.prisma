@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // --- IAM & Tenancy ---
@@ -21,6 +20,15 @@ model Institution {
   users       User[]
   courses     Course[]
   lmsConfigs  LMSConfig[]
+  domains     InstitutionDomain[]
+}
+
+model InstitutionDomain {
+  id            String       @id @default(uuid())
+  domain        String       @unique
+  institutionId String
+  institution   Institution @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
 }
 
 enum UserRole {
@@ -41,6 +49,7 @@ model User {
   role          UserRole    @default(STUDENT)
   institutionId String?
   institution   Institution? @relation(fields: [institutionId], references: [id])
+  archivedAt    DateTime?
   
   accounts      Account[]
   sessions      Session[]
@@ -48,6 +57,8 @@ model User {
   enrollments   Enrollment[]
   attempts      Attempt[]
   gradingTasks  GradingTask[] // If human grader
+  authoredExams Exam[] // Exams created by this user
+  examChanges   ExamChange[]
   
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -107,6 +118,7 @@ model Course {
   name          String
   institutionId String
   institution   Institution @relation(fields: [institutionId], references: [id])
+  archivedAt    DateTime?
   
   classes       Class[]
   exams         Exam[]
@@ -120,8 +132,10 @@ model Class {
   name      String       // e.g. "Group A", "TD 1"
   courseId  String
   course    Course       @relation(fields: [courseId], references: [id])
+  archivedAt DateTime?
   
   enrollments Enrollment[]
+  exams       Exam[]
 }
 
 model Enrollment {
@@ -143,22 +157,52 @@ model Exam {
   description     String?  // Description détaillée de l'examen
   courseId        String
   course          Course   @relation(fields: [courseId], references: [id])
+  archivedAt      DateTime?
   classIds        String[] // IDs des classes ciblées
+  classId         String?  // Section-specific exam (single class)
+  class           Class?   @relation(fields: [classId], references: [id])
+  parentExamId    String?
+  parentExam      Exam?    @relation("ExamVariants", fields: [parentExamId], references: [id])
+  variants        Exam[]   @relation("ExamVariants")
   
-  startAt         DateTime
+  startAt         DateTime?
   endAt           DateTime? // Optional if duration based window
-  durationMinutes Int
+  durationMinutes Int?
 
   authorId        String?   // ID of the user who created the exam
+  author          User?     @relation(fields: [authorId], references: [id])
+  
+  status          ExamStatus @default(DRAFT)
+  
+  requireHonorCommitment Boolean @default(false) // Require students to copy honor code statement
+  allowedMaterials String?  // Materials authorized for the exam (e.g., "Calculator, notes, etc.")
   
   antiCheatConfig Json?    // { webcam: boolean, screen: boolean, ... }
   gradingConfig   Json?    // { releaseGradesAt: DateTime, ... }
   
   sections        ExamSection[] // Renommé de questionGroups
   attempts        Attempt[]
+  changes         ExamChange[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  @@index([classId])
+  @@index([parentExamId])
+  @@unique([parentExamId, classId])
+}
+
+
+enum ExamStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ExamChangeEntity {
+  EXAM
+  SECTION
+  QUESTION
+  SEGMENT
 }
 
 model ExamSection {
@@ -167,6 +211,9 @@ model ExamSection {
   exam      Exam       @relation(fields: [examId], references: [id])
   title     String     // "Part 1"
   order     Int        @default(0)
+  isDefault Boolean    @default(false)
+  customLabel String?  // Custom label like "Partie II"
+  introContent String?
   
   questions Question[]
 }
@@ -182,20 +229,43 @@ model Question {
   sectionId       String
   section         ExamSection @relation(fields: [sectionId], references: [id])
   content         String   // Markdown/HTML
+  answerTemplate  String?
+  answerTemplateLocked Boolean @default(false)
+  studentTools    Json?
+  shuffleOptions Boolean @default(false)
   type            QuestionType
   order           Int      @default(0)
+  customLabel     String?
+  requireAllCorrect Boolean @default(false) // For MCQ: if true, all correct answers must be selected to get points
+  maxPoints       Float?   // For MCQ with requireAllCorrect: total points for the question
   
   segments        QuestionSegment[]
   answers         Answer[]
+}
+
+model ExamChange {
+  id          String           @id @default(uuid())
+  examId      String
+  exam        Exam             @relation(fields: [examId], references: [id])
+  entityType  ExamChangeEntity
+  entityId    String
+  entityLabel String?
+  field       String
+  beforeValue Json?
+  afterValue  Json?
+  createdById String?
+  createdBy   User?            @relation(fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
 }
 
 model QuestionSegment {
   id          String   @id @default(uuid())
   questionId  String
   question    Question @relation(fields: [questionId], references: [id])
-  
+  order       Int      @default(0)
   instruction String   // Specific instruction for this segment
-  maxPoints   Float
+  maxPoints   Float?
+  isCorrect   Boolean? // For MCQ: indicates if this option is a correct answer (used in "all or nothing" mode)
   
   rubric      Rubric?
   answerSegments AnswerSegment[]
@@ -230,6 +300,7 @@ model Attempt {
   startedAt     DateTime      @default(now())
   submittedAt   DateTime?
   status        AttemptStatus @default(IN_PROGRESS)
+  honorStatementText String?
   
   antiCheatScore Float?       // 0.0 to 1.0 suspicion score
   

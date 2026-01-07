@@ -1,9 +1,5 @@
-import ExamList from "@/components/exams/ExamList"
+import { redirect } from 'next/navigation'
 
-export default function ExamsPage() {
-    return (
-        <div className="max-w-5xl mx-auto py-8 px-4">
-            <ExamList />
-        </div>
-    )
+export default function DashboardExamsRedirect() {
+    redirect('/teacher/exams')
 }

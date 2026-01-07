@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, AlertTriangle, CheckCircle, Clock, XCircle } from "lucide-react"
+import { ArrowLeft, CheckCircle, Clock, XCircle } from "lucide-react"
 
 interface StudentSummary {
     attemptId: string
@@ -32,11 +32,7 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
     const [sortBy, setSortBy] = useState<'score' | 'name' | 'status'>('score')
     const [sortDesc, setSortDesc] = useState(true)
 
-    useEffect(() => {
-        fetchSummary()
-    }, [examId])
-
-    const fetchSummary = async () => {
+    const fetchSummary = useCallback(async () => {
         try {
             const res = await fetch(`/api/exams/${examId}/proctoring`)
             if (res.ok) {
@@ -50,7 +46,11 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
         } finally {
             setLoading(false)
         }
-    }
+    }, [examId])
+
+    useEffect(() => {
+        fetchSummary()
+    }, [fetchSummary])
 
     const getSuspicionColor = (score: number) => {
         if (score === 0) return 'bg-green-100 text-green-800'

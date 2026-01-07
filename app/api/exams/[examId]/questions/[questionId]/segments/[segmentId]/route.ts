@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getExamPermissions } from "@/lib/exam-permissions"
 
 export async function PUT(
     req: Request,
@@ -39,7 +40,7 @@ export async function PUT(
             }
         })
 
-        if (!segment || segment.questionId !== questionId || segment.question.section.examId !== examId) {
+        if (!segment || segment.questionId !== questionId || segment.question.section.examId !== examId || segment.question.section.exam.archivedAt || segment.question.section.exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -47,26 +48,87 @@ export async function PUT(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Check if exam is locked (T-10 rule)
-        const { isExamLocked } = await import("@/lib/exam-lock")
-        const locked = await isExamLocked(examId)
-        if (locked) {
-            return NextResponse.json({
-                error: "Exam is locked: cannot be edited less than 10 minutes before start time"
-            }, { status: 403 })
+        const { canEdit } = await getExamPermissions(examId, {
+            id: session.user.id,
+            institutionId: session.user.institutionId,
+            role: session.user.role,
+        })
+        if (!canEdit) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
 
-        const body = await req.json()
-        const { instruction, maxPoints, rubric } = body
+        // Allow edits during live exams; changes will be tracked separately.
+
+        let body: {
+            instruction?: string | null
+            maxPoints?: number | string | null
+            rubric?: {
+                criteria?: string
+                levels?: unknown[]
+                examples?: unknown
+            } | null
+            isCorrect?: boolean | string
+            order?: number
+        } = {}
+        try {
+            body = await req.json()
+        } catch (parseError) {
+            console.error("[API] Failed to parse request body:", parseError)
+            return NextResponse.json({ error: "Invalid request body" }, { status: 400 })
+        }
+        const { instruction, maxPoints, rubric, isCorrect, order } = body
 
         // Update segment
-        const updatedSegment = await prisma.questionSegment.update({
-            where: { id: segmentId },
-            data: {
-                ...(instruction !== undefined && { instruction }),
-                ...(maxPoints !== undefined && { maxPoints: parseFloat(maxPoints) })
+        const updateData: Record<string, unknown> = {}
+        if (instruction !== undefined) {
+            // Allow empty strings for drafts
+            updateData.instruction = instruction === null ? '' : String(instruction)
+        }
+        if (maxPoints !== undefined) {
+            if (maxPoints === null || maxPoints === '') {
+                updateData.maxPoints = null
+            } else {
+                const parsed = typeof maxPoints === 'number' ? maxPoints : parseFloat(String(maxPoints))
+                // Only update if parsed is a valid number (not NaN) and is finite
+                if (!isNaN(parsed) && isFinite(parsed)) {
+                    updateData.maxPoints = parsed
+                }
             }
-        })
+        }
+        if (isCorrect !== undefined) {
+            updateData.isCorrect = isCorrect === true || isCorrect === 'true'
+        }
+        if (order !== undefined) {
+            const parsed = typeof order === 'number' ? order : parseInt(String(order), 10)
+            if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+                updateData.order = parsed
+            }
+        }
+
+        const hasUpdateData = Object.keys(updateData).length > 0
+
+        if (hasUpdateData) {
+            try {
+                await prisma.questionSegment.update({
+                    where: { id: segmentId },
+                    data: updateData
+                })
+            } catch (prismaError: unknown) {
+                console.error("[API] Prisma update error:", prismaError)
+                if ((prismaError as { code?: string })?.code === 'P2025') {
+                    return NextResponse.json({ error: "Segment not found" }, { status: 404 })
+                }
+                throw prismaError
+            }
+        }
+
+        if (rubric === undefined && !hasUpdateData) {
+            const currentSegment = await prisma.questionSegment.findUnique({
+                where: { id: segmentId },
+                include: { rubric: true }
+            })
+            return NextResponse.json(currentSegment)
+        }
 
         // Handle rubric update/creation/deletion
         if (rubric !== undefined) {
@@ -84,8 +146,8 @@ export async function PUT(
                         where: { id: segment.rubric.id },
                         data: {
                             criteria: rubric.criteria,
-                            levels: rubric.levels,
-                            examples: rubric.examples || null
+                            levels: rubric.levels as any,
+                            examples: (rubric.examples || null) as any
                         }
                     })
                 } else {
@@ -93,8 +155,8 @@ export async function PUT(
                         data: {
                             segmentId,
                             criteria: rubric.criteria || '',
-                            levels: rubric.levels || [],
-                            examples: rubric.examples || null
+                            levels: (rubric.levels || []) as any,
+                            examples: (rubric.examples || null) as any
                         }
                     })
                 }
@@ -109,10 +171,35 @@ export async function PUT(
             }
         })
 
+        const { logExamChanges } = await import("@/lib/exam-change")
+        const fallbackQuestionLabel = `Question ${segment.question.order + 1}`
+        const segmentLabel = segment.question.customLabel || fallbackQuestionLabel
+        const segmentChanges: Array<Parameters<typeof logExamChanges>[1][number]> = []
+        if (instruction !== undefined) {
+            segmentChanges.push({
+                examId,
+                entityType: 'SEGMENT',
+                entityId: segmentId,
+                entityLabel: segmentLabel,
+                field: 'instruction',
+                beforeValue: segment.instruction,
+                afterValue: instruction ?? '',
+                createdById: session.user.id,
+            })
+        }
+        await logExamChanges({ status: segment.question.section.exam.status, startAt: segment.question.section.exam.startAt }, segmentChanges)
+
         return NextResponse.json(finalSegment)
-    } catch (error) {
+    } catch (error: unknown) {
         console.error("[API] Update Segment Error:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        // Return more specific error information
+        const err = error as { message?: string; code?: string; stack?: string }
+        const errorMessage = err?.message || "Internal Server Error"
+        const statusCode = err?.code === 'P2025' ? 404 : 500 // Prisma not found error
+        return NextResponse.json({ 
+            error: errorMessage,
+            details: process.env.NODE_ENV === 'development' ? err?.stack : undefined
+        }, { status: statusCode })
     }
 }
 
@@ -151,7 +238,7 @@ export async function DELETE(
             }
         })
 
-        if (!segment || segment.questionId !== questionId || segment.question.section.examId !== examId) {
+        if (!segment || segment.questionId !== questionId || segment.question.section.examId !== examId || segment.question.section.exam.archivedAt || segment.question.section.exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -159,15 +246,43 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Check if exam is locked (T-10 rule)
+        const { canEdit } = await getExamPermissions(examId, {
+            id: session.user.id,
+            institutionId: session.user.institutionId,
+            role: session.user.role,
+        })
+        if (!canEdit) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+        }
+
+        // Check if exam is locked (published)
         const { isExamLocked } = await import("@/lib/exam-lock")
         const locked = await isExamLocked(examId)
         if (locked) {
             return NextResponse.json({
-                error: "Exam is locked: cannot be edited less than 10 minutes before start time"
+                error: "Exam is published and has started"
             }, { status: 403 })
         }
 
+        // Delete related entities first (rubric and answer segments)
+        // Delete rubric if it exists
+        const segmentWithRubric = await prisma.questionSegment.findUnique({
+            where: { id: segmentId },
+            include: { rubric: true }
+        })
+
+        if (segmentWithRubric?.rubric) {
+            await prisma.rubric.delete({
+                where: { id: segmentWithRubric.rubric.id }
+            })
+        }
+
+        // Delete answer segments if they exist
+        await prisma.answerSegment.deleteMany({
+            where: { segmentId }
+        })
+
+        // Now delete the segment
         await prisma.questionSegment.delete({
             where: { id: segmentId }
         })

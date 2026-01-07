@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { getExamPermissions } from "@/lib/exam-permissions"
 
 export async function POST(
     req: Request,
@@ -34,7 +35,7 @@ export async function POST(
             }
         })
 
-        if (!question || question.section.examId !== examId) {
+        if (!question || question.section.examId !== examId || question.section.exam.archivedAt || question.section.exam.course.archivedAt) {
             return NextResponse.json({ error: "Not found" }, { status: 404 })
         }
 
@@ -42,28 +43,52 @@ export async function POST(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Check if exam is locked (T-10 rule)
-        const { isExamLocked } = await import("@/lib/exam-lock")
-        const locked = await isExamLocked(examId)
-        if (locked) {
-            return NextResponse.json({
-                error: "Exam is locked: cannot be edited less than 10 minutes before start time"
-            }, { status: 403 })
+        const { canEdit } = await getExamPermissions(examId, {
+            id: session.user.id,
+            institutionId: session.user.institutionId,
+            role: session.user.role,
+        })
+        if (!canEdit) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
         }
+
+        // Allow edits during live exams; changes will be tracked separately.
 
         const body = await req.json()
         const { instruction, maxPoints, rubric } = body
 
-        if (!instruction || maxPoints === undefined) {
+        if (instruction === undefined || instruction === null || maxPoints === undefined) {
             return NextResponse.json({ error: "Missing instruction or maxPoints" }, { status: 400 })
         }
+
+        const parsedMaxPoints = (() => {
+            if (maxPoints === null || maxPoints === '') {
+                return null
+            }
+            const parsed = typeof maxPoints === 'number' ? maxPoints : parseFloat(String(maxPoints))
+            if (Number.isNaN(parsed)) {
+                return undefined
+            }
+            return parsed
+        })()
+
+        if (parsedMaxPoints === undefined) {
+            return NextResponse.json({ error: "Invalid maxPoints" }, { status: 400 })
+        }
+
+        const lastOrder = await prisma.questionSegment.aggregate({
+            where: { questionId },
+            _max: { order: true }
+        })
+        const nextOrder = (lastOrder._max.order ?? -1) + 1
 
         // Create segment with optional rubric
         const segment = await prisma.questionSegment.create({
             data: {
                 questionId,
+                order: nextOrder,
                 instruction,
-                maxPoints: parseFloat(maxPoints),
+                maxPoints: parsedMaxPoints,
                 ...(rubric && {
                     rubric: {
                         create: {
