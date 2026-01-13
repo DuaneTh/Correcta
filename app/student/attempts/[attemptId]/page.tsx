@@ -9,6 +9,7 @@ import ExamRoomClient from "./ExamRoomClient"
 import { getDictionary, getLocale } from "@/lib/i18n/server"
 import { parseContent } from "@/lib/content"
 import { getExamEndAt } from "@/lib/exam-time"
+import { ensureAttemptNonce } from "@/lib/attemptIntegrity"
 
 export const metadata: Metadata = {
     title: "Passage d'examen | Correcta",
@@ -106,6 +107,8 @@ export default async function ExamRoomPage({ params }: ExamRoomPageProps) {
         redirect("/student/exams")
     }
 
+    const attemptNonce = await ensureAttemptNonce(attempt.id)
+
     // Transform data for client component if necessary, or pass as is if types match
     // We need to ensure the types match what ExamRoomClient expects.
     // The Prisma types are complex, so we might need to cast or map.
@@ -175,6 +178,7 @@ export default async function ExamRoomPage({ params }: ExamRoomPageProps) {
         submittedAt: attempt.submittedAt ? attempt.submittedAt.toISOString() : null,
         deadlineAt: deadlineAt.toISOString(),
         honorStatementText: attempt.honorStatementText ?? null,
+        nonce: attemptNonce,
         answers: attempt.answers.map(a => ({
             segments: a.segments.map(s => ({
                 segmentId: s.segmentId,

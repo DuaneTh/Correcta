@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { aiGradingQueue } from "@/lib/queue"
+import { canAccessAttemptAction } from "@/lib/attemptPermissions"
+import { getAttemptAuthContext, getTeacherAccessForAttempt } from "@/lib/attempt-access"
+import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
 
 // POST /api/attempts/[id]/grading/enqueue-ai
 // Enqueue AI grading jobs for all answers in an attempt
@@ -16,6 +19,42 @@ export async function POST(
         // 1. Auth check
         if (!session || !session.user || !isTeacher(session)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
+        }
+
+        const attemptAuth = await getAttemptAuthContext(id)
+        if (!attemptAuth) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
+        const teacherCanAccess = await getTeacherAccessForAttempt(attemptAuth.examId, {
+            id: session.user.id,
+            role: session.user.role,
+            institutionId: session.user.institutionId
+        })
+
+        const isAllowed = canAccessAttemptAction('enqueueGrading', {
+            sessionUser: {
+                id: session.user.id,
+                role: session.user.role,
+                institutionId: session.user.institutionId
+            },
+            attemptStudentId: attemptAuth.studentId,
+            attemptInstitutionId: attemptAuth.institutionId,
+            teacherCanAccess
+        })
+
+        if (!isAllowed) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
         // 2. Queue availability check
@@ -54,11 +93,6 @@ export async function POST(
 
         if (!attempt) {
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
-        }
-
-        // 4. Verify institution access
-        if (attempt.exam.course.institutionId !== session.user.institutionId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
         // 5. Filter answers: only enqueue those WITHOUT human grades

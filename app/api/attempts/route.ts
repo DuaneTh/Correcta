@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getAuthSession, isStudent } from "@/lib/api-auth"
 import { getExamEndAt } from "@/lib/exam-time"
 import { assertExamVariantShape, examAppliesToClassIds } from "@/lib/exam-variants"
+import { ensureAttemptNonce } from "@/lib/attemptIntegrity"
 
 // POST /api/attempts - Start a new exam attempt
 export async function POST(req: NextRequest) {
@@ -95,7 +96,8 @@ export async function POST(req: NextRequest) {
         if (existingAttempt) {
             // Return existing attempt if not submitted
             if (existingAttempt.status === 'IN_PROGRESS') {
-                return NextResponse.json(existingAttempt)
+                const attemptNonce = await ensureAttemptNonce(existingAttempt.id)
+                return NextResponse.json({ ...existingAttempt, attemptNonce })
             }
             return NextResponse.json({ error: "You have already completed this exam" }, { status: 400 })
         }
@@ -127,7 +129,8 @@ export async function POST(req: NextRequest) {
             }
         })
 
-        return NextResponse.json(attempt)
+        const attemptNonce = await ensureAttemptNonce(attempt.id)
+        return NextResponse.json({ ...attempt, attemptNonce })
 
     } catch (error) {
         console.error("[API] Create Attempt Error:", error)

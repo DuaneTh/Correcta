@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, ExternalLink, Clock } from 'lucide-react'
 import Link from 'next/link'
+import { getCsrfToken } from '@/lib/csrfClient'
 
 interface GradingData {
     attempt: {
@@ -78,8 +79,10 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
         setIsAiLoading(true)
         setAiStatus(null)
         try {
+            const csrfToken = await getCsrfToken()
             const res = await fetch(`/api/attempts/${attemptId}/grading/enqueue-ai`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-csrf-token': csrfToken }
             })
             const data = await res.json()
 
@@ -132,6 +135,12 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
             setAntiCheatLoading(false)
         }
     }, [attemptId])
+
+    useEffect(() => {
+        getCsrfToken().catch(() => {
+            // CSRF token will be fetched lazily on mutation
+        })
+    }, [])
 
     useEffect(() => {
         fetchData()
@@ -193,9 +202,13 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
         setSaved(prev => ({ ...prev, [questionId]: false }))
 
         try {
+            const csrfToken = await getCsrfToken()
             const res = await fetch('/api/grades', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-csrf-token': csrfToken
+                },
                 body: JSON.stringify({
                     answerId,
                     score,

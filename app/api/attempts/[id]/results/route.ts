@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { getCorrectionReleaseInfo } from "@/lib/correction-release"
+import { canAccessAttemptAction } from "@/lib/attemptPermissions"
+import { getAttemptAuthContext, getTeacherAccessForAttempt } from "@/lib/attempt-access"
 
 // GET /api/attempts/[id]/results - Get graded results for student
 export async function GET(
@@ -14,6 +16,32 @@ export async function GET(
 
         if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const attemptAuth = await getAttemptAuthContext(id)
+        if (!attemptAuth) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
+        const teacherCanAccess = await getTeacherAccessForAttempt(attemptAuth.examId, {
+            id: session.user.id,
+            role: session.user.role,
+            institutionId: session.user.institutionId
+        })
+
+        const isAllowed = canAccessAttemptAction('viewResults', {
+            sessionUser: {
+                id: session.user.id,
+                role: session.user.role,
+                institutionId: session.user.institutionId
+            },
+            attemptStudentId: attemptAuth.studentId,
+            attemptInstitutionId: attemptAuth.institutionId,
+            teacherCanAccess
+        })
+
+        if (!isAllowed) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
         const attempt = await prisma.attempt.findUnique({
@@ -61,10 +89,6 @@ export async function GET(
             if (attempt.exam.status === 'DRAFT' || !hasValidDuration || !hasValidStartDate) {
                 return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
             }
-        }
-
-        if (!isOwner && !isTeacherUser) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
         // Gate results for students based on grading status

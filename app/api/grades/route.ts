@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { recomputeAttemptStatus } from "@/lib/attemptStatus"
+import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
 
 // POST /api/grades - Upsert a grade
 export async function POST(req: NextRequest) {
@@ -10,6 +11,16 @@ export async function POST(req: NextRequest) {
 
         if (!session || !session.user || !isTeacher(session)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
         const body = await req.json()

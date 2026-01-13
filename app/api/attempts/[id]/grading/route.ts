@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
+import { canAccessAttemptAction } from "@/lib/attemptPermissions"
+import { getAttemptAuthContext, getTeacherAccessForAttempt } from "@/lib/attempt-access"
 
 // GET /api/attempts/[id]/grading - Get data for grading an attempt
 export async function GET(
@@ -13,6 +15,32 @@ export async function GET(
 
         if (!session || !session.user || !isTeacher(session)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const attemptAuth = await getAttemptAuthContext(id)
+        if (!attemptAuth) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
+        const teacherCanAccess = await getTeacherAccessForAttempt(attemptAuth.examId, {
+            id: session.user.id,
+            role: session.user.role,
+            institutionId: session.user.institutionId
+        })
+
+        const isAllowed = canAccessAttemptAction('viewGrading', {
+            sessionUser: {
+                id: session.user.id,
+                role: session.user.role,
+                institutionId: session.user.institutionId
+            },
+            attemptStudentId: attemptAuth.studentId,
+            attemptInstitutionId: attemptAuth.institutionId,
+            teacherCanAccess
+        })
+
+        if (!isAllowed) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
         const attempt = await prisma.attempt.findUnique({
@@ -48,10 +76,6 @@ export async function GET(
 
         if (!attempt || attempt.exam.archivedAt || attempt.exam.course.archivedAt) {
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
-        }
-
-        if (attempt.exam.course.institutionId !== session.user.institutionId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
         // Structure response for the UI

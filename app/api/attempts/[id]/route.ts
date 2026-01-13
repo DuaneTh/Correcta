@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isStudent } from "@/lib/api-auth"
-import { assertAttemptContentEditable, AttemptNotEditableError } from "@/lib/attemptPermissions"
+import { assertAttemptContentEditable, AttemptNotEditableError, canReadAttempt } from "@/lib/attemptPermissions"
 import { getExamEndAt } from "@/lib/exam-time"
+import { getExamPermissions } from "@/lib/exam-permissions"
+import { buildRateLimitResponse, rateLimit } from "@/lib/rateLimit"
+import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
 
 // GET /api/attempts/[id] - Get attempt details
 export async function GET(
@@ -15,6 +19,51 @@ export async function GET(
 
         if (!session || !session.user) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const attemptAuth = await prisma.attempt.findUnique({
+            where: { id },
+            select: {
+                id: true,
+                studentId: true,
+                examId: true,
+                exam: {
+                    select: {
+                        course: {
+                            select: { institutionId: true }
+                        }
+                    }
+                }
+            }
+        })
+
+        if (!attemptAuth) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
+        }
+
+        let teacherCanAccess = false
+        if (session.user.role === 'TEACHER') {
+            const permissions = await getExamPermissions(attemptAuth.examId, {
+                id: session.user.id,
+                role: session.user.role,
+                institutionId: session.user.institutionId
+            })
+            teacherCanAccess = permissions.canEdit
+        }
+
+        const isAllowed = canReadAttempt({
+            sessionUser: {
+                id: session.user.id,
+                role: session.user.role,
+                institutionId: session.user.institutionId
+            },
+            attemptStudentId: attemptAuth.studentId,
+            attemptInstitutionId: attemptAuth.exam.course.institutionId,
+            teacherCanAccess
+        })
+
+        if (!isAllowed) {
+            return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
         const attempt = await prisma.attempt.findUnique({
@@ -66,11 +115,6 @@ export async function GET(
             }
         }
 
-        // Verify ownership (students can only access their own attempts, teachers can access all)
-        if (isStudent(session) && attempt.studentId !== session.user.id) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-        }
-
         return NextResponse.json(attempt)
 
     } catch (error) {
@@ -90,6 +134,41 @@ export async function PUT(
 
         if (!session || !session.user || !isStudent(session)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
+        }
+
+        const rateLimitOptions = { windowSeconds: 60, max: 240, prefix: 'attempt_autosave' }
+        try {
+            const limit = await rateLimit(`${session.user.id}:${id}`, rateLimitOptions)
+            if (!limit.ok) {
+                const limited = buildRateLimitResponse(limit, rateLimitOptions)
+                return NextResponse.json(limited.body, { status: limited.status, headers: limited.headers })
+            }
+        } catch {
+            return NextResponse.json({ error: "RATE_LIMIT_UNAVAILABLE" }, { status: 503 })
+        }
+
+        const requestId = req.headers.get('x-request-id')
+        if (!requestId || requestId.length < 8 || requestId.length > 128) {
+            return NextResponse.json({ error: "INTEGRITY" }, { status: 403 })
+        }
+
+        const nonceResult = await verifyAttemptNonce(id, req.headers.get('x-attempt-nonce'))
+        if (!nonceResult.ok) {
+            return NextResponse.json({ error: "INTEGRITY" }, { status: 403 })
+        }
+        const idempotency = await ensureIdempotency(id, requestId, 'autosave')
+        if (!idempotency.first) {
+            return NextResponse.json({ success: true, replay: true })
         }
 
         const attempt = await prisma.attempt.findUnique({

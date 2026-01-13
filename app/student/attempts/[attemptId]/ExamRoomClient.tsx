@@ -9,6 +9,7 @@ import ExamChangeLog from "@/components/exams/ExamChangeLog"
 import StringMathField from "@/components/exams/StringMathField"
 import { ContentSegment, StudentToolsConfig, StudentMathSymbolSet, ExamChange } from "@/types/exams"
 import { parseContent, segmentsToPlainText, serializeContent } from "@/lib/content"
+import { getCsrfToken } from "@/lib/csrfClient"
 
 type Segment = {
     id: string
@@ -76,6 +77,7 @@ type AttemptData = {
     submittedAt: string | null
     deadlineAt: string
     honorStatementText?: string | null
+    nonce?: string
     answers: {
         segments: AnswerSegment[]
     }[]
@@ -235,11 +237,29 @@ export default function ExamRoomClient({
     const honorLocked = honorRequired && !honorValid
     const answerEditingLocked = timeExpired || isSubmitting || honorLocked
 
+    const buildIntegrityHeaders = async () => {
+        const csrfToken = await getCsrfToken()
+        const requestId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+        return {
+            'x-csrf-token': csrfToken,
+            'x-attempt-nonce': attempt.nonce ?? '',
+            'x-request-id': requestId
+        }
+    }
+
     useEffect(() => {
         if (pendingSubmit && (isSubmitting || timeExpired || honorLocked)) {
             setPendingSubmit(false)
         }
     }, [pendingSubmit, isSubmitting, timeExpired, honorLocked])
+
+    useEffect(() => {
+        getCsrfToken().catch(() => {
+            // CSRF token will be fetched lazily on mutation
+        })
+    }, [])
 
     useEffect(() => {
         if (!pendingSubmit) return
@@ -261,9 +281,13 @@ export default function ExamRoomClient({
         }
         honorSaveTimeoutRef.current = setTimeout(async () => {
             try {
+                const integrityHeaders = await buildIntegrityHeaders()
                 await fetch(`/api/attempts/${attempt.id}`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...integrityHeaders
+                    },
                     body: JSON.stringify({
                         honorStatementText: value
                     })
@@ -295,8 +319,10 @@ export default function ExamRoomClient({
 
         setIsSubmitting(true)
         try {
+            const integrityHeaders = await buildIntegrityHeaders()
             await fetch(`/api/attempts/${attempt.id}/submit`, {
-                method: "POST"
+                method: "POST",
+                headers: integrityHeaders
             })
             window.location.href = "/student/exams"
         } catch (error) {
@@ -350,9 +376,13 @@ export default function ExamRoomClient({
 
         saveTimeoutRefs.current[segmentId] = setTimeout(async () => {
             try {
+                const integrityHeaders = await buildIntegrityHeaders()
                 const res = await fetch(`/api/attempts/${attempt.id}`, {
                     method: "PUT",
-                    headers: { "Content-Type": "application/json" },
+                    headers: {
+                        "Content-Type": "application/json",
+                        ...integrityHeaders
+                    },
                     body: JSON.stringify({
                         questionId,
                         segmentId,
@@ -404,8 +434,10 @@ export default function ExamRoomClient({
         setIsSubmitting(true)
 
         try {
+            const integrityHeaders = await buildIntegrityHeaders()
             const res = await fetch(`/api/attempts/${attempt.id}/submit`, {
-                method: "POST"
+                method: "POST",
+                headers: integrityHeaders
             })
 
             if (res.ok) {
