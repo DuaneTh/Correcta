@@ -1,5 +1,6 @@
-import { prisma } from '@/lib/prisma'
+import { prisma } from './prisma'
 import { UserRole } from '@prisma/client'
+export { canAccessAttemptAction, canReadAttempt } from './attemptAuthorization'
 
 export class AttemptNotEditableError extends Error {
     constructor(message: string = 'Attempt content is not editable (already submitted)') {
