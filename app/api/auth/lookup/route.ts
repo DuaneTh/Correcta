@@ -1,21 +1,37 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
+import { safeJson } from "@/lib/logging"
+import { signInstitutionId } from "@/lib/institutionCookie"
+import { buildRateLimitResponse, getClientIdentifier, rateLimit } from "@/lib/rateLimit"
 
 export async function POST(req: Request) {
     try {
+        const rateLimitKey = getClientIdentifier(req)
+        const rateLimitOptions = { windowSeconds: 60, max: 20, prefix: 'auth_lookup' }
+        try {
+            const limit = await rateLimit(rateLimitKey, rateLimitOptions)
+            if (!limit.ok) {
+                const limited = buildRateLimitResponse(limit, rateLimitOptions)
+                return NextResponse.json(limited.body, { status: limited.status, headers: limited.headers })
+            }
+        } catch {
+            return NextResponse.json({ error: "RATE_LIMIT_UNAVAILABLE" }, { status: 503 })
+        }
+
         const { email } = await req.json()
-        console.log(`[API] Lookup request for: ${email}`)
+        const authDebug = process.env.NODE_ENV !== 'production' && process.env.AUTH_DEBUG === 'true'
 
         if (!email || !email.includes('@')) {
             return NextResponse.json({ error: "Invalid email" }, { status: 400 })
         }
 
         const domain = email.split('@')[1].toLowerCase()
-        console.log(`[API] Domain extracted: ${domain}`)
 
         // Force CREDENTIALS for demo.edu
         if (domain === 'demo.edu') {
-            console.log(`[API] Demo domain detected, forcing credentials`)
+            if (authDebug) {
+                console.log('[API] auth_lookup', safeJson({ result: 'credentials', domain: 'demo.edu' }))
+            }
             return NextResponse.json({ type: "CREDENTIALS" })
         }
 
@@ -28,19 +44,34 @@ export async function POST(req: Request) {
         })
 
         if (institution && institution.ssoConfig) {
-            console.log(`[API] SSO Institution found: ${institution.name}`)
             const ssoConfig = institution.ssoConfig as { type?: string, enabled?: boolean }
             if (ssoConfig.enabled === false) {
+                if (authDebug) {
+                    console.log('[API] auth_lookup', safeJson({ result: 'credentials', institutionId: institution.id }))
+                }
                 return NextResponse.json({ type: "CREDENTIALS" })
             }
-            return NextResponse.json({
+            if (authDebug) {
+                console.log('[API] auth_lookup', safeJson({ result: 'sso', institutionId: institution.id }))
+            }
+            const response = NextResponse.json({
                 type: "SSO",
                 institutionId: institution.id,
                 provider: ssoConfig.type === 'saml' ? 'boxyhq-saml' : 'oidc'
             })
+            response.cookies.set('correcta-institution', signInstitutionId(institution.id), {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                path: '/',
+                maxAge: 60 * 5
+            })
+            return response
         }
 
-        console.log(`[API] No SSO config found, defaulting to credentials`)
+        if (authDebug) {
+            console.log('[API] auth_lookup', safeJson({ result: 'credentials' }))
+        }
         return NextResponse.json({ type: "CREDENTIALS" })
     } catch (error) {
         console.error("Lookup error:", error)

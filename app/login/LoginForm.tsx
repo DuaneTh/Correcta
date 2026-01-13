@@ -38,19 +38,16 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
 
     const handleEmailSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
-        console.log('[Login] Handling email submit:', email)
         setLoading(true)
         setError('')
 
         try {
-            console.log('[Login] Fetching lookup...')
             const res = await fetch('/api/auth/lookup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email })
             })
             const data = await res.json()
-            console.log('[Login] Lookup response:', data)
 
             if (data.error) {
                 setError(data.error)
@@ -59,25 +56,20 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
             }
 
             if (data.type === 'SSO') {
-                console.log('[Login] SSO detected, redirecting...')
-                document.cookie = `correcta-institution=${data.institutionId}; path=/; max-age=300`
                 const provider = data.provider || 'oidc'
                 const result = await signIn(provider, { callbackUrl: '/auth/redirect', redirect: false })
-                console.log('[Login] SSO SignIn Result:', result)
                 if (result?.url) {
                     window.location.href = result.url
                 }
             } else if (data.type === 'CREDENTIALS') {
-                console.log('[Login] Credentials detected, showing password field')
                 setStep('PASSWORD')
                 setLoading(false)
             } else {
-                console.log('[Login] Unknown type, defaulting to password')
                 setStep('PASSWORD')
                 setLoading(false)
             }
         } catch (err) {
-            console.error('[Login] Lookup failed, falling back to password', err)
+            console.error('[Login] Lookup failed, falling back to password')
             setStep('PASSWORD')
             setLoading(false)
         }
@@ -86,7 +78,6 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
     const handlePasswordSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
-        console.log('[Login] Submitting password for:', email)
 
         const res = await signIn('credentials', {
             email,
@@ -94,16 +85,12 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
             redirect: false
         })
 
-        console.log('[Login] SignIn result:', res)
-
         if (res?.error) {
             setError('Invalid credentials')
             setLoading(false)
         } else {
             const sessionRes = await fetch('/api/auth/session')
             const session = await sessionRes.json()
-
-            console.log('[Login] Session after signin:', session)
 
             if (session?.user?.role === 'STUDENT') {
                 router.push('/student/courses')

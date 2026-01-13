@@ -4,6 +4,9 @@ import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
+import { safeJson } from "@/lib/logging"
+import { resolveInstitutionIdFromCookieValue } from "@/lib/institutionCookie"
+import { getClientIdentifier, hashRateLimitKey, rateLimit } from "@/lib/rateLimit"
 
 // Force rebuild
 
@@ -80,7 +83,21 @@ const resolveRoleFromProfile = (profile: any, sso: SsoConfig): string => {
     return sso.defaultRole ?? 'STUDENT'
 }
 
-export const buildAuthOptions = async (institutionId?: string): Promise<NextAuthOptions> => {
+export const buildAuthOptions = async (institutionCookieValue?: string): Promise<NextAuthOptions> => {
+    const isProduction = process.env.NODE_ENV === 'production'
+    const authDebug = !isProduction && process.env.AUTH_DEBUG === 'true'
+    const allowDangerousEmailAccountLinking =
+        !isProduction && process.env.AUTH_ALLOW_DANGEROUS_EMAIL_LINKING === 'true'
+
+    const logAuth = (message: string, data?: Record<string, unknown>) => {
+        if (!authDebug) return
+        if (data) {
+            console.log(message, safeJson(data))
+            return
+        }
+        console.log(message)
+    }
+
     const providers: any[] = [
         CredentialsProvider({
             name: "Credentials",
@@ -88,7 +105,21 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" }
             },
-            async authorize(credentials) {
+            async authorize(credentials, req: any) {
+                try {
+                    const ip = req?.headers?.get
+                        ? getClientIdentifier(req as Request)
+                        : (req?.headers?.['x-forwarded-for'] || req?.headers?.['x-real-ip'] || 'unknown')
+                    const email = credentials?.email ?? ''
+                    const key = hashRateLimitKey(`${ip}:${email}`)
+                    const limit = await rateLimit(key, { windowSeconds: 60, max: 10, prefix: 'auth_login' })
+                    if (!limit.ok) {
+                        return null
+                    }
+                } catch {
+                    return null
+                }
+
                 if (!credentials?.email || !credentials?.password) {
                     return null
                 }
@@ -121,19 +152,21 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
         })
     ]
 
+    const institutionId = resolveInstitutionIdFromCookieValue(institutionCookieValue)
+
     if (institutionId) {
-        console.log(`[Auth] Building options for institutionId: ${institutionId}`)
+        logAuth('[Auth] Building options for institution', { institutionId })
         const institution = await prisma.institution.findUnique({
             where: { id: institutionId }
         })
 
         if (institution?.ssoConfig) {
             const sso = institution.ssoConfig as SsoConfig
-            console.log(`[Auth] Found SSO config type: ${sso.type}`)
+            logAuth('[Auth] Found SSO config type', { type: sso.type })
             if (sso.enabled === false) {
-                console.log(`[Auth] SSO config disabled for institution`)
+                logAuth('[Auth] SSO config disabled for institution', { institutionId })
             } else if (sso.type === 'oidc') {
-                console.log(`[Auth] Adding OIDC provider: ${sso.issuer}`)
+                logAuth('[Auth] Adding OIDC provider', { institutionId })
                 providers.push({
                     id: 'oidc',
                     name: institution.name,
@@ -145,9 +178,8 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     authorization: { params: { scope: "openid email profile" } },
                     idToken: true,
                     checks: ["pkce", "state"],
-                    allowDangerousEmailAccountLinking: true,
+                    allowDangerousEmailAccountLinking,
                     profile(profile: any) {
-                        console.log(`[Auth] OIDC Profile received:`, profile.email)
                         const role = resolveRoleFromProfile(profile, sso)
                         return {
                             id: profile.sub,
@@ -159,7 +191,7 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     }
                 })
             } else if (sso.type === 'saml') {
-                console.log(`[Auth] Adding SAML provider via BoxyHQ: ${sso.issuer}`)
+                logAuth('[Auth] Adding SAML provider', { institutionId })
                 providers.push({
                     id: 'boxyhq-saml',
                     name: institution.name,
@@ -169,6 +201,7 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     clientId: sso.clientId,
                     clientSecret: sso.clientSecret,
                     checks: ["pkce", "state"],
+                    allowDangerousEmailAccountLinking,
                     authorization: {
                         url: `${sso.issuer}/api/oauth/authorize`,
                         params: {
@@ -178,7 +211,6 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                     token: `${sso.issuer}/api/oauth/token`,
                     userinfo: `${sso.issuer}/api/oauth/userinfo`,
                     profile(profile: any) {
-                        console.log(`[Auth] SAML Profile received:`, profile.email)
                         const role = resolveRoleFromProfile(profile, sso)
                         return {
                             id: profile.id || profile.sub,
@@ -191,14 +223,14 @@ export const buildAuthOptions = async (institutionId?: string): Promise<NextAuth
                 })
             }
         } else {
-            console.log(`[Auth] No SSO config found for institution`)
+            logAuth('[Auth] No SSO config found for institution', { institutionId })
         }
     } else {
-        console.log(`[Auth] No institutionId provided`)
+        logAuth('[Auth] No institutionId provided')
     }
 
     return {
-        debug: true,
+        debug: authDebug,
         adapter: {
             ...PrismaAdapter(prisma),
             linkAccount: (account: any) => {
