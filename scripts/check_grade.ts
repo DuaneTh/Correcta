@@ -9,7 +9,8 @@ async function main() {
     })
     console.log(`Found ${grades.length} grades.`)
     grades.forEach(g => {
-        console.log(`Grade: ${g.score} (Answer: ${g.answerId}, Attempt: ${g.answer.attemptId})`)
+        const attemptId = g.answer?.attemptId ?? 'unknown'
+        console.log(`Grade: ${g.score} (Answer: ${g.answerId}, Attempt: ${attemptId})`)
         console.log(`Feedback: ${g.feedback}`)
     })
 }

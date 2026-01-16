@@ -38,9 +38,10 @@ export function getCorrectionReleaseInfo(params: {
     const endDateOverride = endAt ? new Date(endAt) : null
     const computedEndAt = startDate ? getExamEndAt(startDate, durationMinutes, endDateOverride) : null
 
-    const scheduledReached =
+    const scheduledReached = Boolean(
         (releaseOnEnd && computedEndAt && now >= computedEndAt) ||
         (releaseAt && now >= releaseAt)
+    )
 
     const isReleased = gradesReleased || Boolean(gradesReleasedAt) || scheduledReached
     const canSendManually = Boolean(computedEndAt && now >= computedEndAt && !isReleased)

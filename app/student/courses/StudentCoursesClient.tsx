@@ -6,6 +6,7 @@ import { getExamEndAt } from "@/lib/exam-time"
 import { getCorrectionReleaseInfo } from "@/lib/correction-release"
 import StartExamButton from "@/app/student/components/StartExamButton"
 import type { Dictionary } from "@/lib/i18n/dictionaries"
+import type { Locale } from "@/lib/i18n/config"
 
 type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'GRADED' | 'GRADING_IN_PROGRESS'
 

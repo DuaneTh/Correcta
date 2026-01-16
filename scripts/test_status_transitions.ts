@@ -61,8 +61,9 @@ async function main() {
 
     await new Promise(resolve => setTimeout(resolve, 2000))
 
-    updated = await prisma.attempt.findUnique({ where: { id: attempt1.id } })!
-    console.log(`  After AI grading 1 answer: ${updated?.status}`)
+    const refreshed = await prisma.attempt.findUnique({ where: { id: attempt1.id } })
+    if (!refreshed) throw new Error('Attempt not found after grading')
+    console.log(`  After AI grading 1 answer: ${refreshed.status}`)
     console.log(`  Expected: GRADED (only 1 question)`)
     console.log(`  ✓ PASS\n`)
 

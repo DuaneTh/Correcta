@@ -227,6 +227,7 @@ export interface Exam {
     startAt: string | null
     endAt?: string | null
     durationMinutes: number | null
+    updatedAt?: string | Date
     status?: 'DRAFT' | 'PUBLISHED'
     parentExamId?: string | null
     classId?: string | null
@@ -316,4 +317,3 @@ export interface ValidationErrors {
         mcqMissingCorrectOptions?: boolean
     }>
 }
-

@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect, useLayoutEffect, useRef, useCallback, type ReactNode } from 'react'
+import type { JSX } from 'react'
 import { ChevronDown, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react'
-import { Exam, Question, QuestionType, ValidationErrors, Segment, ContentSegment, StudentToolsConfig, StudentMathSymbolSet } from '@/types/exams'
+import { Exam, Question, QuestionType, ValidationErrors, Segment, ContentSegment, StudentToolsConfig, StudentMathSymbolSet, Rubric } from '@/types/exams'
 import SegmentedMathField from '@/components/exams/SegmentedMathField'
 import StringMathField from '@/components/exams/StringMathField'
 import { PreviewToggle } from '@/components/exams/builder/PreviewToggle'
@@ -31,7 +32,17 @@ interface SectionListProps {
     addSegment: (questionId: string) => Promise<void>
     updateSection: (sectionId: string, data: { title?: string; customLabel?: string | null; order?: number; introContent?: ContentSegment[] | string | null }) => Promise<void>
     updateQuestion: (sectionId: string, questionId: string, data: Partial<Question> & { targetSectionId?: string; targetOrder?: number }) => Promise<void>
-    updateSegment: (questionId: string, segmentId: string, data: { instruction?: string; maxPoints?: number | null; rubric?: Segment['rubric'] }) => Promise<void>
+    updateSegment: (
+        questionId: string,
+        segmentId: string,
+        data: {
+            instruction?: string
+            maxPoints?: number | null
+            rubric?: Segment['rubric']
+            order?: number
+            isCorrect?: boolean
+        }
+    ) => Promise<void>
     deleteSegment: (questionId: string, segmentId: string) => Promise<void>
     deleteQuestion: (sectionId: string, questionId: string) => Promise<void>
     deleteSection: (sectionId: string) => Promise<void>
@@ -742,7 +753,7 @@ export function SectionList({
 
         visibleSections.forEach((section) => {
             const sortedQuestions = getSortedQuestions(section)
-            const isDefaultWithoutLabel = section.isDefault && !section.customLabel && !section.title
+            const isDefaultWithoutLabel = Boolean(section.isDefault && !section.customLabel && !section.title)
 
             if (isDefaultWithoutLabel) {
                 sortedQuestions.forEach((question) => {
@@ -1920,7 +1931,13 @@ export function SectionList({
         const primarySegment = liveQuestion?.segments?.[0] ?? question.segments?.[0]
         const segmentId = primarySegment?.id
         const totalPoints = primarySegment?.maxPoints ?? 0
-        const currentRubric = primarySegment?.rubric ?? { levels: [], examples: [] }
+        const rubricFallback = {
+            id: segmentId ?? `${question.id}-rubric`,
+            criteria: '',
+            levels: [],
+            examples: [],
+        } satisfies Rubric
+        const currentRubric = primarySegment?.rubric ?? rubricFallback
         const correctionNotes = currentRubric.criteria ?? ''
         const perfectAnswer = (() => {
             const examples = currentRubric.examples
@@ -2571,6 +2588,7 @@ export function SectionList({
                                     if (!segmentId) return
                                     updateSegment(question.id, segmentId, {
                                         rubric: {
+                                            id: currentRubric.id ?? segmentId ?? question.id,
                                             criteria: currentValue,
                                             levels: currentRubric.levels ?? [],
                                             examples: currentRubric.examples ?? [],
@@ -2621,6 +2639,7 @@ export function SectionList({
                                     if (!segmentId) return
                                     updateSegment(question.id, segmentId, {
                                         rubric: {
+                                            id: currentRubric.id ?? segmentId ?? question.id,
                                             criteria: currentRubric.criteria ?? '',
                                             levels: currentRubric.levels ?? [],
                                             examples: buildExamplesPayload(currentValue),
@@ -2665,7 +2684,7 @@ export function SectionList({
                 return null
             }
             const sectionQuestions = getSortedQuestions(section)
-            const isDefaultWithoutLabel = section.isDefault && !section.customLabel && !section.title
+            const isDefaultWithoutLabel = Boolean(section.isDefault && !section.customLabel && !section.title)
             const currentLabel = section.customLabel || ''
             const currentTitle = section.title || ''
             const sectionEditorKey = `section:${section.id}`
@@ -2992,7 +3011,7 @@ export function SectionList({
                                     const section = node.sectionId ? outlineSectionMap.get(node.sectionId) : undefined
                                     const sectionIndex =
                                         section && outlineSectionIndexMap.has(section.id)
-                                            ? outlineSectionIndexMap.get(section.id)
+                                            ? outlineSectionIndexMap.get(section.id) ?? null
                                             : null
                                     const prevSection =
                                         sectionIndex !== null ? visibleSections[sectionIndex - 1] : null
@@ -3200,7 +3219,7 @@ export function SectionList({
                                                     <>
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleDeleteQuestionClick(node.questionId, 'outline')}
+                                                            onClick={() => handleDeleteQuestionClick(node.questionId as string, 'outline')}
                                                             title={deleteQuestionLabel}
                                                             aria-label={deleteQuestionLabel}
                                                             className={`inline-flex items-center justify-center rounded-md border border-transparent p-1 text-gray-500 hover:text-red-600 hover:border-red-200 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200 disabled:opacity-50 ${
@@ -3222,7 +3241,7 @@ export function SectionList({
                                                                 <button
                                                                     onClick={(event) => {
                                                                         event.stopPropagation()
-                                                                        handleConfirmDeleteQuestion(section.id, node.questionId)
+                                                                        handleConfirmDeleteQuestion(section.id, node.questionId as string)
                                                                     }}
                                                                     disabled={isDeletingQuestion}
                                                                     className="text-xs font-semibold text-red-700 disabled:opacity-50"

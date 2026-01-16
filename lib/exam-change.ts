@@ -34,6 +34,13 @@ type ExamChangeInput = {
     examStatus: ExamStatusShape
 }
 
+const normalizeJsonValue = (value: unknown): Prisma.InputJsonValue | Prisma.NullTypes.JsonNull => {
+    if (value === null || value === undefined) {
+        return Prisma.JsonNull
+    }
+    return value as Prisma.InputJsonValue
+}
+
 export async function logExamChange({
     examId,
     entityType,
@@ -55,8 +62,8 @@ export async function logExamChange({
             entityId,
             entityLabel: entityLabel ?? null,
             field,
-            beforeValue: beforeValue ?? null,
-            afterValue: afterValue ?? null,
+            beforeValue: normalizeJsonValue(beforeValue),
+            afterValue: normalizeJsonValue(afterValue),
             createdById: createdById ?? null,
         },
     })
@@ -76,8 +83,8 @@ export async function logExamChanges(
             entityId: change.entityId,
             entityLabel: change.entityLabel ?? null,
             field: change.field,
-            beforeValue: (change.beforeValue ?? null) as Prisma.InputJsonValue | null,
-            afterValue: (change.afterValue ?? null) as Prisma.InputJsonValue | null,
+            beforeValue: normalizeJsonValue(change.beforeValue),
+            afterValue: normalizeJsonValue(change.afterValue),
             createdById: change.createdById ?? null,
         })),
     })

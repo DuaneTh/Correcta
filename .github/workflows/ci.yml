@@ -15,11 +15,21 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - name: Guard lockfiles and node_modules
+        run: |
+          if [ -f pnpm-lock.yaml ] || [ -f yarn.lock ]; then
+            echo "Only package-lock.json is allowed"
+            exit 1
+          fi
+          if git ls-files | grep -q '^node_modules/'; then
+            echo "node_modules must not be tracked"
+            exit 1
+          fi
       - name: Install dependencies
         run: npm ci
       - name: Run tests
         run: npm run test:ci
       - name: Typecheck
-        run: npx tsc -p tsconfig.json
+        run: npm run typecheck:api
       - name: Build
         run: npm run build

@@ -51,10 +51,10 @@ async function main() {
             description: 'Exam for end-to-end testing',
             startAt: new Date(Date.now() - 3600 * 1000), // Started 1 hour ago
             endAt: new Date(Date.now() + 3600 * 1000),   // Ends in 1 hour
-            duration: 60,
-            createdById: teacher.id,
-            institutionId: teacher.institutionId!,
+            durationMinutes: 60,
+            authorId: teacher.id,
             courseId: 'course-cs101', // Assuming this exists from seed
+            classIds: [],
             sections: {
                 create: {
                     title: 'Main Section',
@@ -62,23 +62,32 @@ async function main() {
                     questions: {
                         create: [
                             {
-                                text: 'What is 2+2?',
-                                type: 'MULTIPLE_CHOICE',
+                                content: 'What is 2+2?',
+                                type: 'TEXT',
                                 order: 0,
-                                points: 1,
-                                options: {
+                                segments: {
                                     create: [
-                                        { text: '3', isCorrect: false, order: 0 },
-                                        { text: '4', isCorrect: true, order: 1 },
-                                        { text: '5', isCorrect: false, order: 2 }
+                                        {
+                                            instruction: 'Provide a short answer.',
+                                            maxPoints: 1,
+                                            order: 0,
+                                        }
                                     ]
                                 }
                             },
                             {
-                                text: 'Explain the importance of testing.',
+                                content: 'Explain the importance of testing.',
                                 type: 'TEXT',
                                 order: 1,
-                                points: 5
+                                segments: {
+                                    create: [
+                                        {
+                                            instruction: 'Provide a few sentences.',
+                                            maxPoints: 5,
+                                            order: 0,
+                                        }
+                                    ]
+                                }
                             }
                         ]
                     }

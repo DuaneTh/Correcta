@@ -58,7 +58,7 @@ const worker = new Worker('ai-grading', async (job: Job) => {
 
             // 2. Compute maxPoints
             const maxPoints = answer.question.segments.reduce(
-                (sum, segment) => sum + segment.maxPoints,
+                (sum, segment) => sum + (segment.maxPoints ?? 0),
                 0
             )
 

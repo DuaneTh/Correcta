@@ -7,7 +7,7 @@ async function main() {
 
     const exam = await prisma.exam.findFirst({
         where: { title: 'AI Grading Test' },
-        include: { questions: { include: { segments: true } } }
+        include: { sections: { include: { questions: { include: { segments: true } } } } }
     })
 
     if (!exam) {
@@ -50,10 +50,10 @@ async function main() {
                 submittedAt: new Date(),
                 answers: {
                     create: {
-                        questionId: exam.questions[0].id,
+                        questionId: exam.sections[0].questions[0].id,
                         segments: {
                             create: {
-                                segmentId: exam.questions[0].segments[0].id,
+                                segmentId: exam.sections[0].questions[0].segments[0].id,
                                 content: 'This is a script-generated answer for AI grading.'
                             }
                         }

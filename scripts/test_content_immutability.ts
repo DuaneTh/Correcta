@@ -8,7 +8,9 @@ async function main() {
 
     const student = await prisma.user.findUnique({ where: { email: 'student1@demo.edu' } })
     const teacher = await prisma.user.findUnique({ where: { email: 'teacher1@demo.edu' } })
-    const admin = await prisma.user.findFirst({ where: { role: UserRole.ADMIN } })
+    const admin = await prisma.user.findFirst({
+        where: { role: { in: [UserRole.SCHOOL_ADMIN, UserRole.PLATFORM_ADMIN] } }
+    })
 
     if (!student || !teacher) throw new Error('Users not found')
 
@@ -102,7 +104,7 @@ async function main() {
         try {
             await assertAttemptContentEditable(inProgressAttempt.id, {
                 id: admin.id,
-                role: UserRole.ADMIN
+                role: admin.role
             })
             console.log('  ✓ PASS - Admin CAN edit SUBMITTED attempt\n')
         } catch (error) {

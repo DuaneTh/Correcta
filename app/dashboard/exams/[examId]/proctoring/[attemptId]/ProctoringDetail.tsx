@@ -39,6 +39,16 @@ interface ProctoringDetailProps {
 export default function ProctoringDetail({ attempt, examId }: ProctoringDetailProps) {
     const router = useRouter()
 
+    const getMetadataString = (metadata: Record<string, unknown> | null, key: string) => {
+        const value = metadata?.[key]
+        return typeof value === 'string' ? value : null
+    }
+
+    const getMetadataNumber = (metadata: Record<string, unknown> | null, key: string) => {
+        const value = metadata?.[key]
+        return typeof value === 'number' ? value : null
+    }
+
     const getEventColor = (type: string) => {
         switch (type) {
             case 'FOCUS_LOST':
@@ -188,19 +198,19 @@ export default function ProctoringDetail({ attempt, examId }: ProctoringDetailPr
                                     </p>
                                     {event.metadata && Object.keys(event.metadata).length > 0 && (
                                         <div className="mt-2 text-xs">
-                                            {event.metadata.originalEvent && (
+                                            {getMetadataString(event.metadata, 'originalEvent') && (
                                                 <span className="mr-3">
-                                                    Event: {event.metadata.originalEvent}
+                                                    Event: {getMetadataString(event.metadata, 'originalEvent')}
                                                 </span>
                                             )}
-                                            {event.metadata.visibility && (
+                                            {getMetadataString(event.metadata, 'visibility') && (
                                                 <span>
-                                                    Visibility: {event.metadata.visibility}
+                                                    Visibility: {getMetadataString(event.metadata, 'visibility')}
                                                 </span>
                                             )}
-                                            {event.metadata.selectionLength !== undefined && (
+                                            {getMetadataNumber(event.metadata, 'selectionLength') !== null && (
                                                 <span className="mr-3">
-                                                    Selection: {event.metadata.selectionLength} chars
+                                                    Selection: {getMetadataNumber(event.metadata, 'selectionLength')} chars
                                                 </span>
                                             )}
                                         </div>

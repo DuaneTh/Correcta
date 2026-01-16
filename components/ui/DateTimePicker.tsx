@@ -145,7 +145,7 @@ export function DateTimePicker({ date, onChange, locale, placeholder, disabled, 
                 showTimeInput
                 customTimeInput={<CustomTimeInput currentLocale={locale} onDateTimeChange={(d) => onChange(d)} />}
                 customInput={<CustomInput onBlur={onBlur} className={inputClassName} />}
-                onChangeRaw={(e) => e.preventDefault()}
+                onChangeRaw={(event) => event?.preventDefault()}
                 dateFormat="dd/MM/yyyy HH:mm"
                 locale={locale === 'fr' ? 'fr' : 'en'}
                 placeholderText={placeholder || (locale === 'fr' ? 'jj/mm/aaaa --:--' : 'dd/mm/yyyy --:--')}
@@ -153,7 +153,7 @@ export function DateTimePicker({ date, onChange, locale, placeholder, disabled, 
                 disabled={disabled}
                 shouldCloseOnSelect={false}
                 minDate={minDate}
-                popperPlacement={popperPlacement}
+                popperPlacement={popperPlacement as any}
                 popperClassName={popperClassName}
             />
         </div>

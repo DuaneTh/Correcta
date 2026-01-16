@@ -4,7 +4,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown } from 'lucide-react'
-import { ContentSegment, GraphSegment } from '@/types/exams'
+import { ContentSegment, GraphSegment, TableCell } from '@/types/exams'
 import { renderGraphInto } from './graph-utils'
 
 
@@ -31,7 +31,7 @@ type MathJaxObject = {
 type MathJaxWindow = Window & { MathJax?: MathJaxObject }
 
 type TablePayload = {
-    rows: ContentSegment[][]
+    rows: TableCell[][]
     colWidths?: number[]
     rowHeights?: number[]
 }
@@ -152,7 +152,7 @@ const consolidateSegments = (segments: ContentSegment[]): ContentSegment[] => {
 
 const createEmptyCellSegments = (): ContentSegment[] => [{ id: createId(), type: 'text', text: '' }]
 
-const normalizeTableRows = (rows?: ContentSegment[][]): ContentSegment[][] => {
+const normalizeTableRows = (rows?: TableCell[][]): TableCell[][] => {
     if (!rows || rows.length === 0) return [[createEmptyCellSegments()]]
 
     return rows.map((row) => {
@@ -186,7 +186,7 @@ const capColWidthsToMax = (widths: number[], maxWidth: number) => {
     return scaled
 }
 
-const normalizeTablePayload = (input?: Partial<TablePayload> | ContentSegment[][]): TablePayload => {
+const normalizeTablePayload = (input?: Partial<TablePayload> | TableCell[][]): TablePayload => {
     if (Array.isArray(input)) {
         return { rows: normalizeTableRows(input) }
     }
@@ -210,7 +210,7 @@ const parseTablePayload = (raw: string | null): TablePayload => {
     if (!raw) return normalizeTablePayload()
     try {
         const parsed = JSON.parse(raw)
-        return normalizeTablePayload(parsed as Partial<TablePayload> | ContentSegment[][])
+        return normalizeTablePayload(parsed as Partial<TablePayload> | TableCell[][])
     } catch {
         return normalizeTablePayload()
     }
@@ -2478,11 +2478,24 @@ interface SegmentedMathFieldProps {
     disabled?: boolean
     className?: string
     minRows?: number
+    showMathButton?: boolean
     showTableButton?: boolean
     showGraphButton?: boolean
     showHint?: boolean
     compactToolbar?: boolean
     toolbarRightSlot?: React.ReactNode
+    toolbarSize?: 'sm' | 'md'
+    editorSize?: 'sm' | 'md'
+    mathQuickSymbols?: Array<{ label: string; latex: string }>
+    tableConfig?: { maxRows?: number | null; maxCols?: number | null; allowMath?: boolean }
+    graphConfig?: {
+        allowPoints?: boolean
+        allowLines?: boolean
+        allowCurves?: boolean
+        allowFunctions?: boolean
+        allowAreas?: boolean
+        allowText?: boolean
+    }
     locale?: string
 }
 
@@ -2620,11 +2633,17 @@ export default function SegmentedMathField({
     disabled,
     className = '',
     minRows = 2,
+    showMathButton = true,
     showTableButton = true,
     showGraphButton = showTableButton,
     showHint = true,
     compactToolbar = false,
     toolbarRightSlot,
+    toolbarSize = 'sm',
+    editorSize,
+    mathQuickSymbols,
+    tableConfig,
+    graphConfig,
     locale = 'fr',
 }: SegmentedMathFieldProps) {
     const editorRef = useRef<HTMLDivElement>(null)
@@ -3027,7 +3046,7 @@ export default function SegmentedMathField({
     }
 
     const attachTableResizeHandlers = (wrapper: HTMLDivElement, table: HTMLTableElement) => {
-        const handles = wrapper.querySelectorAll('.table-resize-handle')
+        const handles = wrapper.querySelectorAll<HTMLDivElement>('.table-resize-handle')
         handles.forEach((handle) => {
             const type = handle.getAttribute('data-handle-type')
             const index = Number(handle.getAttribute('data-index') || 0)
@@ -3039,7 +3058,7 @@ export default function SegmentedMathField({
             handle.style.marginLeft = isColumn ? '-3px' : '0'
             handle.style.marginTop = isColumn ? '0' : '-3px'
 
-            handle.onmousedown = (event) => {
+            handle.onmousedown = (event: MouseEvent) => {
                 event.preventDefault()
                 event.stopPropagation()
                 isTableResizingRef.current = true
@@ -3114,7 +3133,7 @@ export default function SegmentedMathField({
                 document.addEventListener('mousemove', handleMove)
                 document.addEventListener('mouseup', handleUp)
             }
-            handle.onclick = (event) => {
+            handle.onclick = (event: MouseEvent) => {
                 event.preventDefault()
                 event.stopPropagation()
             }
@@ -5367,8 +5386,8 @@ export default function SegmentedMathField({
                         isFrench={isFrench}
                         disabled={disabled}
                         compactToolbar={compactToolbar}
-                        toolbarSize="sm"
-                        showMathButton={true}
+                        toolbarSize={toolbarSize}
+                        showMathButton={showMathButton}
                         showTableButton={showTableButton}
                         showGraphButton={showGraphButton}
                         onInsertMath={insertMathChip}
@@ -5469,12 +5488,6 @@ export default function SegmentedMathField({
         </div>
     )
 }
-
-
-
-
-
-
 
 
 

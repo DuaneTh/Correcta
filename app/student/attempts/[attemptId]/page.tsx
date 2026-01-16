@@ -10,6 +10,7 @@ import { getDictionary, getLocale } from "@/lib/i18n/server"
 import { parseContent } from "@/lib/content"
 import { getExamEndAt } from "@/lib/exam-time"
 import { ensureAttemptNonce } from "@/lib/attemptIntegrity"
+import type { StudentToolsConfig } from "@/types/exams"
 
 export const metadata: Metadata = {
     title: "Passage d'examen | Correcta",
@@ -98,8 +99,9 @@ export default async function ExamRoomPage({ params }: ExamRoomPageProps) {
     }
 
     // Calculate deadline for this attempt
-    const examEndAt = getExamEndAt(attempt.exam.startAt, attempt.exam.durationMinutes, attempt.exam.endAt)
-    const deadlineAt = examEndAt ?? new Date(attempt.startedAt.getTime() + attempt.exam.durationMinutes * 60 * 1000)
+    const durationMinutes = attempt.exam.durationMinutes ?? 0
+    const examEndAt = getExamEndAt(attempt.exam.startAt, durationMinutes, attempt.exam.endAt)
+    const deadlineAt = examEndAt ?? new Date(attempt.startedAt.getTime() + durationMinutes * 60 * 1000)
     const now = new Date()
 
     // If already past deadline, redirect
@@ -153,7 +155,7 @@ export default async function ExamRoomPage({ params }: ExamRoomPageProps) {
                 content: parseContent(q.content),
                 answerTemplate: parseContent(q.answerTemplate),
                 answerTemplateLocked: q.answerTemplateLocked,
-                studentTools: q.studentTools ?? null,
+                studentTools: (q.studentTools ?? null) as StudentToolsConfig | null,
                 type: q.type,
                 order: q.order,
                 customLabel: q.customLabel,

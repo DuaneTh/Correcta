@@ -10,6 +10,13 @@ export const metadata: Metadata = {
     title: "Détails de proctoring | Correcta",
 }
 
+const asObjectRecord = (value: unknown): Record<string, unknown> | null => {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return null
+    }
+    return value as Record<string, unknown>
+}
+
 interface ProctoringDetailPageProps {
     params: Promise<{
         examId: string
@@ -83,7 +90,7 @@ export default async function ProctoringDetailPage({ params }: ProctoringDetailP
             id: event.id,
             type: event.type,
             timestamp: event.timestamp.toISOString(),
-            metadata: event.metadata
+            metadata: asObjectRecord(event.metadata)
         }))
     }
 

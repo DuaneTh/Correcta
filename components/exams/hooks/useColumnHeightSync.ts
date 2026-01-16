@@ -1,9 +1,9 @@
 import { RefObject, useEffect } from 'react'
 
 export function useColumnHeightSync(
-    separatorRef: RefObject<HTMLDivElement>,
-    leftRef: RefObject<HTMLDivElement>,
-    rightRef: RefObject<HTMLDivElement>
+    separatorRef: RefObject<HTMLDivElement | null>,
+    leftRef: RefObject<HTMLDivElement | null>,
+    rightRef: RefObject<HTMLDivElement | null>
 ) {
     useEffect(() => {
         const separatorEl = separatorRef.current
@@ -35,4 +35,3 @@ export function useColumnHeightSync(
         }
     }, [separatorRef, leftRef, rightRef])
 }
-

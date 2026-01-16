@@ -23,7 +23,7 @@ async function main() {
     }
 
     // Add a section with a question
-    const section = await prisma.section.create({
+    const section = await prisma.examSection.create({
         data: {
             examId: exam.id,
             title: "Section 1",

@@ -254,7 +254,7 @@ export default function TeacherCourseDetailClient({
                                         const startAt = exam.startAt ? new Date(exam.startAt) : null
                                         const endAt = startAt ? getExamEndAt(startAt, exam.durationMinutes, exam.endAt) : null
 
-                                        let statusLabel = coursesDict.examPublishedBadge
+                                        let statusLabel: string = coursesDict.examPublishedBadge
                                         let statusClassName = "border-brand-900/20 bg-brand-50 text-brand-900"
                                         const draftStatusClass = "border-amber-200 bg-amber-50 text-amber-700"
                                         const endedStatusClass = "border-gray-200 bg-gray-100 text-gray-600"

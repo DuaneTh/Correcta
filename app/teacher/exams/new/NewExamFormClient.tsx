@@ -597,7 +597,7 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
                                 showTimeInput
                                 customTimeInput={<CustomTimeInput currentLocale={currentLocale} onDateTimeChange={setStartDateTime} />}
                                 customInput={<DateTimeInput />}
-                                onChangeRaw={(e) => e.preventDefault()}
+                                onChangeRaw={(event) => event?.preventDefault()}
                                 dateFormat="dd/MM/yyyy HH:mm"
                                 locale={currentLocale === 'fr' ? 'fr' : 'en'}
                                 placeholderText={currentLocale === 'fr' ? 'jj/mm/aaaa --:--' : 'dd/mm/yyyy --:--'}
@@ -658,7 +658,6 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
         </div>
     )
 }
-
 
 
 

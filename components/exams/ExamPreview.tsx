@@ -10,6 +10,14 @@ type MathJaxObject = {
     startup?: { ready?: boolean }
     typesetPromise?: (nodes?: Element[]) => Promise<void>
     typeset?: (nodes?: Element[]) => void
+    tex?: {
+        inlineMath: string[][]
+        displayMath: string[][]
+        processEscapes?: boolean
+    }
+    svg?: {
+        fontCache?: string
+    }
 }
 
 type MathJaxWindow = Window & { MathJax?: MathJaxObject }
@@ -463,4 +471,3 @@ export default function ExamPreview({
         </div>
     )
 }
-

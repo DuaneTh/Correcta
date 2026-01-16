@@ -25,8 +25,13 @@ export async function assertAttemptContentEditable(
     attemptId: string,
     user: { id: string; role: UserRole }
 ) {
+    const isAdmin =
+        user.role === UserRole.SCHOOL_ADMIN ||
+        user.role === UserRole.PLATFORM_ADMIN ||
+        (user.role as string) === 'ADMIN'
+
     // ADMIN can always edit
-    if (user.role === UserRole.ADMIN) {
+    if (isAdmin) {
         return
     }
 

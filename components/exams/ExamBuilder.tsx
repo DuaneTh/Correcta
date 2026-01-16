@@ -12,7 +12,14 @@ import { Exam, ExamChange } from '@/types/exams'
 
 type ExamBuilderDictionary = {
     teacher: {
-        examBuilderPage: Record<string, string>
+        examBuilderPage: Record<string, string> & {
+            validationTitle: string
+            validationDate: string
+            validationDatePast: string
+            validationDuration: string
+            validationContent: string
+            validationMcqCorrectOptions: string
+        }
     }
 }
 
@@ -640,7 +647,6 @@ export default function ExamBuilder({ examId, initialData, isLocked = false, dic
             <ExamLayout
                 left={
                     <SectionList
-                        exam={exam}
                         liveExam={liveExam}
                         dict={dict}
                         locale={locale}
@@ -687,4 +693,3 @@ export default function ExamBuilder({ examId, initialData, isLocked = false, dic
         </div>
     )
 }
-

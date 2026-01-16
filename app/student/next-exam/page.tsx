@@ -127,7 +127,7 @@ export default async function NextExamPage() {
         course: true,
         attempts: {
             where: { studentId: studentId },
-            orderBy: { startedAt: 'desc' },
+            orderBy: { startedAt: 'desc' as const },
             take: 1
         },
     }
@@ -164,12 +164,13 @@ export default async function NextExamPage() {
         })
     ])
 
+    type ExamWithAttempts = (typeof variantExams)[number]
     const exams = resolvePublishedExamsForClasses({
         baseExams,
         variantExams,
         classIds,
         context: 'student-next-exam',
-    })
+    }) as ExamWithAttempts[]
 
     const eligibleExams = exams.filter(exam => {
         if (!exam.durationMinutes || exam.durationMinutes <= 0) {
@@ -245,7 +246,7 @@ export default async function NextExamPage() {
         value.toLocaleTimeString(localeString, { hour: '2-digit', minute: '2-digit' })
 
     const cards: ExamCard[] = eligibleExams.map(exam => {
-        const startAt = new Date(exam.startAt)
+        const startAt = new Date(exam.startAt as Date)
         const endAt = getExamEndAt(startAt, exam.durationMinutes, exam.endAt)
         const isBeforeStart = now < startAt
         const isAfterEnd = endAt && now > endAt
@@ -310,8 +311,8 @@ export default async function NextExamPage() {
                                 <div className="text-sm text-gray-600 space-y-1">
                                     <p>{dict.availableExam.durationLabel} : {exam.durationMinutes} minutes</p>
                                     <p>{dict.availableExam.startLabel} : {formatDateTime(exam.startAt)}</p>
-                                    {endAt && (
-                                        <p>{dict.availableExam.endLabel} : {formatDateTime(endAt)}</p>
+                                    {exam.endAt && (
+                                        <p>{dict.availableExam.endLabel} : {formatDateTime(exam.endAt)}</p>
                                     )}
                                 </div>
                             </div>
@@ -371,8 +372,8 @@ export default async function NextExamPage() {
                                 <div className="text-sm text-gray-600 space-y-1">
                                     <p>{dict.availableExam.durationLabel} : {exam.durationMinutes} minutes</p>
                                     <p>{dict.availableExam.startLabel} : {formatDateTime(exam.startAt)}</p>
-                                    {endAt && (
-                                        <p>{dict.availableExam.endLabel} : {formatDateTime(endAt)}</p>
+                                    {exam.endAt && (
+                                        <p>{dict.availableExam.endLabel} : {formatDateTime(exam.endAt)}</p>
                                     )}
                                 </div>
                                 <div className="text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">

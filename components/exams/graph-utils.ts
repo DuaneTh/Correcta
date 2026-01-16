@@ -596,9 +596,15 @@ const appendLabels = (
         ? toPixel({ x: axes.xMin, y: 0 }, axes, width, height).y
         : null
     const hasSegmentsContent = (segments?: ContentSegment[]) => (
-        Array.isArray(segments) && segments.some((seg) =>
-            seg.type === 'math' ? Boolean(seg.latex?.trim()) : Boolean(seg.text?.trim())
-        )
+        Array.isArray(segments) && segments.some((seg) => {
+            if (seg.type === 'math') {
+                return Boolean(seg.latex?.trim())
+            }
+            if (seg.type === 'text') {
+                return Boolean(seg.text?.trim())
+            }
+            return false
+        })
     )
     const hasLabelContent = (label?: string, segments?: ContentSegment[]) => (
         Boolean(label?.trim()) || hasSegmentsContent(segments)

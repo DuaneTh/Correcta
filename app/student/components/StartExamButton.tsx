@@ -8,6 +8,7 @@ interface StartExamButtonProps {
     examId: string
     label: string
     className?: string
+    attemptId?: string
 }
 
 export default function StartExamButton({ examId, label, className }: StartExamButtonProps) {

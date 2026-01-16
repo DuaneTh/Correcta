@@ -22,8 +22,7 @@ export default function UserMenu({ dictionary, currentLocale }: UserMenuProps) {
     }
 
     const handleLogout = async () => {
-        // @ts-expect-error provider is custom on session user
-        const isOidc = session?.user?.provider === 'oidc'
+        const isOidc = (session.user as { provider?: string }).provider === 'oidc'
 
         if (isOidc) {
             await signOut({ redirect: false })

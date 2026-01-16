@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { getDictionary, getLocale } from "@/lib/i18n/server"
 import { resolvePublishedExamsForClasses } from "@/lib/exam-variants"
 import StudentExamsClient from "./StudentExamsClient"
+import { UserRole } from "@prisma/client"
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
 
@@ -124,7 +125,7 @@ export default async function StudentExamsPage() {
                 classes: {
                     select: {
                         enrollments: {
-                            where: { role: "TEACHER", user: { archivedAt: null } },
+                            where: { role: UserRole.TEACHER, user: { archivedAt: null } },
                             select: {
                                 user: { select: { name: true } },
                             },
@@ -157,16 +158,22 @@ export default async function StudentExamsPage() {
         }),
     ])
 
+    type ExamWithAttempts = (typeof variantExams)[number]
     const exams = resolvePublishedExamsForClasses({
         baseExams,
         variantExams,
         classIds,
         context: 'student-exams',
-    }).sort((a, b) => new Date(b.startAt).getTime() - new Date(a.startAt).getTime())
+    }).sort((a, b) => new Date(b.startAt as Date).getTime() - new Date(a.startAt as Date).getTime()) as ExamWithAttempts[]
 
     return (
         <StudentExamsClient
-            exams={exams}
+            exams={exams.map((exam) => ({
+                ...exam,
+                startAt: exam.startAt as Date,
+                durationMinutes: exam.durationMinutes as number,
+                gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
+            }))}
             dictionary={dictionary}
             locale={locale}
         />

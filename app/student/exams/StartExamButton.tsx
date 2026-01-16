@@ -7,9 +7,10 @@ import { useRouter } from "next/navigation"
 interface StartExamButtonProps {
     examId: string
     label: string
+    className?: string
 }
 
-export default function StartExamButton({ examId, label }: StartExamButtonProps) {
+export default function StartExamButton({ examId, label, className }: StartExamButtonProps) {
     const [isLoading, setIsLoading] = useState(false)
     const router = useRouter()
 
@@ -44,7 +45,7 @@ export default function StartExamButton({ examId, label }: StartExamButtonProps)
         <button
             onClick={handleStart}
             disabled={isLoading}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+            className={className || "px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"}
         >
             {isLoading ? "Chargement..." : label}
         </button>

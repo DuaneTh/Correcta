@@ -85,7 +85,7 @@ export const legacyMathHtmlToLatex = (html: string): string => {
     const doc = parser.parseFromString(html, 'text/html')
     const body = doc.body
     const latex = Array.from(body.childNodes)
-      .map(serializeLegacyNode)
+      .map((child) => serializeLegacyNode(child))
       .join('')
       .replace(/\u00a0/g, ' ')
     return latex.trim()
@@ -115,4 +115,3 @@ export const normalizeMathValue = (value: string | null | undefined): string => 
 }
 
 export { PLACEHOLDER_CHAR }
-

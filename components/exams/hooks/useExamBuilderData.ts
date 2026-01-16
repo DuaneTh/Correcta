@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Exam, Question, QuestionType, Segment, ValidationErrors, ContentSegment } from '@/types/exams'
+import { Exam, Question, QuestionType, Segment, ValidationErrors, ContentSegment, Rubric } from '@/types/exams'
 import { parseContent, serializeContent, segmentsToPlainText } from '@/lib/content'
 
 type ValidationDictionary = {
@@ -9,6 +9,10 @@ type ValidationDictionary = {
     validationDuration: string
     validationContent: string
     validationMcqCorrectOptions: string
+    validationCorrectionReleaseAtInvalid?: string
+    validationCorrectionReleaseAtPast?: string
+    validationCorrectionReleaseAtBeforeStart?: string
+    validationCorrectionReleaseAtBeforeEnd?: string
 }
 
 interface UseExamBuilderDataArgs {
@@ -502,7 +506,12 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
                                                           ...s,
                                                           rubric: s.rubric
                                                               ? { ...s.rubric, criteria }
-                                                              : { criteria, levels: [], examples: [] },
+                                                              : {
+                                                                    id: s.id,
+                                                                    criteria,
+                                                                    levels: [],
+                                                                    examples: [],
+                                                                } satisfies Rubric,
                                                       }
                                                     : s
                                             ),
@@ -534,7 +543,12 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
                                                           ...s,
                                                           rubric: s.rubric
                                                               ? { ...s.rubric, examples }
-                                                              : { criteria: '', levels: [], examples },
+                                                              : {
+                                                                    id: s.id,
+                                                                    criteria: '',
+                                                                    levels: [],
+                                                                    examples,
+                                                                } satisfies Rubric,
                                                       }
                                                     : s
                                             ),
@@ -585,7 +599,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
                                       ? {
                                             ...q,
                                             segments: q.segments.map((s) =>
-                                                s.id === segmentId ? { ...s, maxPoints } : s
+                                                s.id === segmentId ? { ...s, maxPoints: maxPoints ?? null } : s
                                             ),
                                         }
                                       : q
@@ -920,10 +934,30 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
         if (errors.date) errorMessages.push(dict.validationDate)
         if (errors.datePast) errorMessages.push(dict.validationDatePast)
         if (errors.duration) errorMessages.push(dict.validationDuration)
-        if (errors.correctionReleaseAtInvalid) errorMessages.push(dict.validationCorrectionReleaseAtInvalid)
-        if (errors.correctionReleaseAtPast) errorMessages.push(dict.validationCorrectionReleaseAtPast)
-        if (errors.correctionReleaseAtBeforeStart) errorMessages.push(dict.validationCorrectionReleaseAtBeforeStart)
-        if (errors.correctionReleaseAtBeforeEnd) errorMessages.push(dict.validationCorrectionReleaseAtBeforeEnd)
+        if (errors.correctionReleaseAtInvalid) {
+            errorMessages.push(
+                dict.validationCorrectionReleaseAtInvalid ||
+                (locale === 'fr' ? 'Date d’envoi du corrigé invalide.' : 'Invalid correction release date.')
+            )
+        }
+        if (errors.correctionReleaseAtPast) {
+            errorMessages.push(
+                dict.validationCorrectionReleaseAtPast ||
+                (locale === 'fr' ? 'La date ne peut pas être dans le passé.' : 'Date cannot be in the past.')
+            )
+        }
+        if (errors.correctionReleaseAtBeforeStart) {
+            errorMessages.push(
+                dict.validationCorrectionReleaseAtBeforeStart ||
+                (locale === 'fr' ? 'La date ne peut pas être avant le début de l’examen.' : 'Date cannot be before exam start.')
+            )
+        }
+        if (errors.correctionReleaseAtBeforeEnd) {
+            errorMessages.push(
+                dict.validationCorrectionReleaseAtBeforeEnd ||
+                (locale === 'fr' ? 'La date ne peut pas être avant la fin de l’examen.' : 'Date cannot be before exam end.')
+            )
+        }
         if (errors.hasQuestions) errorMessages.push(dict.validationContent)
 
         if (errors.questions.length > 0) {

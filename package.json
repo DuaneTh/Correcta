@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "dev:webpack": "next dev --webpack",
+    "build": "next build --webpack",
+    "build:turbo": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:exam-resolution": "tsx scripts/test-exam-resolution.ts",
@@ -17,6 +19,8 @@
     "test:csrf": "tsx --test tests/csrf.test.ts",
     "test:attempt-integrity": "tsx --test tests/attempt-integrity.test.ts",
     "test:ci": "node scripts/run-tests-ci.mjs",
+    "typecheck:api": "tsc -p tsconfig.api.json --pretty false",
+    "seed:demo-users": "node scripts/seed-demo-users.js",
     "queue:test-ai": "tsx scripts/test-ai-queue.ts",
     "worker:ai-grading": "tsx scripts/ai-grading-worker.ts"
   },

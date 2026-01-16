@@ -1,4 +1,13 @@
-import { ContentSegment } from '@/types/exams'
+import {
+    ContentSegment,
+    TableCell,
+    GraphLine,
+    GraphCurve,
+    GraphPoint,
+    GraphFunction,
+    GraphArea,
+    GraphText,
+} from '@/types/exams'
 
 const createSegmentId = (): string => {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -15,14 +24,14 @@ const sanitizeText = (value: unknown): string => {
     return String(value)
 }
 
-function normalizeTableRows(rows: unknown): ContentSegment[][] {
+function normalizeTableRows(rows: unknown): TableCell[][] {
     if (!Array.isArray(rows) || rows.length === 0) {
-        return [[createTextSegment('')]]
+        return [[[createTextSegment('')]]]
     }
 
     return rows.map((row) => {
         if (!Array.isArray(row) || row.length === 0) {
-            return [createTextSegment('')]
+            return [[createTextSegment('')]]
         }
 
         return row.map((cell) => {
@@ -94,7 +103,7 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
         axes.yMax = 5
     }
 
-    const points = Array.isArray(graph?.points)
+    const points: GraphPoint[] = Array.isArray(graph?.points)
         ? graph!.points.map((point) => ({
             id: point?.id || createSegmentId(),
             x: normalizeNumber(point?.x, 0),
@@ -107,17 +116,17 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
         }))
         : []
 
-    const lines = Array.isArray(graph?.lines)
+    const lines: GraphLine[] = Array.isArray(graph?.lines)
         ? graph!.lines.map((line) => ({
             id: line?.id || createSegmentId(),
             start: normalizeGraphAnchor(line?.start),
             end: normalizeGraphAnchor(line?.end),
-            kind: line?.kind === 'line' || line?.kind === 'ray' ? line.kind : 'segment',
+            kind: (line?.kind === 'line' || line?.kind === 'ray' ? line.kind : 'segment') as GraphLine['kind'],
             style: line?.style,
         }))
         : []
 
-    const curves = Array.isArray(graph?.curves)
+    const curves: GraphCurve[] = Array.isArray(graph?.curves)
         ? graph!.curves.map((curve) => ({
             id: curve?.id || createSegmentId(),
             start: normalizeGraphAnchor(curve?.start),
@@ -127,7 +136,7 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
         }))
         : []
 
-    const functions = Array.isArray(graph?.functions)
+    const functions: GraphFunction[] = Array.isArray(graph?.functions)
         ? graph!.functions.map((fn) => ({
             id: fn?.id || createSegmentId(),
             expression: typeof fn?.expression === 'string' ? fn.expression : '',
@@ -136,12 +145,12 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
         }))
         : []
 
-    const areas = Array.isArray(graph?.areas)
+    const areas: GraphArea[] = Array.isArray(graph?.areas)
         ? graph!.areas.map((area) => ({
             id: area?.id || createSegmentId(),
-            mode: area?.mode === 'under-function' || area?.mode === 'between-functions'
+            mode: (area?.mode === 'under-function' || area?.mode === 'between-functions'
                 ? area.mode
-                : 'polygon',
+                : 'polygon') as GraphArea['mode'],
             points: Array.isArray(area?.points) ? area.points.map((point) => normalizeGraphAnchor(point)) : undefined,
             functionId: typeof area?.functionId === 'string' ? area.functionId : undefined,
             functionId2: typeof area?.functionId2 === 'string' ? area.functionId2 : undefined,
@@ -150,7 +159,7 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
         }))
         : []
 
-    const texts = Array.isArray(graph?.texts)
+    const texts: GraphText[] = Array.isArray(graph?.texts)
         ? graph!.texts.map((text) => ({
             id: text?.id || createSegmentId(),
             x: normalizeNumber(text?.x, 0),
@@ -355,4 +364,3 @@ export const stringToSegments = (value: string, previous?: ContentSegment[]): Co
 
     return segments.length > 0 ? segments : [createTextSegment('')]
 }
-

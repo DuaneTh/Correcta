@@ -241,15 +241,19 @@ const dictionaries = {
                 statusAvailable: 'Disponible',
                 statusInProgress: 'En cours',
                 statusSubmitted: 'Soumis',
+                statusCorrected: 'Corrigé',
                 statusExpired: 'Expiré',
                 startButton: 'Commencer',
                 resumeButton: 'Reprendre',
+                notAvailableYetButton: 'Bientôt disponible',
                 viewGradedCopyButton: 'Voir copie corrigée',
                 examMeta: {
                     durationLabel: 'Durée',
                     startLabel: 'Début',
                 },
+                correctionAfterWindowLabel: 'La correction sera disponible après la fin de la fenêtre.',
                 submittedExamButton: 'Examen soumis',
+                windowClosedButton: 'Fenêtre fermée',
             },
             nextExamPage: {
                 title: 'Prochain examen',
@@ -363,6 +367,7 @@ const dictionaries = {
                 noResults: 'Aucun cours correspondant.',
                 noResultsFor: 'Aucun résultat pour "{{query}}".',
                 resetFilters: 'Réinitialiser',
+                unknownName: 'Sans titre',
                 sortLabel: 'Trier',
                 sortNextExam: 'Prochain examen',
                 sortLastActivity: 'Dernière activité',
@@ -777,15 +782,19 @@ const dictionaries = {
                 statusAvailable: 'Available',
                 statusInProgress: 'In progress',
                 statusSubmitted: 'Submitted',
+                statusCorrected: 'Corrected',
                 statusExpired: 'Expired',
                 startButton: 'Start',
                 resumeButton: 'Resume',
+                notAvailableYetButton: 'Not available yet',
                 viewGradedCopyButton: 'View graded copy',
                 examMeta: {
                     durationLabel: 'Duration',
                     startLabel: 'Start',
                 },
+                correctionAfterWindowLabel: 'Correction will be available after the window ends.',
                 submittedExamButton: 'Submitted exam',
+                windowClosedButton: 'Window closed',
             },
             nextExamPage: {
                 title: 'Next exam',
@@ -899,6 +908,7 @@ const dictionaries = {
                 noResults: 'No matching courses.',
                 noResultsFor: 'No results for "{{query}}".',
                 resetFilters: 'Reset',
+                unknownName: 'Untitled',
                 sortLabel: 'Sort',
                 sortNextExam: 'Next exam',
                 sortLastActivity: 'Latest activity',
@@ -1087,10 +1097,6 @@ export function getSectionLabel(count: number, dict: Dictionary): string {
     }
     return `${count} Sections`
 }
-
-
-
-
 
 
 

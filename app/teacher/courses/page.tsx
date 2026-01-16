@@ -78,6 +78,7 @@ export default async function TeacherCoursesPage() {
             classId: exam.classId ?? null,
             parentExamId: exam.parentExamId ?? null,
             className: exam.class?.name ?? null,
+            gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
         }))
     }))
 

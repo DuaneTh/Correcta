@@ -4,6 +4,11 @@ import { prisma } from '@/lib/prisma'
 import { Queue } from 'bullmq'
 import { AttemptStatus, QuestionType, UserRole } from '@prisma/client'
 
+const getGradesReleased = (config: unknown) => {
+    const record = config as Record<string, unknown> | null
+    return record?.gradesReleased === true
+}
+
 async function main() {
     console.log("Starting Audit Verification Flow...")
 
@@ -146,24 +151,25 @@ async function main() {
 
     // 6. Verify Results Release Logic
     // Check if student can see results (Should be NO)
-    if (exam.gradingConfig?.['gradesReleased'] === true) {
+    if (getGradesReleased(exam.gradingConfig)) {
         console.error("FAILED: Grades should not be released yet")
     } else {
         console.log("SUCCESS: Grades are not released yet")
     }
 
     // Release results
+    const currentConfig = exam.gradingConfig as Record<string, unknown> | null
     await prisma.exam.update({
         where: { id: exam.id },
         data: {
-            gradingConfig: { ...exam.gradingConfig as object, gradesReleased: true }
+            gradingConfig: { ...(currentConfig ?? {}), gradesReleased: true }
         }
     })
     console.log("Results released.")
 
     // Verify again
     const updatedExam = await prisma.exam.findUnique({ where: { id: exam.id } })
-    if (updatedExam?.gradingConfig?.['gradesReleased'] === true) {
+    if (getGradesReleased(updatedExam?.gradingConfig)) {
         console.log("SUCCESS: Grades are released")
     } else {
         console.error("FAILED: Grades should be released")

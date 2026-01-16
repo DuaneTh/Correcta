@@ -13,11 +13,12 @@ registerLocale('fr', fr)
 registerLocale('en', enUS)
 
 // Custom time input component with compact horizontal layout
-const CustomTimeInput = ({ date, value, onChange, currentLocale }: {
+const CustomTimeInput = ({ date, value, onChange, currentLocale, onDateTimeChange }: {
     date?: Date | null
     value?: string
     onChange?: (time: string) => void
     currentLocale: Locale
+    onDateTimeChange?: (date: Date) => void
 }) => {
     const getCurrentTime = () => {
         if (value) {
@@ -40,6 +41,13 @@ const CustomTimeInput = ({ date, value, onChange, currentLocale }: {
 
         const timeString = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`
         onChange(timeString)
+
+        if (onDateTimeChange) {
+            const currentDate = date || new Date()
+            const nextDate = new Date(currentDate)
+            nextDate.setHours(newHours, newMinutes)
+            onDateTimeChange(nextDate)
+        }
     }
 
     const hours = Array.from({ length: 24 }, (_, i) => i)
@@ -382,26 +390,12 @@ export const DateInput = forwardRef<DateInputHandle, DateInputProps>(({ value, o
                                 inline
                                 shouldCloseOnSelect={false}
                                 onClickOutside={() => setIsCalendarOpen(false)}
-                                customTimeInput={(props: { date?: Date | null; value?: string; onChange?: (time: string) => void }) => {
-                                    return (
-                                        <CustomTimeInput 
-                                            date={value || props.date}
-                                            value={props.value}
-                                            onChange={(time: string) => {
-                                                if (props.onChange) {
-                                                    props.onChange(time)
-                                                }
-                                                // Also update the main date when time changes
-                                                const currentDate = value || props.date || new Date()
-                                                const [hours, minutes] = time.split(':').map(Number)
-                                                const newDate = new Date(currentDate)
-                                                newDate.setHours(hours, minutes)
-                                                onChange(newDate)
-                                            }}
-                                            currentLocale={locale}
-                                        />
-                                    )
-                                }}
+                                customTimeInput={
+                                    <CustomTimeInput
+                                        currentLocale={locale}
+                                        onDateTimeChange={(nextDate) => onChange(nextDate)}
+                                    />
+                                }
                             />
                         </div>
                     </div>
@@ -412,4 +406,3 @@ export const DateInput = forwardRef<DateInputHandle, DateInputProps>(({ value, o
 })
 
 DateInput.displayName = 'DateInput'
-

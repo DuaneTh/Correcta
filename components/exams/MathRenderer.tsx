@@ -12,6 +12,10 @@ type MathJaxObject = {
     typeset?: (nodes?: Element[]) => void
     tex2chtml?: (tex: string, options?: { display?: boolean }) => HTMLElement
     tex2chtmlPromise?: (tex: string, options?: { display?: boolean }) => Promise<HTMLElement>
+    tex?: {
+        inlineMath: string[][]
+        displayMath: string[][]
+    }
 }
 
 type MathJaxWindow = Window & { MathJax?: MathJaxObject }
@@ -72,7 +76,7 @@ export default function MathRenderer({ text, className = '', tableScale = 1 }: M
     }, [text])
     const segments = useMemo(() => (Array.isArray(text) ? text : segmentsFromString), [text, segmentsFromString])
     const normalized = useMemo(() => {
-        if (!text || segments) return ''
+        if (!text || segments || typeof text !== 'string') return ''
         if (text.includes('<span') || text.includes('data-structure')) {
             return legacyMathHtmlToLatex(text)
         }
@@ -388,4 +392,3 @@ export default function MathRenderer({ text, className = '', tableScale = 1 }: M
         />
     )
 }
-

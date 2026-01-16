@@ -20,7 +20,7 @@ async function main() {
 
     const questionId = exam.sections[0].questions[0].id
     const segmentId = exam.sections[0].questions[0].segments[0].id
-    const maxPoints = exam.sections[0].questions[0].segments[0].maxPoints
+    const maxPoints = exam.sections[0].questions[0].segments[0].maxPoints ?? 0
 
     // CASE A: AI alone
     console.log('=== CASE A: AI alone ===')

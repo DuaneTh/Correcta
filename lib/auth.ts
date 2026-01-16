@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs"
 import { safeJson } from "@/lib/logging"
 import { resolveInstitutionIdFromCookieValue } from "@/lib/institutionCookie"
 import { getClientIdentifier, hashRateLimitKey, rateLimit } from "@/lib/rateLimit"
+import type { UserRole } from "@prisma/client"
 
 // Force rebuild
 
@@ -81,6 +82,11 @@ const resolveRoleFromProfile = (profile: any, sso: SsoConfig): string => {
     }
 
     return sso.defaultRole ?? 'STUDENT'
+}
+
+const getProfileName = (profile: unknown) => {
+    const parsed = profile as { name?: string; preferred_username?: string; email?: string } | null | undefined
+    return parsed?.name || parsed?.preferred_username || parsed?.email || null
 }
 
 export const buildAuthOptions = async (institutionCookieValue?: string): Promise<NextAuthOptions> => {
@@ -181,9 +187,10 @@ export const buildAuthOptions = async (institutionCookieValue?: string): Promise
                     allowDangerousEmailAccountLinking,
                     profile(profile: any) {
                         const role = resolveRoleFromProfile(profile, sso)
+                        const preferredName = getProfileName(profile)
                         return {
                             id: profile.sub,
-                            name: profile.name || profile.preferred_username || profile.email,
+                            name: preferredName,
                             email: profile.email,
                             role,
                             institutionId: institution.id
@@ -212,9 +219,10 @@ export const buildAuthOptions = async (institutionCookieValue?: string): Promise
                     userinfo: `${sso.issuer}/api/oauth/userinfo`,
                     profile(profile: any) {
                         const role = resolveRoleFromProfile(profile, sso)
+                        const preferredName = getProfileName(profile)
                         return {
                             id: profile.id || profile.sub,
-                            name: profile.name || [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email,
+                            name: preferredName || [profile.firstName, profile.lastName].filter(Boolean).join(' ') || profile.email,
                             email: profile.email,
                             role,
                             institutionId: institution.id
@@ -260,11 +268,11 @@ export const buildAuthOptions = async (institutionCookieValue?: string): Promise
                     const ssoConfig = institution?.ssoConfig as SsoConfig | undefined
                     if (institution && ssoConfig) {
                         const role = resolveRoleFromProfile(profile, ssoConfig)
-                        const name = profile?.name || profile?.preferred_username || user.name || user.email
+                        const name = getProfileName(profile) || user.name || user.email
                         await prisma.user.update({
                             where: { id: user.id },
                             data: {
-                                role,
+                                role: role as UserRole,
                                 institutionId: institution.id,
                                 name,
                             }
@@ -275,7 +283,7 @@ export const buildAuthOptions = async (institutionCookieValue?: string): Promise
                 return true
             },
             async session({ session, token }) {
-                if (token) {
+                if (token && session.user) {
                     session.user.id = token.id as string
                     session.user.role = token.role as string
                     session.user.institutionId = token.institutionId as string

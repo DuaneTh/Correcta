@@ -151,10 +151,10 @@ export default async function StudentCoursesPage() {
             exams: examsForStudent.map(exam => ({
                 id: exam.id,
                 title: exam.title,
-                startAt: exam.startAt,
+                startAt: exam.startAt as Date,
                 endAt: exam.endAt,
-                durationMinutes: exam.durationMinutes,
-                gradingConfig: exam.gradingConfig,
+                durationMinutes: exam.durationMinutes as number,
+                gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
                 attempts: exam.attempts
             }))
         }
