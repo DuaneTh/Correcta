@@ -43,7 +43,9 @@ export default function ConfirmModal({
     useEffect(() => {
         if (!open) return
         cancelRef.current?.focus()
-        previousOverflow.current = document.body.style.overflow
+        const previousOverflowValue = document.body.style.overflow
+        const returnFocusEl = returnFocusRef?.current ?? null
+        previousOverflow.current = previousOverflowValue
         document.body.style.overflow = 'hidden'
         const handleKey = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
@@ -54,10 +56,8 @@ export default function ConfirmModal({
         document.addEventListener('keydown', handleKey)
         return () => {
             document.removeEventListener('keydown', handleKey)
-            document.body.style.overflow = previousOverflow.current ?? ''
-            if (returnFocusRef?.current) {
-                returnFocusRef.current.focus()
-            }
+            document.body.style.overflow = previousOverflowValue
+            returnFocusEl?.focus()
         }
     }, [open, onCancel, returnFocusRef])
 
