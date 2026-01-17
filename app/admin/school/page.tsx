@@ -15,7 +15,7 @@ export default async function SchoolAdminPage() {
         redirect('/teacher/courses')
     }
 
-    const locale = await getLocale()
+    await getLocale()
     const dictionary = await getDictionary()
 
     let institutionId = session.user.institutionId
