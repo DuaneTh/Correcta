@@ -1,11 +1,65 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 import { getAuthSession, isAdmin, isPlatformAdmin, isSchoolAdmin } from '@/lib/api-auth'
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
+import { buildRateLimitResponse, getClientIdentifier, hashRateLimitKey, rateLimit } from '@/lib/rateLimit'
 
 const normalizeDomain = (value: string): string =>
     value.trim().toLowerCase().replace(/^@+/, '')
 
-const canAccessInstitution = (session: any, institutionId: string): boolean => {
+const toPrismaJson = (
+    value: Record<string, unknown> | null | undefined
+): Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput | undefined => {
+    if (value === undefined) return undefined
+    if (value === null) return Prisma.DbNull
+    return value as Prisma.InputJsonValue
+}
+
+const isValidDomain = (value: string): boolean => {
+    if (!value) return false
+    if (/\s/.test(value)) return false
+    return value.includes('.')
+}
+
+const sanitizeSsoConfig = (ssoConfig: unknown): { publicConfig: Record<string, unknown> | null; hasClientSecret: boolean } => {
+    if (!ssoConfig || typeof ssoConfig !== 'object') {
+        return { publicConfig: null, hasClientSecret: false }
+    }
+    const config = ssoConfig as Record<string, unknown>
+    const { clientSecret, ...rest } = config
+    const hasClientSecret = typeof clientSecret === 'string' && clientSecret.length > 0
+    return { publicConfig: rest, hasClientSecret }
+}
+
+const resolveIncomingSsoConfig = (
+    incoming: unknown,
+    existingSecret?: string
+): Record<string, unknown> | null | undefined => {
+    if (incoming === undefined) return undefined
+    if (incoming === null) return null
+    if (typeof incoming !== 'object') return undefined
+    const config = { ...(incoming as Record<string, unknown>) }
+    const incomingSecret =
+        typeof config.clientSecret === 'string' && config.clientSecret.trim() !== ''
+            ? config.clientSecret.trim()
+            : undefined
+    if (!incomingSecret) {
+        delete config.clientSecret
+        if (existingSecret) {
+            config.clientSecret = existingSecret
+        }
+    }
+    return config
+}
+
+const canAccessInstitution = (
+    session: { user?: { institutionId?: string } } | null,
+    institutionId: string
+): boolean => {
+    if (!session?.user) {
+        return false
+    }
     if (isPlatformAdmin(session)) {
         return true
     }
@@ -14,7 +68,7 @@ const canAccessInstitution = (session: any, institutionId: string): boolean => {
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ institutionId: string }> }) {
-    const session = await getAuthSession()
+    const session = await getAuthSession(req as unknown as NextRequest)
 
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -24,8 +78,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ institut
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const activeSession = session as { user: { institutionId?: string } }
+
     const { institutionId } = await params
-    if (!canAccessInstitution(session, institutionId)) {
+    if (!canAccessInstitution(activeSession, institutionId)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
@@ -34,7 +90,17 @@ export async function GET(req: Request, { params }: { params: Promise<{ institut
         include: { domains: { select: { domain: true } } }
     })
 
-    return NextResponse.json({ institution })
+    if (!institution) {
+        return NextResponse.json({ institution: null }, { status: 404 })
+    }
+    const { publicConfig, hasClientSecret } = sanitizeSsoConfig(institution.ssoConfig)
+    return NextResponse.json({
+        institution: {
+            ...institution,
+            ssoConfig: publicConfig,
+            hasClientSecret
+        }
+    })
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ institutionId: string }> }) {
@@ -48,17 +114,57 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const activeSession = session as { user: { institutionId?: string } }
+
     const { institutionId } = await params
-    if (!canAccessInstitution(session, institutionId)) {
+    if (!canAccessInstitution(activeSession, institutionId)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
+    }
+
+    const rateKey = hashRateLimitKey(`${session.user.id}:${institutionId}:${getClientIdentifier(req)}`)
+    const rateResult = await rateLimit(rateKey, {
+        windowSeconds: 60,
+        max: 10,
+        prefix: 'admin_institutions'
+    })
+    if (!rateResult.ok) {
+        const response = buildRateLimitResponse(rateResult, {
+            windowSeconds: 60,
+            max: 10,
+            prefix: 'admin_institutions'
+        })
+        return NextResponse.json(response.body, { status: response.status, headers: response.headers })
+    }
+
+    const existing = await prisma.institution.findUnique({
+        where: { id: institutionId },
+        select: { ssoConfig: true }
+    })
+    const existingConfig = existing?.ssoConfig as Record<string, unknown> | null
+    const existingSecret =
+        existingConfig && typeof existingConfig.clientSecret === 'string' && existingConfig.clientSecret
+            ? existingConfig.clientSecret
+            : undefined
+
     const body = await req.json()
     const name = typeof body?.name === 'string' ? body.name.trim() : undefined
-    const ssoConfig = body?.ssoConfig
-    const domains = Array.isArray(body?.domains)
+    const ssoConfig = resolveIncomingSsoConfig(body?.ssoConfig, existingSecret)
+    const domains: string[] | undefined = Array.isArray(body?.domains)
         ? body.domains.map((domain: string) => normalizeDomain(domain)).filter(Boolean)
         : undefined
+    if (domains && domains.some((domain) => !isValidDomain(domain))) {
+        return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 })
+    }
 
     try {
         if (domains && domains.length > 0) {
@@ -86,7 +192,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
                 where: { id: institutionId },
                 data: {
                     ...(name ? { name } : {}),
-                    ...(ssoConfig !== undefined ? { ssoConfig } : {}),
+                    ...(ssoConfig !== undefined ? { ssoConfig: toPrismaJson(ssoConfig) } : {}),
                     ...(domains ? { domain: domains[0] ?? null } : {}),
                 }
             })
@@ -100,8 +206,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
                 const existingSet = new Set(existingDomains.map((entry) => entry.domain))
                 const nextSet = new Set(domains)
 
-                const toRemove = Array.from(existingSet).filter((domain: unknown) => !nextSet.has(domain))
-                const toAdd = Array.from(nextSet).filter((domain: unknown) => !existingSet.has(domain as string))
+                const toRemove = Array.from(existingSet).filter((domain) => !nextSet.has(domain))
+                const toAdd = Array.from(nextSet).filter((domain) => !existingSet.has(domain))
 
                 if (toRemove.length > 0) {
                     await tx.institutionDomain.deleteMany({
@@ -114,8 +220,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
 
                 if (toAdd.length > 0) {
                     await tx.institutionDomain.createMany({
-                        data: toAdd.map((domain: unknown) => ({
-                            domain: domain as string,
+                        data: toAdd.map((domain) => ({
+                            domain,
                             institutionId,
                         })),
                         skipDuplicates: true,
@@ -131,7 +237,17 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
             include: { domains: { select: { domain: true } } }
         })
 
-        return NextResponse.json({ institution: withDomains })
+        if (!withDomains) {
+            return NextResponse.json({ error: 'Failed to load institution' }, { status: 500 })
+        }
+        const { publicConfig, hasClientSecret } = sanitizeSsoConfig(withDomains.ssoConfig)
+        return NextResponse.json({
+            institution: {
+                ...withDomains,
+                ssoConfig: publicConfig,
+                hasClientSecret
+            }
+        })
     } catch (error) {
         console.error('[Institutions] Update failed', error)
         return NextResponse.json({ error: 'Failed to update institution' }, { status: 500 })
