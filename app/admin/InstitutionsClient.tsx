@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+import Drawer from '@/components/ui/Drawer'
+import ConfirmModal from '@/components/ui/ConfirmModal'
 
 type InstitutionRecord = {
     id: string
@@ -71,6 +73,13 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
     const [search, setSearch] = useState('')
     const [ssoFilter, setSsoFilter] = useState<'all' | 'enabled' | 'disabled'>('all')
     const [secretFilter, setSecretFilter] = useState<'all' | 'set' | 'not_set'>('all')
+    const [drawerOpen, setDrawerOpen] = useState(false)
+    const [editingMode, setEditingMode] = useState<'edit' | 'create'>('edit')
+    const [confirmOpen, setConfirmOpen] = useState(false)
+    const confirmActionRef = useRef<(() => void) | null>(null)
+    const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
+    const drawerReturnFocusRef = useRef<HTMLElement | null>(null)
+    const saveButtonRef = useRef<HTMLButtonElement | null>(null)
 
     const selectedInstitution = useMemo(() => {
         return institutions.find((institution) => institution.id === selectedId) ?? null
@@ -96,6 +105,34 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
             return true
         })
     }, [institutions, search, ssoFilter, secretFilter])
+
+    const baselineForm = useMemo(() => {
+        if (isCreating || !selectedInstitution) {
+            return { ...emptyForm }
+        }
+        const ssoConfig = (selectedInstitution.ssoConfig ?? {}) as Record<string, unknown>
+        const domains = selectedInstitution.domains?.map((entry) => entry.domain).join(', ') ?? ''
+        const roleMapping = getObjectField(ssoConfig, 'roleMapping')
+        return {
+            name: selectedInstitution.name ?? '',
+            domains,
+            ssoType: getStringField(ssoConfig, 'type', 'none'),
+            issuer: getStringField(ssoConfig, 'issuer', ''),
+            clientId: getStringField(ssoConfig, 'clientId', ''),
+            clientSecret: '',
+            roleClaim: getStringField(ssoConfig, 'roleClaim', ''),
+            roleMapping: roleMapping ? JSON.stringify(roleMapping, null, 2) : '',
+            defaultRole: getStringField(ssoConfig, 'defaultRole', 'STUDENT'),
+            enabled: getBooleanField(ssoConfig, 'enabled', true),
+        }
+    }, [isCreating, selectedInstitution])
+
+    const isDirty = useMemo(() => {
+        if (JSON.stringify(form) !== JSON.stringify(baselineForm)) return true
+        if (setNewSecret) return true
+        if (clientSecretInput.trim()) return true
+        return false
+    }, [form, baselineForm, setNewSecret, clientSecretInput])
 
     const loadInstitutions = async () => {
         setLoading(true)
@@ -150,18 +187,28 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
         setClientSecretInput('')
     }, [selectedInstitution, isCreating])
 
-    const handleSelect = (institutionId: string) => {
+    const handleSelect = (institutionId: string, trigger?: HTMLElement | null) => {
         setSelectedId(institutionId)
         setIsCreating(false)
+        setEditingMode('edit')
+        setDrawerOpen(true)
+        if (trigger) {
+            drawerReturnFocusRef.current = trigger
+        }
         setError('')
     }
 
-    const handleCreate = () => {
+    const handleCreate = (trigger?: HTMLElement | null) => {
         setIsCreating(true)
         setSelectedId(null)
         setForm({ ...emptyForm })
         setSetNewSecret(false)
         setClientSecretInput('')
+        setEditingMode('create')
+        setDrawerOpen(true)
+        if (trigger) {
+            drawerReturnFocusRef.current = trigger
+        }
         setError('')
     }
 
@@ -180,7 +227,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
         }
     }
 
-    const handleSave = async () => {
+    const executeSave = async () => {
         if (!isCreating && !selectedInstitution) {
             return
         }
@@ -243,7 +290,9 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     form.roleMapping !== currentRoleMapping ||
                     setNewSecret
                 )
-                if ((domainsChanged || ssoChanged) && !window.confirm(dict.confirmUpdate)) {
+                if (domainsChanged || ssoChanged) {
+                    confirmActionRef.current = executeSave
+                    setConfirmOpen(true)
                     setSaving(false)
                     return
                 }
@@ -264,11 +313,42 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
             }
             setSetNewSecret(false)
             setClientSecretInput('')
+            setDrawerOpen(false)
         } catch (err) {
             console.error('[Institutions] Save failed', err)
             setError(dict.saveError)
         } finally {
             setSaving(false)
+        }
+    }
+
+    const handleSave = () => {
+        void executeSave()
+    }
+
+    const handleDiscardConfirm = () => {
+        setDiscardConfirmOpen(false)
+        setForm(baselineForm)
+        setSetNewSecret(false)
+        setClientSecretInput('')
+        setError('')
+        setDrawerOpen(false)
+    }
+
+    const requestCloseDrawer = () => {
+        if (isDirty) {
+            setDiscardConfirmOpen(true)
+            return
+        }
+        setDrawerOpen(false)
+    }
+
+    const handleConfirm = () => {
+        setConfirmOpen(false)
+        const action = confirmActionRef.current
+        confirmActionRef.current = null
+        if (action) {
+            action()
         }
     }
 
@@ -283,7 +363,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     {canCreate && (
                         <button
                             type="button"
-                            onClick={handleCreate}
+                            onClick={(event) => handleCreate(event.currentTarget)}
                             className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                         >
                             {dict.createButton}
@@ -392,7 +472,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleSelect(institution.id)}
+                                                            onClick={(event) => handleSelect(institution.id, event.currentTarget)}
                                                             className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                                                         >
                                                             {dict.actionEdit}
@@ -415,139 +495,160 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     )}
                 </div>
 
-                {(selectedInstitution || isCreating) && (
-                    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="mb-4 text-lg font-semibold text-gray-900">
-                            {isCreating ? dict.createTitle : dict.editTitle}
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.nameLabel}</span>
-                                <input
-                                    value={form.name}
-                                    onChange={(e) => handleChange('name', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                                <span className="font-medium">{dict.domainsLabel}</span>
-                                <input
-                                    value={form.domains}
-                                    onChange={(e) => handleChange('domains', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                        </div>
+                <Drawer
+                    open={drawerOpen}
+                    onClose={requestCloseDrawer}
+                    title={editingMode === 'create' ? dict.createTitle : dict.editTitle}
+                    returnFocusRef={drawerReturnFocusRef}
+                >
+                    <div className="grid grid-cols-1 gap-4">
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.nameLabel}</span>
+                            <input
+                                value={form.name}
+                                onChange={(e) => handleChange('name', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.domainsLabel}</span>
+                            <input
+                                value={form.domains}
+                                onChange={(e) => handleChange('domains', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
+                    </div>
 
-                        <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.ssoTypeLabel}</span>
-                                <select
-                                    value={form.ssoType}
-                                    onChange={(e) => handleChange('ssoType', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                >
-                                    <option value="none">{dict.ssoTypeNone}</option>
-                                    <option value="oidc">{dict.ssoTypeOidc}</option>
-                                    <option value="saml">{dict.ssoTypeSaml}</option>
-                                </select>
-                            </label>
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <div className="mt-6 grid grid-cols-1 gap-4">
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.ssoTypeLabel}</span>
+                            <select
+                                value={form.ssoType}
+                                onChange={(e) => handleChange('ssoType', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            >
+                                <option value="none">{dict.ssoTypeNone}</option>
+                                <option value="oidc">{dict.ssoTypeOidc}</option>
+                                <option value="saml">{dict.ssoTypeSaml}</option>
+                            </select>
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                                type="checkbox"
+                                checked={form.enabled}
+                                onChange={(e) => handleChange('enabled', e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
+                            />
+                            {dict.enabledLabel}
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.issuerLabel}</span>
+                            <input
+                                value={form.issuer}
+                                onChange={(e) => handleChange('issuer', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.clientIdLabel}</span>
+                            <input
+                                value={form.clientId}
+                                onChange={(e) => handleChange('clientId', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.clientSecretLabel}</span>
+                            {selectedInstitution?.hasClientSecret && !setNewSecret && (
+                                <span className="text-xs text-gray-500">{dict.secretSetLabel}</span>
+                            )}
+                            <input
+                                type="password"
+                                value={clientSecretInput}
+                                onChange={(e) => setClientSecretInput(e.target.value)}
+                                disabled={!setNewSecret}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                            <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
                                 <input
                                     type="checkbox"
-                                    checked={form.enabled}
-                                    onChange={(e) => handleChange('enabled', e.target.checked)}
+                                    checked={setNewSecret}
+                                    onChange={(e) => setSetNewSecret(e.target.checked)}
                                     className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
                                 />
-                                {dict.enabledLabel}
+                                {dict.setNewSecretLabel}
                             </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.issuerLabel}</span>
-                                <input
-                                    value={form.issuer}
-                                    onChange={(e) => handleChange('issuer', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.clientIdLabel}</span>
-                                <input
-                                    value={form.clientId}
-                                    onChange={(e) => handleChange('clientId', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.clientSecretLabel}</span>
-                                {selectedInstitution?.hasClientSecret && !setNewSecret && (
-                                    <span className="text-xs text-gray-500">{dict.secretSetLabel}</span>
-                                )}
-                                <input
-                                    type="password"
-                                    value={clientSecretInput}
-                                    onChange={(e) => setClientSecretInput(e.target.value)}
-                                    disabled={!setNewSecret}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                                <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
-                                    <input
-                                        type="checkbox"
-                                        checked={setNewSecret}
-                                        onChange={(e) => setSetNewSecret(e.target.checked)}
-                                        className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
-                                    />
-                                    {dict.setNewSecretLabel}
-                                </label>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.roleClaimLabel}</span>
-                                <input
-                                    value={form.roleClaim}
-                                    onChange={(e) => handleChange('roleClaim', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700">
-                                <span className="font-medium">{dict.defaultRoleLabel}</span>
-                                <select
-                                    value={form.defaultRole}
-                                    onChange={(e) => handleChange('defaultRole', e.target.value)}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                >
-                                    <option value="STUDENT">STUDENT</option>
-                                    <option value="TEACHER">TEACHER</option>
-                                    <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
-                                </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm text-gray-700 md:col-span-2">
-                                <span className="font-medium">{dict.roleMappingLabel}</span>
-                                <textarea
-                                    value={form.roleMapping}
-                                    onChange={(e) => handleChange('roleMapping', e.target.value)}
-                                    rows={6}
-                                    className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </label>
-                        </div>
-
-                        {error && (
-                            <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                                {error}
-                            </div>
-                        )}
-
-                        <div className="mt-6 flex justify-end">
-                            <button
-                                type="button"
-                                onClick={handleSave}
-                                disabled={saving}
-                                className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.roleClaimLabel}</span>
+                            <input
+                                value={form.roleClaim}
+                                onChange={(e) => handleChange('roleClaim', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.defaultRoleLabel}</span>
+                            <select
+                                value={form.defaultRole}
+                                onChange={(e) => handleChange('defaultRole', e.target.value)}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             >
-                                {dict.updateButton}
-                            </button>
-                        </div>
+                                <option value="STUDENT">STUDENT</option>
+                                <option value="TEACHER">TEACHER</option>
+                                <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
+                            </select>
+                        </label>
+                        <label className="flex flex-col gap-1 text-sm text-gray-700">
+                            <span className="font-medium">{dict.roleMappingLabel}</span>
+                            <textarea
+                                value={form.roleMapping}
+                                onChange={(e) => handleChange('roleMapping', e.target.value)}
+                                rows={6}
+                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                            />
+                        </label>
                     </div>
-                )}
+
+                    {error && (
+                        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="mt-6 flex justify-end">
+                        <button
+                            ref={saveButtonRef}
+                            type="button"
+                            onClick={handleSave}
+                            disabled={saving}
+                            className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {dict.updateButton}
+                        </button>
+                    </div>
+                </Drawer>
+                <ConfirmModal
+                    open={confirmOpen}
+                    title={dict.confirmTitle}
+                    description={dict.confirmDescription}
+                    confirmLabel={dict.confirmConfirmLabel}
+                    cancelLabel={dict.confirmCancelLabel}
+                    onConfirm={handleConfirm}
+                    onCancel={() => setConfirmOpen(false)}
+                    returnFocusRef={saveButtonRef}
+                />
+                <ConfirmModal
+                    open={discardConfirmOpen}
+                    title={dict.discardTitle}
+                    description={dict.discardDescription}
+                    confirmLabel={dict.discardConfirmLabel}
+                    cancelLabel={dict.discardCancelLabel}
+                    onConfirm={handleDiscardConfirm}
+                    onCancel={() => setDiscardConfirmOpen(false)}
+                    returnFocusRef={drawerReturnFocusRef}
+                />
             </div>
         </div>
     )
