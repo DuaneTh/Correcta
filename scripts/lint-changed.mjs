@@ -78,9 +78,51 @@ if (!existsSync(eslintBin)) {
 
 console.log(`[lint] linting ${filtered.length} file(s)`)
 
-const eslintResult = spawnSync(process.execPath, [eslintBin, ...filtered], { stdio: 'inherit' })
+const eslintArgs = [eslintBin, '--format', 'json', ...filtered]
+const eslintResult = spawnSync(process.execPath, eslintArgs, { encoding: 'utf8' })
 if (eslintResult.error) {
     console.error('[lint] eslint execution failed', eslintResult.error.message)
     process.exit(1)
 }
-process.exit(eslintResult.status ?? 1)
+
+let errorCount = null
+let warningCount = null
+let parsedOk = false
+try {
+    const parsed = JSON.parse(eslintResult.stdout ?? '[]')
+    if (Array.isArray(parsed)) {
+        const totals = parsed.reduce(
+            (acc, entry) => {
+                acc.errorCount += entry?.errorCount ?? 0
+                acc.warningCount += entry?.warningCount ?? 0
+                return acc
+            },
+            { errorCount: 0, warningCount: 0 }
+        )
+        errorCount = totals.errorCount
+        warningCount = totals.warningCount
+        parsedOk = true
+    }
+} catch {
+    // Ignore JSON parse errors; keep default output.
+}
+
+if (!parsedOk && eslintResult.stdout) {
+    process.stdout.write(eslintResult.stdout)
+}
+if (eslintResult.stderr) {
+    process.stderr.write(eslintResult.stderr)
+}
+
+if (errorCount !== null && warningCount !== null) {
+    console.log(`[lint] summary: ${errorCount} error(s), ${warningCount} warning(s)`)
+}
+
+const status = eslintResult.status ?? 1
+if (status === 0) {
+    console.log('[lint] PASS')
+} else {
+    console.log(`[lint] FAIL (code ${status})`)
+}
+
+process.exit(status)

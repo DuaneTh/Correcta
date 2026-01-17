@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Drawer from '@/components/ui/Drawer'
@@ -80,6 +81,12 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
     const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false)
     const drawerReturnFocusRef = useRef<HTMLElement | null>(null)
     const saveButtonRef = useRef<HTMLButtonElement | null>(null)
+    const drawerOpenedFromUrlRef = useRef(false)
+    const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const [copiedId, setCopiedId] = useState<string | null>(null)
+    const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
 
     const selectedInstitution = useMemo(() => {
         return institutions.find((institution) => institution.id === selectedId) ?? null
@@ -145,7 +152,9 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
             }
             const list = data.institutions ?? []
             setInstitutions(list)
-            if (!selectedId && list.length > 0) {
+            const urlInstitutionId = searchParams.get('institutionId')
+            const urlMode = searchParams.get('mode')
+            if (!selectedId && !urlInstitutionId && !urlMode && list.length > 0) {
                 setSelectedId(list[0].id)
                 setIsCreating(false)
             }
@@ -187,41 +196,108 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
         setClientSecretInput('')
     }, [selectedInstitution, isCreating])
 
-    const handleSelect = (institutionId: string, trigger?: HTMLElement | null) => {
-        setSelectedId(institutionId)
-        setIsCreating(false)
-        setEditingMode('edit')
-        setDrawerOpen(true)
-        if (trigger) {
-            drawerReturnFocusRef.current = trigger
-        }
-        setError('')
-    }
+    const buildUrlWithParams = useCallback(
+        (update: (params: URLSearchParams) => void) => {
+            const params = new URLSearchParams(searchParams.toString())
+            update(params)
+            const query = params.toString()
+            return query ? `${pathname}?${query}` : pathname
+        },
+        [pathname, searchParams]
+    )
 
-    const handleCreate = (trigger?: HTMLElement | null) => {
-        setIsCreating(true)
-        setSelectedId(null)
-        setForm({ ...emptyForm })
-        setSetNewSecret(false)
-        setClientSecretInput('')
-        setEditingMode('create')
-        setDrawerOpen(true)
-        if (trigger) {
-            drawerReturnFocusRef.current = trigger
-        }
-        setError('')
-    }
+    const setDrawerUrl = useCallback(
+        (next: { mode: 'create' } | { institutionId: string }) => {
+            const nextUrl = buildUrlWithParams((params) => {
+                if ('mode' in next) {
+                    params.delete('institutionId')
+                    params.set('mode', next.mode)
+                } else {
+                    params.delete('mode')
+                    params.set('institutionId', next.institutionId)
+                }
+            })
+            router.replace(nextUrl)
+        },
+        [buildUrlWithParams, router]
+    )
+
+    const clearDrawerUrl = useCallback(() => {
+        const nextUrl = buildUrlWithParams((params) => {
+            params.delete('institutionId')
+            params.delete('mode')
+        })
+        router.replace(nextUrl)
+    }, [buildUrlWithParams, router])
+
+    const handleSelect = useCallback(
+        (
+            institutionId: string,
+            trigger?: HTMLElement | null,
+            options: { updateUrl?: boolean; fromUrl?: boolean } = {}
+        ) => {
+            setSelectedId(institutionId)
+            setIsCreating(false)
+            setEditingMode('edit')
+            setDrawerOpen(true)
+            drawerOpenedFromUrlRef.current = options.fromUrl === true
+            if (trigger) {
+                drawerReturnFocusRef.current = trigger
+            }
+            setError('')
+            if (options.updateUrl) {
+                setDrawerUrl({ institutionId })
+            }
+        },
+        [setDrawerUrl]
+    )
+
+    const handleCreate = useCallback(
+        (
+            trigger?: HTMLElement | null,
+            options: { updateUrl?: boolean; fromUrl?: boolean } = {}
+        ) => {
+            setIsCreating(true)
+            setSelectedId(null)
+            setForm({ ...emptyForm })
+            setSetNewSecret(false)
+            setClientSecretInput('')
+            setEditingMode('create')
+            setDrawerOpen(true)
+            drawerOpenedFromUrlRef.current = options.fromUrl === true
+            if (trigger) {
+                drawerReturnFocusRef.current = trigger
+            }
+            setError('')
+            if (options.updateUrl) {
+                setDrawerUrl({ mode: 'create' })
+            }
+        },
+        [setDrawerUrl]
+    )
 
     const handleChange = (field: keyof typeof emptyForm, value: string | boolean) => {
         setForm((prev) => ({ ...prev, [field]: value }))
     }
 
-    const handleCopyId = async (institutionId: string) => {
+    const handleCopyLink = async (institutionId: string) => {
         try {
             if (!navigator?.clipboard?.writeText) {
                 return
             }
-            await navigator.clipboard.writeText(institutionId)
+            const relativeUrl = buildUrlWithParams((params) => {
+                params.delete('mode')
+                params.set('institutionId', institutionId)
+            })
+            const baseUrl = window.location.origin
+            await navigator.clipboard.writeText(`${baseUrl}${relativeUrl}`)
+            if (copyTimeoutRef.current) {
+                clearTimeout(copyTimeoutRef.current)
+            }
+            setCopiedId(institutionId)
+            copyTimeoutRef.current = setTimeout(() => {
+                setCopiedId(null)
+            }, 2000)
         } catch {
             setError(dict.saveError)
         }
@@ -314,6 +390,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
             setSetNewSecret(false)
             setClientSecretInput('')
             setDrawerOpen(false)
+            clearDrawerUrl()
         } catch (err) {
             console.error('[Institutions] Save failed', err)
             setError(dict.saveError)
@@ -333,15 +410,17 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
         setClientSecretInput('')
         setError('')
         setDrawerOpen(false)
+        clearDrawerUrl()
     }
 
-    const requestCloseDrawer = () => {
+    const requestCloseDrawer = useCallback(() => {
         if (isDirty) {
             setDiscardConfirmOpen(true)
             return
         }
         setDrawerOpen(false)
-    }
+        clearDrawerUrl()
+    }, [clearDrawerUrl, isDirty])
 
     const handleConfirm = () => {
         setConfirmOpen(false)
@@ -351,6 +430,59 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
             action()
         }
     }
+
+    useEffect(() => {
+        return () => {
+            if (copyTimeoutRef.current) {
+                clearTimeout(copyTimeoutRef.current)
+            }
+        }
+    }, [])
+
+    useEffect(() => {
+        const urlInstitutionId = searchParams.get('institutionId')
+        const urlMode = searchParams.get('mode')
+
+        if (urlMode === 'create') {
+            if (!drawerOpen || editingMode !== 'create' || !isCreating) {
+                handleCreate(null, { fromUrl: true })
+            } else {
+                drawerOpenedFromUrlRef.current = true
+            }
+            return
+        }
+
+        if (urlInstitutionId) {
+            const match = institutions.find((institution) => institution.id === urlInstitutionId)
+            if (match) {
+                if (
+                    !drawerOpen ||
+                    selectedId !== urlInstitutionId ||
+                    isCreating ||
+                    editingMode !== 'edit'
+                ) {
+                    handleSelect(urlInstitutionId, null, { fromUrl: true })
+                } else {
+                    drawerOpenedFromUrlRef.current = true
+                }
+            }
+            return
+        }
+
+        if (drawerOpen && drawerOpenedFromUrlRef.current) {
+            requestCloseDrawer()
+        }
+    }, [
+        drawerOpen,
+        editingMode,
+        handleCreate,
+        handleSelect,
+        institutions,
+        isCreating,
+        requestCloseDrawer,
+        searchParams,
+        selectedId,
+    ])
 
     return (
         <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
@@ -363,7 +495,9 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     {canCreate && (
                         <button
                             type="button"
-                            onClick={(event) => handleCreate(event.currentTarget)}
+                            onClick={(event) =>
+                                handleCreate(event.currentTarget, { updateUrl: true })
+                            }
                             className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                         >
                             {dict.createButton}
@@ -472,17 +606,23 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
                                                             type="button"
-                                                            onClick={(event) => handleSelect(institution.id, event.currentTarget)}
+                                                            onClick={(event) =>
+                                                                handleSelect(institution.id, event.currentTarget, {
+                                                                    updateUrl: true,
+                                                                })
+                                                            }
                                                             className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                                                         >
                                                             {dict.actionEdit}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={() => handleCopyId(institution.id)}
+                                                            onClick={() => handleCopyLink(institution.id)}
                                                             className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
                                                         >
-                                                            {dict.actionCopyId}
+                                                            {copiedId === institution.id
+                                                                ? dict.actionCopied
+                                                                : dict.actionCopyLink}
                                                         </button>
                                                     </div>
                                                 </td>
