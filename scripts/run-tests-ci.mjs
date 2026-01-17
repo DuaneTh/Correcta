@@ -4,9 +4,22 @@ import path from 'node:path'
 
 const workspaceRoot = process.cwd()
 const distDir = path.join(workspaceRoot, '.test-dist')
+const tscCommand = path.join(
+  workspaceRoot,
+  'node_modules',
+  '.bin',
+  process.platform === 'win32' ? 'tsc.cmd' : 'tsc'
+)
 
 const run = (command, args) => {
-  const result = spawnSync(command, args, { stdio: 'inherit' })
+  const result = spawnSync(command, args, {
+    stdio: 'inherit',
+    shell: process.platform === 'win32'
+  })
+  if (result.error) {
+    console.error(`[CI] Failed to run ${command}: ${result.error.message}`)
+    process.exit(1)
+  }
   if (result.status !== 0) {
     process.exit(result.status ?? 1)
   }
@@ -27,7 +40,7 @@ const collectTests = async (dir) => {
 }
 
 await fs.rm(distDir, { recursive: true, force: true })
-run('npx', ['tsc', '-p', 'tsconfig.tests.json'])
+run(tscCommand, ['-p', 'tsconfig.tests.json'])
 
 const testDir = path.join(distDir, 'tests')
 const testFiles = await collectTests(testDir)
