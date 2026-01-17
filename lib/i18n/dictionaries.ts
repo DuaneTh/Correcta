@@ -79,6 +79,36 @@ const dictionaries = {
                 discardConfirmLabel: 'Ignorer',
                 discardCancelLabel: 'Retour',
             },
+            platformDashboard: {
+                title: 'Tableau de bord plateforme',
+                kpiInstitutions: 'Institutions',
+                kpiSsoEnabled: 'SSO actifs',
+                kpiSsoMissingSecret: 'SSO sans secret',
+                kpiDomainsMissing: 'Domaines manquants',
+                quickActions: 'Actions rapides',
+                createInstitution: 'Cr\\u00e9er une institution',
+                manageInstitutions: 'G\\u00e9rer les institutions',
+                attentionTitle: '\\u00c0 surveiller',
+                allGood: 'Tout est OK.',
+            },
+            platformAudit: {
+                title: 'Audit plateforme',
+                subtitle: 'Suivi des actions admin et signaux de s\u00e9curit\u00e9.',
+                cardEvents: 'Audit events',
+                cardEventsHint: 'Derniers \u00e9v\u00e9nements agr\u00e9g\u00e9s',
+                cardAdminActions: 'Admin actions',
+                cardAdminActionsHint: 'Actions sensibles effectu\u00e9es',
+                cardSecuritySignals: 'Security signals',
+                cardSecuritySignalsHint: 'Alertes et anomalies',
+                recentEvents: '\u00c9v\u00e8nements r\u00e9cents',
+                columnEvent: '\u00c9v\u00e8nement',
+                columnActor: 'Acteur',
+                columnInstitution: 'Institution',
+                columnTimestamp: 'Horodatage',
+                emptyState: "Aucun \u00e9v\u00e9nement d'audit pour l'instant.",
+                exportLabel: 'Exporter CSV',
+                exportHint: 'Export CSV bient\u00f4t disponible',
+            },
             school: {
                 titlePrefix: 'Administration',
                 domainsLabel: 'Domaines',
@@ -646,6 +676,36 @@ const dictionaries = {
                 discardConfirmLabel: 'Discard',
                 discardCancelLabel: 'Back',
             },
+            platformDashboard: {
+                title: 'Platform dashboard',
+                kpiInstitutions: 'Institutions',
+                kpiSsoEnabled: 'SSO enabled',
+                kpiSsoMissingSecret: 'SSO missing secret',
+                kpiDomainsMissing: 'Missing domains',
+                quickActions: 'Quick actions',
+                createInstitution: 'Cr\\u00e9er une institution',
+                manageInstitutions: 'G\\u00e9rer les institutions',
+                attentionTitle: '\\u00c0 surveiller',
+                allGood: 'All good.',
+            },
+            platformAudit: {
+                title: 'Platform audit',
+                subtitle: 'Track admin actions and security signals.',
+                cardEvents: 'Audit events',
+                cardEventsHint: 'Latest aggregated activity',
+                cardAdminActions: 'Admin actions',
+                cardAdminActionsHint: 'Sensitive operations performed',
+                cardSecuritySignals: 'Security signals',
+                cardSecuritySignalsHint: 'Alerts and anomalies',
+                recentEvents: 'Recent events',
+                columnEvent: 'Event',
+                columnActor: 'Actor',
+                columnInstitution: 'Institution',
+                columnTimestamp: 'Timestamp',
+                emptyState: 'No audit events yet.',
+                exportLabel: 'Export CSV',
+                exportHint: 'CSV export coming soon',
+            },
             school: {
                 titlePrefix: 'Administration',
                 domainsLabel: 'Domains',
@@ -1149,6 +1209,8 @@ export function getSectionLabel(count: number, dict: Dictionary): string {
     }
     return `${count} Sections`
 }
+
+
 
 
 
