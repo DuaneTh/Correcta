@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { prisma } from "@/lib/prisma"
 import { getExamPermissions } from "@/lib/exam-permissions"
+import { safeJson } from "@/lib/logging"
+import { Prisma } from "@prisma/client"
 
 type ExamParams = { examId?: string }
 
@@ -93,6 +96,16 @@ export async function POST(req: Request, { params }: { params: Promise<ExamParam
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: getCsrfCookieToken(req),
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
+        }
+
         // Verify exam belongs to user's institution
         const exam = await prisma.exam.findUnique({
             where: { id: examId },
@@ -128,13 +141,16 @@ export async function POST(req: Request, { params }: { params: Promise<ExamParam
             isDefault?: boolean
         }
 
-        console.log("[API] Create Section - Body received:", JSON.stringify(body, null, 2))
+        console.log("[API] Create Section", safeJson({
+            examId,
+            userId: session.user.id,
+            hasAfterSectionId: Boolean(afterSectionId),
+            hasAfterQuestionId: Boolean(afterQuestionId)
+        }))
 
         if (title === undefined || title === null) {
             return NextResponse.json({ error: "Missing title" }, { status: 400 })
         }
-
-        console.log("[API] Create Section - Body received:", JSON.stringify(body, null, 2))
 
         const sectionDataBase = {
             examId,
@@ -286,35 +302,32 @@ export async function POST(req: Request, { params }: { params: Promise<ExamParam
         console.log("[API] Create Section - Success (afterQuestionId)")
         return NextResponse.json(created)
     } catch (error: unknown) {
-        console.error("[API] Create Section Error:", error)
-        console.error("[API] Create Section Error Details:", {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            code: (error as any)?.code,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            message: (error as any)?.message,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            meta: (error as any)?.meta,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            stack: (error as any)?.stack
+        const isKnownPrismaError = error instanceof Prisma.PrismaClientKnownRequestError
+        const errorCode = isKnownPrismaError ? error.code : undefined
+        const errorMessage = error instanceof Error ? error.message : 'Internal Server Error'
+
+        console.error('[API] Create Section Error', {
+            name: error instanceof Error ? error.name : 'UnknownError',
+            code: errorCode,
+            message: errorMessage,
         })
-        
-        // Determine error message
-        let errorMessage = "Internal Server Error"
-        if ((error as any)?.message) {
-            errorMessage = (error as any).message
-        } else if ((error as any)?.code) {
-            // Handle Prisma-specific errors
-            if ((error as any).code === 'P2002') {
-                errorMessage = "A section with this configuration already exists"
-            } else if ((error as any).code === 'P2003') {
-                errorMessage = "Invalid exam reference"
-            } else {
-                errorMessage = `Database error: ${(error as any).code}`
+
+        let responseMessage = 'Internal Server Error'
+        if (isKnownPrismaError) {
+            if (errorCode === 'P2002') {
+                responseMessage = 'A section with this configuration already exists'
+            } else if (errorCode === 'P2003') {
+                responseMessage = 'Invalid exam reference'
+            } else if (errorCode) {
+                responseMessage = `Database error: ${errorCode}`
             }
+        } else if (errorMessage) {
+            responseMessage = errorMessage
         }
-        
-        return NextResponse.json({ 
-            error: errorMessage
-        }, { status: 500 })
+
+        return NextResponse.json(
+            { error: responseMessage },
+            { status: 500 }
+        )
     }
 }

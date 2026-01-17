@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, Fragment, forwardRef } from 'react'
+import { useState, useEffect, Fragment, forwardRef, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowLeft, Save, ChevronDown, Check } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
+import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Link from 'next/link'
 import DatePicker, { registerLocale } from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
@@ -181,7 +182,7 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
     }, [sourceExam, selectedCourseId, title, currentLocale, courses])
 
     const selectedCourse = courses.find((course) => course.id === selectedCourseId)
-    const availableSections = selectedCourse?.classes ?? []
+    const availableSections = useMemo(() => selectedCourse?.classes ?? [], [selectedCourse])
 
     useEffect(() => {
         setSelectedSectionIds((prev) => {
@@ -320,20 +321,13 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
                 body.durationMinutes = parseInt(durationMinutes)
             }
 
-            const response = await fetch('/api/exams', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(body),
-            })
-
-            if (!response.ok) {
-                const data = await response.json()
-                throw new Error(data.error || 'Failed to create exam')
-            }
-
-            const data = await response.json()
+            const data = await fetchJsonWithCsrf<{ id?: string; created?: Array<{ id?: string }> }>(
+                '/api/exams',
+                {
+                    method: 'POST',
+                    body
+                }
+            )
             const nextId = data?.id || data?.created?.[0]?.id
             if (!nextId) {
                 throw new Error('Missing exam id')

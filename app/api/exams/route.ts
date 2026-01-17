@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { prisma } from "@/lib/prisma"
 import { Prisma } from "@prisma/client"
 import { getExamPermissions } from "@/lib/exam-permissions"
@@ -46,7 +47,7 @@ const cloneExamContent = async (tx: Prisma.TransactionClient, sourceExamId: stri
                     content: question.content,
                     answerTemplate: question.answerTemplate ?? null,
                     answerTemplateLocked: question.answerTemplateLocked ?? false,
-                    studentTools: (question.studentTools ?? null) as any,
+                    studentTools: (question.studentTools ?? null) as Prisma.InputJsonValue,
                     shuffleOptions: question.shuffleOptions ?? false,
                     type: question.type,
                     order: question.order,
@@ -72,8 +73,8 @@ const cloneExamContent = async (tx: Prisma.TransactionClient, sourceExamId: stri
                         data: {
                             segmentId: createdSegment.id,
                             criteria: segment.rubric.criteria ?? null,
-                            levels: segment.rubric.levels as any,
-                            examples: (segment.rubric.examples ?? null) as any,
+                            levels: segment.rubric.levels as Prisma.InputJsonValue,
+                            examples: (segment.rubric.examples ?? null) as Prisma.InputJsonValue,
                         },
                     })
                 }
@@ -201,6 +202,16 @@ export async function POST(req: Request) {
 
         if (!session || !session.user || session.user.role === 'STUDENT') {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: getCsrfCookieToken(req),
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
         const body = (await req.json()) as {
@@ -350,17 +361,17 @@ export async function POST(req: Request) {
             data.description = sourceExam.description
             data.requireHonorCommitment = sourceExam.requireHonorCommitment
             data.allowedMaterials = sourceExam.allowedMaterials
-            data.antiCheatConfig = sourceExam.antiCheatConfig as any
-            data.gradingConfig = sourceExam.gradingConfig as any
+            data.antiCheatConfig = sourceExam.antiCheatConfig as Prisma.InputJsonValue
+            data.gradingConfig = sourceExam.gradingConfig as Prisma.InputJsonValue
         }
 
         const exam = sourceExam
             ? await prisma.$transaction(async (tx) => {
-                const created = await tx.exam.create({ data: data as any })
+                const created = await tx.exam.create({ data: data as Prisma.ExamCreateInput })
                 await cloneExamContent(tx, sourceExam.id, created.id)
                 return created
             })
-            : await prisma.exam.create({ data: data as any })
+            : await prisma.exam.create({ data: data as Prisma.ExamCreateInput })
 
         return NextResponse.json({ id: exam.id }, { status: 201 })
     } catch (error: unknown) {

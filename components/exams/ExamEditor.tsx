@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Save, ArrowLeft } from 'lucide-react'
 import { Exam } from '@/types/exams'
+import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 
 interface ExamEditorProps {
     initialData?: Exam
@@ -28,19 +29,12 @@ export default function ExamEditor({ initialData, courses }: ExamEditorProps) {
             const url = initialData ? `/api/exams/${initialData.id}` : '/api/exams'
             const method = initialData ? 'PUT' : 'POST'
 
-            const res = await fetch(url, {
+            const exam = await fetchJsonWithCsrf<Exam>(url, {
                 method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: formData
             })
-
-            if (res.ok) {
-                const exam = await res.json()
-                router.push(`/dashboard/exams/${exam.id}/builder`)
-                router.refresh()
-            } else {
-                alert('Failed to save exam')
-            }
+            router.push(`/dashboard/exams/${exam.id}/builder`)
+            router.refresh()
         } catch (error) {
             console.error(error)
             alert('Error saving exam')

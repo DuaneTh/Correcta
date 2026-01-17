@@ -8,6 +8,7 @@ import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
 import { ExamStatusBadge } from '@/components/teacher/ExamStatusBadge'
 import { getExamEndAt } from '@/lib/exam-time'
 import { getCorrectionReleaseInfo } from '@/lib/correction-release'
+import { getCsrfToken } from '@/lib/csrfClient'
 
 interface Exam {
     id: string
@@ -126,7 +127,11 @@ export default function ExamList({ dictionary }: ExamListProps) {
         console.log('[ExamList] Confirming delete for exam:', id)
         setIsDeleting(true)
         try {
-            const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' })
+            const csrfToken = await getCsrfToken()
+            const res = await fetch(`/api/exams/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-csrf-token': csrfToken }
+            })
             console.log('[ExamList] Delete response:', res.status, res.ok)
             if (res.ok) {
                 setExams(prev => prev.filter(e => e.id !== id))
@@ -154,9 +159,10 @@ export default function ExamList({ dictionary }: ExamListProps) {
                 gradesReleased: true,
                 gradesReleasedAt: now,
             }
+            const csrfToken = await getCsrfToken()
             const res = await fetch(`/api/exams/${examId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'x-csrf-token': csrfToken },
                 body: JSON.stringify({ gradingConfig: nextConfig }),
             })
             if (res.ok) {

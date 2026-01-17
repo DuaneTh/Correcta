@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { prisma } from "@/lib/prisma"
 import { parseContent } from "@/lib/content"
 import { getExamPermissions } from "@/lib/exam-permissions"
 import { assertExamVariantShape, getDraftVariantsForBaseExam } from "@/lib/exam-variants"
+import { safeJson } from "@/lib/logging"
 
 const resolveCourseTeacherName = (course: {
     classes?: Array<{
@@ -224,8 +226,17 @@ export async function PUT(req: Request, { params }: { params: Promise<ExamParams
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
         }
 
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: getCsrfCookieToken(req),
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
+        }
+
         const body = await req.json()
-        console.log("[API] Update Exam - Body received:", JSON.stringify(body, null, 2))
 
         // Validate ownership before update
         const existingExam = await prisma.exam.findUnique({
@@ -257,11 +268,17 @@ export async function PUT(req: Request, { params }: { params: Promise<ExamParams
         if (body.antiCheatConfig !== undefined) updateData.antiCheatConfig = body.antiCheatConfig
         if (body.gradingConfig !== undefined) updateData.gradingConfig = body.gradingConfig
 
-        console.log("[API] Update Exam - Update data:", JSON.stringify(updateData, null, 2))
-
-        if (Object.keys(updateData).length === 0) {
+        const fieldNames = Object.keys(updateData)
+        if (fieldNames.length === 0) {
             return NextResponse.json({ error: "No fields to update" }, { status: 400 })
         }
+
+        console.log("[API] Update Exam", safeJson({
+            examId,
+            userId: session.user.id,
+            fieldNames,
+            fieldCount: fieldNames.length
+        }))
 
         try {
             const updatedExam = await prisma.exam.update({
@@ -474,6 +491,16 @@ export async function DELETE(req: Request, { params }: { params: Promise<ExamPar
 
         if (!session || !session.user || session.user.role === 'STUDENT') {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: getCsrfCookieToken(req),
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
         const existingExam = await prisma.exam.findUnique({

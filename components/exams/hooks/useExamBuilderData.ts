@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Exam, Question, QuestionType, Segment, ValidationErrors, ContentSegment, Rubric } from '@/types/exams'
 import { parseContent, serializeContent, segmentsToPlainText } from '@/lib/content'
+import { getCsrfToken } from '@/lib/csrfClient'
+import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+
+const withCsrfHeaders = async (headers: HeadersInit = {}) => ({
+    ...headers,
+    'x-csrf-token': await getCsrfToken()
+})
 
 type ValidationDictionary = {
     validationTitle: string
@@ -101,7 +108,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
         } finally {
             setLoading(false)
         }
-    }, [examId])
+    }, [examId, exam.baseExamId, exam.baseExamTitle, exam.canEdit, exam.courseSections])
 
     const getValidationErrors = useCallback((target?: Exam): ValidationErrors => {
         const errors: ValidationErrors = { questions: [] }
@@ -214,7 +221,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
             }
         }
         return errors
-    }, [exam, getMcqPositivePointsSum, liveExam])
+    }, [exam, getMcqPositivePointsSum, getPlainStringValue, liveExam])
 
     const computeValidationDetails = useCallback(
         (target?: Exam): ValidationErrors | null => {
@@ -652,7 +659,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
 
                 const res = await fetch(`/api/exams/${examId}/sections`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await withCsrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         title: '',
                         order: newOrder,
@@ -819,7 +826,10 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
     const deleteExam = useCallback(async () => {
         try {
             setLoading(true)
-            const res = await fetch(`/api/exams/${examId}`, { method: 'DELETE' })
+            const res = await fetch(`/api/exams/${examId}`, {
+                method: 'DELETE',
+                headers: await withCsrfHeaders()
+            })
             if (!res.ok) throw new Error('Failed to delete exam')
             return true
         } catch (err) {
@@ -1018,7 +1028,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
         try {
             const res = await fetch(`/api/exams/${examId}/publish`, {
                 method: 'POST',
-                headers: policy ? { 'Content-Type': 'application/json' } : undefined,
+                headers: await withCsrfHeaders(policy ? { 'Content-Type': 'application/json' } : {}),
                 body: policy ? JSON.stringify({ policy }) : undefined,
             })
             const data = await res.json()
@@ -1105,11 +1115,9 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
         setValidationErrors([])
         setError(null)
         try {
-            const res = await fetch(`/api/exams/${examId}/publish`, { method: 'DELETE' })
-            const data = await res.json()
-            if (!res.ok) {
-                throw new Error(data?.error || 'Failed to unpublish exam')
-            }
+            await fetchJsonWithCsrf(`/api/exams/${examId}/publish`, {
+                method: 'DELETE'
+            })
             const reloaded = await reloadExam()
             if (reloaded) {
                 setValidationDetails(computeValidationDetails(reloaded))
@@ -1132,7 +1140,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
             try {
                 const res = await fetch(`/api/exams/${examId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await withCsrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ requireHonorCommitment: checked }),
                 })
                 if (!res.ok) {
@@ -1162,7 +1170,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
             try {
                 const res = await fetch(`/api/exams/${examId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await withCsrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ allowedMaterials: value.trim() || null }),
                 })
                 if (!res.ok) {
@@ -1191,7 +1199,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
             try {
                 const res = await fetch(`/api/exams/${examId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await withCsrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ gradingConfig }),
                 })
                 if (!res.ok) {
@@ -1248,7 +1256,7 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
 
                 const res = await fetch(`/api/exams/${examId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: await withCsrfHeaders({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify(body),
                 })
                 if (!res.ok) {

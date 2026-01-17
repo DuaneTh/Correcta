@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { buildAuthOptions } from '@/lib/auth'
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 import { parseContent, segmentsToPlainText } from '@/lib/content'
 import { getExamPermissions } from '@/lib/exam-permissions'
 import { assertExamVariantShape, getDraftVariantsForBaseExam, getPublishPolicyResult, PublishPolicy } from '@/lib/exam-variants'
@@ -17,6 +18,16 @@ export async function POST(
     // Auth check
     if (!session?.user?.id || session.user.role === 'STUDENT') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     let body: { policy?: PublishPolicy } | null = null
@@ -79,7 +90,8 @@ export async function POST(
         if (!exam.durationMinutes || exam.durationMinutes <= 0) {
             missing.push('duration')
         }
-        const correctionReleaseAt = (exam.gradingConfig as any)?.correctionReleaseAt
+        const gradingConfig = exam.gradingConfig as { correctionReleaseAt?: string | null } | null
+        const correctionReleaseAt = gradingConfig?.correctionReleaseAt
         if (correctionReleaseAt) {
             const releaseDate = new Date(correctionReleaseAt)
             const now = new Date()
@@ -271,6 +283,16 @@ export async function DELETE(
 
     if (!session?.user?.id || session.user.role === 'STUDENT') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
+    }
+
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     try {

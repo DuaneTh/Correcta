@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { getCsrfToken } from '@/lib/csrfClient'
 
 interface AttemptSummary {
     attemptId: string
@@ -92,8 +93,10 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         setReleaseMessage(null)
 
         try {
+            const csrfToken = await getCsrfToken()
             const res = await fetch(`/api/exams/${examId}/release-results`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-csrf-token': csrfToken }
             })
 
             const data = await res.json()

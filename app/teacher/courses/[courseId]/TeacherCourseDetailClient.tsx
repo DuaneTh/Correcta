@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { getCsrfToken } from '@/lib/csrfClient'
 import { ArrowLeft, Plus, Users, Layers, FileText, Download, Trash2 } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
@@ -97,7 +98,11 @@ export default function TeacherCourseDetailClient({
         event.stopPropagation()
         setIsDeleting(true)
         try {
-            const res = await fetch(`/api/exams/${id}`, { method: 'DELETE' })
+            const csrfToken = await getCsrfToken()
+            const res = await fetch(`/api/exams/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-csrf-token': csrfToken }
+            })
             if (res.ok) {
                 setExamsList(prev => prev.filter(e => e.id !== id))
                 setExamIdPendingDelete(null)

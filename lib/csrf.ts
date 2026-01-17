@@ -22,6 +22,21 @@ const DEFAULT_COOKIE_NAME = 'correcta-csrf'
 export const getCsrfCookieName = (): string =>
     process.env.CSRF_COOKIE_NAME || DEFAULT_COOKIE_NAME
 
+export const getCsrfCookieToken = (req: Request): string | undefined => {
+    const cookieName = getCsrfCookieName()
+    const requestWithCookies = req as unknown as {
+        cookies?: { get?: (name: string) => { value?: string } | undefined }
+    }
+    const cookieValue = requestWithCookies.cookies?.get?.(cookieName)?.value
+    if (cookieValue) {
+        return cookieValue
+    }
+
+    const cookieHeader = req.headers.get('cookie') || ''
+    const match = cookieHeader.match(new RegExp(`${cookieName}=([^;]+)`))
+    return match ? match[1] : undefined
+}
+
 export const isCsrfEnabled = (): boolean => {
     if (process.env.CSRF_ENABLED === 'false') {
         return false
