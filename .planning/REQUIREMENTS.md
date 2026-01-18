@@ -27,7 +27,7 @@ Requirements pour le pilote ESSEC. Amélioration de l'existant, pas reconstructi
 
 - [ ] **CORR-01**: Correction automatique via GPT-4 selon barème défini
 - [ ] **CORR-02**: Feedback personnalisé généré pour chaque réponse d'étudiant
-- [ ] **CORR-03**: Review obligatoire par prof avant publication des notes
+- [ ] **CORR-03**: Review optionnel par prof avant publication des notes (peut publier directement)
 - [ ] **CORR-04**: Interface de review pour valider/modifier notes et feedback
 - [ ] **CORR-05**: Support des réponses mathématiques (LaTeX) dans le prompt IA
 
