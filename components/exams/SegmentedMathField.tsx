@@ -2492,6 +2492,83 @@ function InsertMenu({
     )
 }
 
+// Quick symbols for the hover math button
+const defaultQuickSymbols = [
+    { label: 'a/b', latex: '\\frac{#@}{#0}' },
+    { label: '√', latex: '\\sqrt{#0}' },
+    { label: 'x²', latex: '^{#0}' },
+    { label: 'xₙ', latex: '_{#0}' },
+    { label: '∑', latex: '\\sum_{#@}^{#0}' },
+    { label: '∫', latex: '\\int_{#@}^{#0}' },
+    { label: 'lim', latex: '\\lim_{#0}' },
+    { label: 'π', latex: '\\pi' },
+    { label: '∞', latex: '\\infty' },
+    { label: '≤', latex: '\\leq' },
+    { label: '≥', latex: '\\geq' },
+    { label: '≠', latex: '\\neq' },
+    { label: '×', latex: '\\times' },
+    { label: 'α', latex: '\\alpha' },
+    { label: 'β', latex: '\\beta' },
+    { label: 'θ', latex: '\\theta' },
+    { label: 'λ', latex: '\\lambda' },
+    { label: 'ℝ', latex: '\\mathbb{R}' },
+]
+
+type HoverMathButtonProps = {
+    isFrench: boolean
+    disabled?: boolean
+    onInsertSymbol: (latex: string) => void
+    onInsertMathChip: () => void
+}
+
+function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip }: HoverMathButtonProps) {
+    const [isHovered, setIsHovered] = useState(false)
+
+    return (
+        <div
+            className="relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={onInsertMathChip}
+                className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-gray-600 hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
+            >
+                <Calculator className="h-3.5 w-3.5" />
+                <span>{isFrench ? 'Maths' : 'Math'}</span>
+                <ChevronDown className="h-3 w-3" />
+            </button>
+            {isHovered && (
+                <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[280px]">
+                    <div className="flex flex-wrap gap-1">
+                        {defaultQuickSymbols.map((sym, idx) => (
+                            <button
+                                key={idx}
+                                type="button"
+                                onClick={() => onInsertSymbol(sym.latex)}
+                                className="px-2 py-1 text-sm hover:bg-brand-50 rounded border border-gray-100 hover:border-brand-200 transition-colors"
+                                title={sym.latex}
+                            >
+                                {sym.label}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="mt-2 pt-2 border-t border-gray-100">
+                        <button
+                            type="button"
+                            onClick={onInsertMathChip}
+                            className="w-full text-left px-2 py-1.5 text-xs text-brand-600 hover:bg-brand-50 rounded transition-colors"
+                        >
+                            {isFrench ? '+ Editeur de formule avancé' : '+ Advanced formula editor'}
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 export default function SegmentedMathField({
     value,
@@ -5244,13 +5321,23 @@ export default function SegmentedMathField({
 
         <div className={`space-y-2 group/insert ${className}`}>
 
-            {/* Math Toolbar - positioned above editor by default */}
+            {/* Math Toolbar - positioned above editor by default (legacy, hidden by default) */}
             {shouldShowMathToolbar && toolbarPosition === 'top' && (
                 <MathToolbar
                     onInsert={handleToolbarInsert}
                     disabled={disabled}
                     locale={isFrench ? 'fr' : 'en'}
                     size={toolbarSize}
+                />
+            )}
+
+            {/* Hover Math Button - shows symbols on hover */}
+            {showMathButton && !shouldShowMathToolbar && (
+                <HoverMathButton
+                    isFrench={isFrench}
+                    disabled={disabled}
+                    onInsertSymbol={handleToolbarInsert}
+                    onInsertMathChip={insertMathChip}
                 />
             )}
 
@@ -5263,7 +5350,7 @@ export default function SegmentedMathField({
                         disabled={disabled}
                         compactToolbar={compactToolbar}
                         toolbarSize={toolbarSize}
-                        showMathButton={showMathButton}
+                        showMathButton={false}
                         showTableButton={showTableButton}
                         showGraphButton={showGraphButton}
                         onInsertMath={insertMathChip}
