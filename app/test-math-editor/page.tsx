@@ -20,12 +20,13 @@ export default function TestMathEditorPage() {
                 </h1>
 
                 <div className="bg-white rounded-lg shadow p-6 mb-6">
-                    <h2 className="text-lg font-semibold mb-4 text-gray-800">Editor</h2>
+                    <h2 className="text-lg font-semibold mb-4 text-gray-800">Editor with Math Toolbar</h2>
                     <SegmentedMathField
                         value={segments}
                         onChange={setSegments}
                         placeholder="Type here, add math formulas..."
                         minRows={3}
+                        showMathToolbar={true}
                     />
                 </div>
 

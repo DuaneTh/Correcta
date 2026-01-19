@@ -6,6 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown } from 'lucide-react'
 import { ContentSegment, GraphSegment, TableCell } from '@/types/exams'
 import { renderGraphInto } from './graph-utils'
+import MathToolbar from './MathToolbar'
 
 
 // ------------------------------------------------------------------
@@ -541,6 +542,8 @@ interface InlineMathEditorProps {
     onDelete: () => void
     anchorRef: React.RefObject<HTMLSpanElement | null>
     locale?: string
+    /** Callback to expose the math field element to parent for toolbar insertion */
+    onMathFieldReady?: (mf: MathfieldElement | null) => void
 }
 
 
@@ -564,7 +567,7 @@ interface MathfieldElement extends HTMLElement {
 
 
 
-function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete, anchorRef, locale = 'fr' }: InlineMathEditorProps) {
+function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete, anchorRef, locale = 'fr', onMathFieldReady }: InlineMathEditorProps) {
     const mathFieldRef = useRef<MathfieldElement | null>(null)
 
     const editorRef = useRef<HTMLDivElement>(null)
@@ -838,7 +841,8 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
         mathFieldRef.current = mf
 
-
+        // Notify parent that math field is ready for toolbar insertion
+        onMathFieldReady?.(mf)
 
         // Focus the field after a short delay
 
@@ -863,10 +867,11 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
             }
 
             mathFieldRef.current = null
+            onMathFieldReady?.(null)
 
         }
 
-    }, [mathLiveLoaded, onChangeDraft, onConfirm, onCancel])
+    }, [mathLiveLoaded, onChangeDraft, onConfirm, onCancel, onMathFieldReady])
 
 
 
@@ -2497,6 +2502,10 @@ interface SegmentedMathFieldProps {
         allowText?: boolean
     }
     locale?: string
+    /** Show the persistent MathToolbar above the editor (default: true when showMathButton is true) */
+    showMathToolbar?: boolean
+    /** Position of the MathToolbar (default: 'top') */
+    toolbarPosition?: 'top' | 'bottom'
 }
 
 type InsertMenuProps = {
@@ -2637,6 +2646,8 @@ export default function SegmentedMathField({
     showTableButton = true,
     showGraphButton = showTableButton,
     showHint = true,
+    showMathToolbar,
+    toolbarPosition = 'top',
     compactToolbar = false,
     toolbarRightSlot,
     toolbarSize = 'sm',
@@ -2679,6 +2690,12 @@ export default function SegmentedMathField({
         return isSegmentsEmpty(segs)
     })
     const isFrench = locale === 'fr'
+
+    // Compute whether to show the math toolbar (default: true when showMathButton is true)
+    const shouldShowMathToolbar = showMathToolbar ?? showMathButton
+
+    // Ref to track the active math field element for toolbar insertion
+    const activeMathFieldRef = useRef<MathfieldElement | null>(null)
 
 
     // Load MathJax once
@@ -3806,6 +3823,86 @@ export default function SegmentedMathField({
 
         handleInput()
     }, [disabled, createMathChipElement, handleInput])
+
+    // ------------------------------------------------------------------
+    // Insert math from toolbar: if editing math, insert into active field;
+    // otherwise create a new math segment with the given LaTeX
+    // ------------------------------------------------------------------
+
+    const handleToolbarInsert = useCallback((latex: string) => {
+        if (disabled) return
+
+        // If we're currently editing a math segment, insert into the active math field
+        if (editingMathId && activeMathFieldRef.current) {
+            activeMathFieldRef.current.insert(latex, { focus: true, feedback: false })
+            return
+        }
+
+        // Otherwise, create a new math segment with the inserted LaTeX
+        const editor = editorRef.current
+        if (!editor) return
+
+        const selection = window.getSelection()
+        let range: Range | null = null
+
+        // Check if we have a valid selection inside the editor
+        if (selection && selection.rangeCount > 0) {
+            const testRange = selection.getRangeAt(0)
+            if (editor.contains(testRange.commonAncestorContainer)) {
+                range = testRange
+            }
+        }
+
+        // If no valid selection or not in editor, insert at end
+        if (!range) {
+            editor.focus()
+            range = document.createRange()
+            const lastChild = editor.lastChild
+
+            if (lastChild) {
+                if (lastChild.nodeType === Node.TEXT_NODE) {
+                    range.setStart(lastChild, lastChild.textContent?.length || 0)
+                    range.setEnd(lastChild, lastChild.textContent?.length || 0)
+                } else {
+                    range.setStartAfter(lastChild)
+                    range.setEndAfter(lastChild)
+                }
+            } else {
+                range.setStart(editor, 0)
+                range.setEnd(editor, 0)
+            }
+
+            if (selection) {
+                selection.removeAllRanges()
+                selection.addRange(range)
+            }
+        } else {
+            editor.focus()
+        }
+
+        range.deleteContents()
+
+        const newId = createId()
+        const chip = createMathChipElement(newId, latex)
+
+        // Insert the chip
+        range.insertNode(chip)
+
+        // Move caret after the chip
+        range.setStartAfter(chip)
+        range.setEndAfter(chip)
+        if (selection) {
+            selection.removeAllRanges()
+            selection.addRange(range)
+        }
+
+        editingChipRef.current = chip
+        setEditingMathId(newId)
+        // Initialize draft with the inserted LaTeX
+        setDraftLatexById(prev => ({ ...prev, [newId]: latex }))
+        originalLatexRef.current = latex
+        handleInput()
+    }, [disabled, editingMathId, createMathChipElement, handleInput])
 
     // ------------------------------------------------------------------
     // Insert a new table at current caret position (always on next line)
@@ -5378,6 +5475,16 @@ export default function SegmentedMathField({
 
         <div className={`space-y-2 group/insert ${className}`}>
 
+            {/* Math Toolbar - positioned above editor by default */}
+            {shouldShowMathToolbar && toolbarPosition === 'top' && (
+                <MathToolbar
+                    onInsert={handleToolbarInsert}
+                    disabled={disabled}
+                    locale={isFrench ? 'fr' : 'en'}
+                    size={toolbarSize}
+                />
+            )}
+
             {/* Editor container */}
             <div className="relative">
                 <div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover/insert:opacity-100 group-hover/insert:pointer-events-auto group-focus-within/insert:opacity-100 group-focus-within/insert:pointer-events-auto">
@@ -5457,6 +5564,7 @@ export default function SegmentedMathField({
                     onDelete={handleDeleteMath}
                     anchorRef={editingChipRef}
                     locale={locale}
+                    onMathFieldReady={(mf) => { activeMathFieldRef.current = mf }}
                 />
             )}
 
@@ -5483,6 +5591,16 @@ export default function SegmentedMathField({
                     onDelete={handleDeleteGraph}
                     anchorRef={editingGraphRef}
                     locale={locale}
+                />
+            )}
+
+            {/* Math Toolbar - positioned below editor if toolbarPosition is 'bottom' */}
+            {shouldShowMathToolbar && toolbarPosition === 'bottom' && (
+                <MathToolbar
+                    onInsert={handleToolbarInsert}
+                    disabled={disabled}
+                    locale={isFrench ? 'fr' : 'en'}
+                    size={toolbarSize}
                 />
             )}
         </div>
