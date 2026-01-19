@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Question, Section, ContentSegments, Segment } from '@/types/exams'
+import type { ContentSegments, QuestionType, StudentToolsConfig, RubricLevel } from '@/types/exams'
 
 /**
  * Exam metadata that can be edited in the editor
@@ -36,24 +36,57 @@ export interface EditorExam {
 }
 
 /**
- * Section in the editor, extended with editor-specific state
+ * Section in the editor
  */
-export interface EditorSection extends Omit<Section, 'questions' | 'introContent'> {
-  questions: EditorQuestion[]
+export interface EditorSection {
+  id: string
+  title: string
+  order: number
+  isDefault: boolean
+  customLabel: string | null
   introContent: ContentSegments | string | null
+  questions: EditorQuestion[]
 }
 
 /**
- * Question in the editor, with segments included
+ * Question in the editor
  */
-export interface EditorQuestion extends Omit<Question, 'segments'> {
+export interface EditorQuestion {
+  id: string
+  content: ContentSegments
+  answerTemplate: ContentSegments | null
+  answerTemplateLocked: boolean
+  studentTools: StudentToolsConfig | null
+  shuffleOptions: boolean
+  type: QuestionType
+  order: number
+  customLabel: string | null
+  requireAllCorrect: boolean
+  maxPoints: number | null
   segments: EditorSegment[]
+}
+
+/**
+ * Rubric for grading in the editor
+ */
+export interface EditorRubric {
+  id: string
+  criteria: string | null
+  levels: RubricLevel[] | unknown
+  examples: string[] | unknown
 }
 
 /**
  * Segment in the editor
  */
-export interface EditorSegment extends Segment {}
+export interface EditorSegment {
+  id: string
+  order: number
+  instruction: string
+  maxPoints: number | null
+  isCorrect: boolean | null
+  rubric: EditorRubric | null
+}
 
 /**
  * Exam editor store state

@@ -7,6 +7,7 @@ import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { parseContent } from '@/lib/content'
 import { getExamPermissions } from '@/lib/exam-permissions'
+import type { StudentToolsConfig } from '@/types/exams'
 
 /**
  * Creates a new draft exam for the specified course.
@@ -157,9 +158,9 @@ export async function getExamForEditor(examId: string) {
         content: parseContent(question.content),
         answerTemplate: parseContent(question.answerTemplate),
         answerTemplateLocked: question.answerTemplateLocked,
-        studentTools: question.studentTools,
+        studentTools: question.studentTools as StudentToolsConfig | null,
         shuffleOptions: question.shuffleOptions,
-        type: question.type,
+        type: question.type as 'TEXT' | 'MCQ' | 'CODE',
         order: question.order,
         customLabel: question.customLabel,
         requireAllCorrect: question.requireAllCorrect,
@@ -190,7 +191,7 @@ export async function updateExamMetadata(
   examId: string,
   data: {
     title?: string
-    description?: string
+    description?: string | null
     durationMinutes?: number | null
   }
 ) {
@@ -384,9 +385,17 @@ export async function addQuestion(
 
     return {
       question: fullQuestion ? {
-        ...fullQuestion,
+        id: fullQuestion.id,
         content: parseContent(fullQuestion.content),
         answerTemplate: parseContent(fullQuestion.answerTemplate),
+        answerTemplateLocked: fullQuestion.answerTemplateLocked,
+        studentTools: fullQuestion.studentTools as StudentToolsConfig | null,
+        shuffleOptions: fullQuestion.shuffleOptions,
+        type: fullQuestion.type as 'TEXT' | 'MCQ' | 'CODE',
+        order: fullQuestion.order,
+        customLabel: fullQuestion.customLabel,
+        requireAllCorrect: fullQuestion.requireAllCorrect,
+        maxPoints: fullQuestion.maxPoints,
         segments: fullQuestion.segments.map(segment => ({
           id: segment.id,
           order: segment.order,
