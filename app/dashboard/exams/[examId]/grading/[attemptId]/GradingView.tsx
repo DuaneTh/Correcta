@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Check, ExternalLink, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { getCsrfToken } from '@/lib/csrfClient'
+import MathRenderer from '@/components/exams/MathRenderer'
 
 interface GradingData {
     attempt: {
@@ -409,12 +410,20 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                                                 Question {index + 1} • {question.maxPoints} pts
                                             </span>
                                             <div className="text-lg text-gray-900 font-medium mb-4">
-                                                {question.content}
+                                                <MathRenderer text={question.content} />
                                             </div>
                                             <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
                                                 <h4 className="text-xs font-bold text-blue-800 uppercase mb-1">Student Answer</h4>
-                                                <div className="text-gray-800 whitespace-pre-wrap">
-                                                    {question.answer?.segments.map(s => s.content).join('\n') || <span className="italic text-gray-400">No answer provided</span>}
+                                                <div className="text-gray-800">
+                                                    {question.answer?.segments && question.answer.segments.length > 0 ? (
+                                                        question.answer.segments.map((s, i) => (
+                                                            <div key={s.id || i}>
+                                                                <MathRenderer text={s.content} />
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <span className="italic text-gray-400">No answer provided</span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
