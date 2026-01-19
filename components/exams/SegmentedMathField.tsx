@@ -7,6 +7,7 @@ import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown } from 'lucid
 import { ContentSegment, GraphSegment, TableCell } from '@/types/exams'
 import { renderGraphInto } from './graph-utils'
 import MathToolbar from './MathToolbar'
+import { renderLatexToString } from './KaTeXRenderer'
 
 
 // ------------------------------------------------------------------
@@ -14,22 +15,6 @@ import MathToolbar from './MathToolbar'
 // Utility Functions
 
 // ------------------------------------------------------------------
-
-
-
-type MathJaxObject = {
-
-    startup?: { ready?: boolean }
-
-    typesetPromise?: (nodes?: Element[]) => Promise<void>
-
-    typeset?: (nodes?: Element[]) => void
-
-}
-
-
-
-type MathJaxWindow = Window & { MathJax?: MathJaxObject }
 
 type TablePayload = {
     rows: TableCell[][]
@@ -370,158 +355,27 @@ const isSegmentsEmpty = (segments: ContentSegment[]): boolean => {
 
 // ------------------------------------------------------------------
 
-// InlineMath: Renders LaTeX via MathJax
+// InlineMath: Renders LaTeX via KaTeX (synchronous, no loading needed)
 
 // ------------------------------------------------------------------
 
 
 
-function InlineMath({ latex, id }: { latex: string; id: string }) {
-
-    const mathSpanRef = useRef<HTMLSpanElement>(null)
-
-    const lastLatexRef = useRef<string>('')
-
-    const [isTypeset, setIsTypeset] = useState(false)
-
-
-
-    useLayoutEffect(() => {
-
-        if (!latex || !mathSpanRef.current) {
-
-            setIsTypeset(false)
-
-            return
-
-        }
-
-        if (latex === lastLatexRef.current && isTypeset) return
-
-        lastLatexRef.current = latex
-
-
-
-        const mathWindow = typeof window !== 'undefined' ? (window as MathJaxWindow) : undefined
-
-        const mathJax = mathWindow?.MathJax
-
-
-
-        if (!mathJax?.typesetPromise && !mathJax?.typeset) {
-
-            setIsTypeset(false)
-
-            return
-
-        }
-
-
-
-        const typeset = async () => {
-
-            if (!mathSpanRef.current) return
-
-
-
-            try {
-
-                mathSpanRef.current.textContent = `$${latex}$`
-
-
-
-                if (mathJax?.typesetPromise) {
-
-                    await mathJax.typesetPromise([mathSpanRef.current])
-
-                } else if (mathJax?.typeset) {
-
-                    mathJax.typeset([mathSpanRef.current])
-
-                }
-
-                setIsTypeset(true)
-
-            } catch (e) {
-
-                console.error('MathJax error:', e)
-
-                setIsTypeset(false)
-
-            }
-
-        }
-
-
-
-        typeset()
-
-    }, [latex, isTypeset])
-
-
+function InlineMath({ latex }: { latex: string; id: string }) {
+    // Render LaTeX using KaTeX - synchronous, no loading states needed
+    const html = latex ? renderLatexToString(latex, false) : ''
 
     return (
-
-        <>
-
-            <span
-
-                ref={mathSpanRef}
-
-                className="text-indigo-900"
-
-                style={{
-
-                    fontFamily: 'Cambria Math, STIX Two Math, Latin Modern Math, serif',
-
-                    display: isTypeset ? 'inline' : 'none',
-
-                    maxWidth: '100%',
-
-                    wordBreak: 'break-all',
-
-                    overflowWrap: 'anywhere',
-
-                }}
-
-            >
-
-                {latex ? `$${latex}$` : 'â–¡'}
-
-            </span>
-
-            {!isTypeset && (
-
-                <span
-
-                    className="text-indigo-800 italic"
-
-                    style={{
-
-                        fontFamily: 'Cambria Math, STIX Two Math, Latin Modern Math, serif',
-
-                        fontSize: '0.95em',
-
-                        maxWidth: '100%',
-
-                        wordBreak: 'break-all',
-
-                        overflowWrap: 'anywhere',
-
-                    }}
-
-                >
-
-                    {latex || 'â–¡'}
-
-                </span>
-
-            )}
-
-        </>
-
+        <span
+            className="text-indigo-900 math-chip-content"
+            style={{
+                maxWidth: '100%',
+                wordBreak: 'break-all',
+                overflowWrap: 'anywhere',
+            }}
+            dangerouslySetInnerHTML={{ __html: html || '\u25A1' }}
+        />
     )
-
 }
 
 
@@ -1553,13 +1407,8 @@ function InlineGraphEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete
     useEffect(() => {
         if (!previewRef.current) return
         renderGraphInto(previewRef.current, { id: 'preview', type: 'graph', ...payload }, { maxWidth: 300 })
-        const mathWindow = typeof window !== 'undefined' ? (window as MathJaxWindow) : undefined
-        const mathJax = mathWindow?.MathJax
-        if (mathJax?.typesetPromise) {
-            mathJax.typesetPromise([previewRef.current]).catch(() => undefined)
-        } else if (mathJax?.typeset) {
-            mathJax.typeset([previewRef.current])
-        }
+        // KaTeX rendering is handled synchronously by renderGraphInto if needed
+        // No additional typesetting required
     }, [payload])
 
 
@@ -2698,49 +2547,8 @@ export default function SegmentedMathField({
     const activeMathFieldRef = useRef<MathfieldElement | null>(null)
 
 
-    // Load MathJax once
-
-    useEffect(() => {
-
-        if (typeof window === 'undefined') return
-
-
-
-        const mathWindow = window as MathJaxWindow
-
-        if (mathWindow.MathJax?.typesetPromise) return
-
-
-
-        if (!mathWindow.MathJax) {
-
-            mathWindow.MathJax = {
-
-                tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] },
-
-            } as MathJaxObject
-
-        }
-
-
-
-        let script = document.getElementById('MathJax-script') as HTMLScriptElement | null
-
-        if (!script) {
-
-            script = document.createElement('script')
-
-            script.id = 'MathJax-script'
-
-            script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'
-
-            script.async = true
-
-            document.head.appendChild(script)
-
-        }
-
-    }, [])
+    // KaTeX is loaded via CSS import in globals.css - no script loading needed
+    // The renderLatexToString function from KaTeXRenderer handles all rendering synchronously
 
 
 
@@ -2927,26 +2735,16 @@ export default function SegmentedMathField({
 
 
 
-        // Inner content for rendering
-
+        // Inner content for rendering using KaTeX
         const inner = document.createElement('span')
-
         inner.className = `math-chip-content ${isPendingDeletion ? 'text-red-900' : 'text-indigo-900'}`
-
-        inner.style.fontFamily = 'Cambria Math, STIX Two Math, Latin Modern Math, serif'
-
         inner.style.display = 'inline-block'
-
         inner.style.verticalAlign = 'middle'
-
         inner.style.wordBreak = 'break-all'
-
         inner.style.overflowWrap = 'anywhere'
-
-        inner.textContent = latex ? `$${latex}$` : 'â–¡'
-
+        // Render using KaTeX instead of $...$ format
+        inner.innerHTML = latex ? renderLatexToString(latex, false) : '\u25A1'
         chip.appendChild(inner)
-
         return chip
     }, [])
 
@@ -2963,7 +2761,8 @@ export default function SegmentedMathField({
             if (segment.type === 'math') {
                 const span = document.createElement('span')
                 span.className = 'math-inline'
-                span.textContent = `$${segment.latex}$`
+                // Render using KaTeX instead of MathJax $...$ format
+                span.innerHTML = renderLatexToString(segment.latex, false)
                 container.appendChild(span)
                 return
             }
@@ -2977,27 +2776,21 @@ export default function SegmentedMathField({
     }, [isFrench])
 
     const typesetMathElements = useCallback((root?: ParentNode) => {
+        // With KaTeX, math is rendered synchronously when the element is created
+        // This function is kept for API compatibility but does nothing since
+        // KaTeX renders immediately via dangerouslySetInnerHTML or renderLatexToString
         const editor = editorRef.current
         const scope = root ?? editor
         if (!scope) return
 
-        const mathWindow = typeof window !== 'undefined' ? (window as MathJaxWindow) : undefined
-        const mathJax = mathWindow?.MathJax
-
-        if (!mathJax?.typesetPromise && !mathJax?.typeset) return
-
-        const nodes = scope.querySelectorAll('.math-inline, [data-math-id] .math-chip-content')
-        if (nodes.length === 0) return
-
-        try {
-            if (mathJax?.typesetPromise) {
-                mathJax.typesetPromise(Array.from(nodes) as Element[])
-            } else if (mathJax?.typeset) {
-                mathJax.typeset(Array.from(nodes) as Element[])
-            }
-        } catch (e) {
-            console.error('MathJax typeset error:', e)
-        }
+        // Re-render any math chips that need updating
+        const mathChips = scope.querySelectorAll('[data-math-id] .math-chip-content')
+        mathChips.forEach((chip) => {
+            const parent = chip.closest('[data-math-id]')
+            const latex = parent?.getAttribute('data-latex') || ''
+            const html = latex ? renderLatexToString(latex, false) : '\u25A1'
+            chip.innerHTML = html
+        })
     }, [])
 
     const applyTableSizing = (table: HTMLTableElement, payload: TablePayload) => {
@@ -4236,25 +4029,8 @@ export default function SegmentedMathField({
             const inner = chip.querySelector('.math-chip-content')
 
             if (inner) {
-
-                inner.textContent = newLatex ? `$${newLatex}$` : 'â–¡'
-
-                // Re-typeset this chip
-
-                const mathWindow = typeof window !== 'undefined' ? (window as MathJaxWindow) : undefined
-
-                const mathJax = mathWindow?.MathJax
-
-                if (mathJax?.typesetPromise) {
-
-                    mathJax.typesetPromise([inner as Element])
-
-                } else if (mathJax?.typeset) {
-
-                    mathJax.typeset([inner as Element])
-
-                }
-
+                // Render using KaTeX - synchronous, no typeset call needed
+                inner.innerHTML = newLatex ? renderLatexToString(newLatex, false) : '\u25A1'
             }
 
             chip.style.minWidth = newLatex ? '' : '1.5em'
@@ -4383,25 +4159,8 @@ export default function SegmentedMathField({
             const inner = chip.querySelector('.math-chip-content')
 
             if (inner) {
-
-                inner.textContent = originalLatex ? `$${originalLatex}$` : 'â–¡'
-
-                // Re-typeset this chip
-
-                const mathWindow = typeof window !== 'undefined' ? (window as MathJaxWindow) : undefined
-
-                const mathJax = mathWindow?.MathJax
-
-                if (mathJax?.typesetPromise) {
-
-                    mathJax.typesetPromise([inner as Element])
-
-                } else if (mathJax?.typeset) {
-
-                    mathJax.typeset([inner as Element])
-
-                }
-
+                // Render using KaTeX - synchronous, no typeset call needed
+                inner.innerHTML = originalLatex ? renderLatexToString(originalLatex, false) : '\u25A1'
             }
 
             chip.style.minWidth = originalLatex ? '' : '1.5em'
