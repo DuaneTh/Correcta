@@ -14,7 +14,7 @@ Correcta delivers an AI-powered exam platform for the ESSEC pilot. The roadmap p
 
 ## Phase 1: Math Foundation
 
-**Goal:** Students can input mathematical expressions using buttons, and math renders consistently across all surfaces.
+**Goal:** Students can input mathematical expressions using buttons, and math renders consistently across all web surfaces (editor, answer review, grading view).
 
 **Dependencies:** None (foundation phase)
 
@@ -23,7 +23,7 @@ Correcta delivers an AI-powered exam platform for the ESSEC pilot. The roadmap p
 - MATH-02: Support fractions, exponents, square roots via buttons
 - MATH-03: Greek symbol palette (alpha, beta, theta, pi, etc.)
 - MATH-04: Integrals, sums, limits with clickable index positions
-- MATH-05: Consistent KaTeX rendering in answers, correction, and PDF export
+- MATH-05: Consistent KaTeX rendering in editor preview and answer review (PDF export addressed in Phase 5 EXPO-04)
 
 **Plans:** 2 plans
 
@@ -35,7 +35,7 @@ Plans:
 1. Student can type a fraction (e.g., 1/2) by clicking buttons without seeing LaTeX syntax
 2. Student can insert Greek letters from a visible palette
 3. Student can create an integral with upper/lower bounds by clicking placeholder positions
-4. Equation entered in MathLive displays identically in answer review, correction feedback, and PDF export (visual parity test)
+4. Equation entered in MathLive displays identically in answer review and teacher grading view (visual parity test for web surfaces)
 5. Math editor loads in under 500ms and responds to input without lag
 
 ---
@@ -116,7 +116,7 @@ Plans:
 - EXPO-01: CSV export of grades (columns: student, question, grade, total)
 - EXPO-02: PDF report with details (grades, feedback, answers)
 - EXPO-03: Filter export by class/subgroup
-- EXPO-04: Consistent math rendering in PDF (KaTeX)
+- EXPO-04: Consistent math rendering in PDF (KaTeX via renderLatexToString from Phase 1)
 
 **Success Criteria:**
 1. Teacher can download CSV with all grades for an exam in under 5 seconds
@@ -131,11 +131,11 @@ Plans:
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 1 - Math Foundation | Math input and consistent rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 | Planned |
+| 1 - Math Foundation | Math input and consistent web rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 (web) | Planned |
 | 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Pending |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Pending |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Pending |
-| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 | Pending |
+| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Pending |
 
 ---
 
@@ -149,6 +149,10 @@ Plans:
 - Phase 2: A/B test exam builder UX (simple vs complex)
 - Phase 4: Validate 80% confidence threshold for AI review gating
 - Phase 5: PDF snapshot regression testing for math rendering
+
+**Scope Clarifications:**
+- MATH-05 is split across phases: web surface parity in Phase 1, PDF parity in Phase 5 (EXPO-04)
+- Phase 1 creates `renderLatexToString` export for Phase 5 PDF generation
 
 ---
 
