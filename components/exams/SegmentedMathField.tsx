@@ -2492,26 +2492,26 @@ function InsertMenu({
     )
 }
 
-// Quick symbols for the hover math button
+// Quick symbols for the hover math button - use display latex for rendering
 const defaultQuickSymbols = [
-    { label: 'a/b', latex: '\\frac{#@}{#0}' },
-    { label: '√', latex: '\\sqrt{#0}' },
-    { label: 'x²', latex: '^{#0}' },
-    { label: 'xₙ', latex: '_{#0}' },
-    { label: '∑', latex: '\\sum_{#@}^{#0}' },
-    { label: '∫', latex: '\\int_{#@}^{#0}' },
-    { label: 'lim', latex: '\\lim_{#0}' },
-    { label: 'π', latex: '\\pi' },
-    { label: '∞', latex: '\\infty' },
-    { label: '≤', latex: '\\leq' },
-    { label: '≥', latex: '\\geq' },
-    { label: '≠', latex: '\\neq' },
-    { label: '×', latex: '\\times' },
-    { label: 'α', latex: '\\alpha' },
-    { label: 'β', latex: '\\beta' },
-    { label: 'θ', latex: '\\theta' },
-    { label: 'λ', latex: '\\lambda' },
-    { label: 'ℝ', latex: '\\mathbb{R}' },
+    { display: '\\frac{a}{b}', latex: '\\frac{#@}{#0}' },
+    { display: '\\sqrt{x}', latex: '\\sqrt{#0}' },
+    { display: 'x^2', latex: '^{#0}' },
+    { display: 'x_n', latex: '_{#0}' },
+    { display: '\\sum', latex: '\\sum_{#@}^{#0}' },
+    { display: '\\int', latex: '\\int_{#@}^{#0}' },
+    { display: '\\lim', latex: '\\lim_{#0}' },
+    { display: '\\pi', latex: '\\pi' },
+    { display: '\\infty', latex: '\\infty' },
+    { display: '\\leq', latex: '\\leq' },
+    { display: '\\geq', latex: '\\geq' },
+    { display: '\\neq', latex: '\\neq' },
+    { display: '\\times', latex: '\\times' },
+    { display: '\\alpha', latex: '\\alpha' },
+    { display: '\\beta', latex: '\\beta' },
+    { display: '\\theta', latex: '\\theta' },
+    { display: '\\lambda', latex: '\\lambda' },
+    { display: '\\mathbb{R}', latex: '\\mathbb{R}' },
 ]
 
 type HoverMathButtonProps = {
@@ -2522,13 +2522,37 @@ type HoverMathButtonProps = {
 }
 
 function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip }: HoverMathButtonProps) {
-    const [isHovered, setIsHovered] = useState(false)
+    const [isOpen, setIsOpen] = useState(false)
+    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    const handleMouseEnter = () => {
+        if (closeTimeoutRef.current) {
+            clearTimeout(closeTimeoutRef.current)
+            closeTimeoutRef.current = null
+        }
+        setIsOpen(true)
+    }
+
+    const handleMouseLeave = () => {
+        // Delay closing to allow moving to the dropdown
+        closeTimeoutRef.current = setTimeout(() => {
+            setIsOpen(false)
+        }, 150)
+    }
+
+    useEffect(() => {
+        return () => {
+            if (closeTimeoutRef.current) {
+                clearTimeout(closeTimeoutRef.current)
+            }
+        }
+    }, [])
 
     return (
         <div
-            className="relative"
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
+            className="relative inline-block"
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
         >
             <button
                 type="button"
@@ -2538,31 +2562,32 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
             >
                 <Calculator className="h-3.5 w-3.5" />
                 <span>{isFrench ? 'Maths' : 'Math'}</span>
-                <ChevronDown className="h-3 w-3" />
+                <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
-            {isHovered && (
-                <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[280px]">
-                    <div className="flex flex-wrap gap-1">
-                        {defaultQuickSymbols.map((sym, idx) => (
+            {isOpen && (
+                <div className="absolute left-0 top-full pt-1 z-20">
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[300px]">
+                        <div className="flex flex-wrap gap-1">
+                            {defaultQuickSymbols.map((sym, idx) => (
+                                <button
+                                    key={idx}
+                                    type="button"
+                                    onClick={() => onInsertSymbol(sym.latex)}
+                                    className="px-2 py-1.5 hover:bg-brand-50 rounded border border-gray-100 hover:border-brand-200 transition-colors min-w-[40px] flex items-center justify-center"
+                                    title={sym.latex}
+                                    dangerouslySetInnerHTML={{ __html: renderLatexToString(sym.display) }}
+                                />
+                            ))}
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-gray-100">
                             <button
-                                key={idx}
                                 type="button"
-                                onClick={() => onInsertSymbol(sym.latex)}
-                                className="px-2 py-1 text-sm hover:bg-brand-50 rounded border border-gray-100 hover:border-brand-200 transition-colors"
-                                title={sym.latex}
+                                onClick={onInsertMathChip}
+                                className="w-full text-left px-2 py-1.5 text-xs text-brand-600 hover:bg-brand-50 rounded transition-colors"
                             >
-                                {sym.label}
+                                {isFrench ? '+ Editeur de formule avance' : '+ Advanced formula editor'}
                             </button>
-                        ))}
-                    </div>
-                    <div className="mt-2 pt-2 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={onInsertMathChip}
-                            className="w-full text-left px-2 py-1.5 text-xs text-brand-600 hover:bg-brand-50 rounded transition-colors"
-                        >
-                            {isFrench ? '+ Editeur de formule avancé' : '+ Advanced formula editor'}
-                        </button>
+                        </div>
                     </div>
                 </div>
             )}
