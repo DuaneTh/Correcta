@@ -123,6 +123,11 @@ interface ExamEditorState {
 
   // Segment actions
   updateSegment: (questionId: string, segmentId: string, data: Partial<EditorSegment>) => void
+
+  // MCQ-specific actions
+  addMcqOption: (questionId: string) => void
+  removeMcqOption: (questionId: string, segmentId: string) => void
+  toggleMcqOptionCorrect: (questionId: string, segmentId: string) => void
 }
 
 /**
@@ -325,6 +330,90 @@ export const useExamStore = create<ExamEditorState>((set, get) => ({
                 }
               : q
           ),
+        })),
+      },
+      isDirty: true,
+    })
+  },
+
+  /**
+   * Add a new option to an MCQ question
+   */
+  addMcqOption: (questionId) => {
+    const { exam } = get()
+    if (!exam) return
+
+    const newOption: EditorSegment = {
+      id: `option-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      order: 0, // Will be recalculated
+      instruction: '',
+      maxPoints: 0, // Options default to 0 points until marked correct
+      isCorrect: false,
+      rubric: null,
+    }
+
+    set({
+      exam: {
+        ...exam,
+        sections: exam.sections.map((section) => ({
+          ...section,
+          questions: section.questions.map((q) => {
+            if (q.id !== questionId) return q
+            const newSegments = [...q.segments, { ...newOption, order: q.segments.length }]
+            return { ...q, segments: newSegments }
+          }),
+        })),
+      },
+      isDirty: true,
+    })
+  },
+
+  /**
+   * Remove an option from an MCQ question
+   */
+  removeMcqOption: (questionId, segmentId) => {
+    const { exam } = get()
+    if (!exam) return
+
+    set({
+      exam: {
+        ...exam,
+        sections: exam.sections.map((section) => ({
+          ...section,
+          questions: section.questions.map((q) => {
+            if (q.id !== questionId) return q
+            const newSegments = q.segments
+              .filter((s) => s.id !== segmentId)
+              .map((s, idx) => ({ ...s, order: idx })) // Reorder
+            return { ...q, segments: newSegments }
+          }),
+        })),
+      },
+      isDirty: true,
+    })
+  },
+
+  /**
+   * Toggle whether an MCQ option is correct
+   */
+  toggleMcqOptionCorrect: (questionId, segmentId) => {
+    const { exam } = get()
+    if (!exam) return
+
+    set({
+      exam: {
+        ...exam,
+        sections: exam.sections.map((section) => ({
+          ...section,
+          questions: section.questions.map((q) => {
+            if (q.id !== questionId) return q
+            return {
+              ...q,
+              segments: q.segments.map((s) =>
+                s.id === segmentId ? { ...s, isCorrect: !s.isCorrect } : s
+              ),
+            }
+          }),
         })),
       },
       isDirty: true,
