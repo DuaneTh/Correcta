@@ -25,6 +25,12 @@ Correcta delivers an AI-powered exam platform for the ESSEC pilot. The roadmap p
 - MATH-04: Integrals, sums, limits with clickable index positions
 - MATH-05: Consistent KaTeX rendering in answers, correction, and PDF export
 
+**Plans:** 2 plans
+
+Plans:
+- [ ] 01-01-PLAN.md — MathToolbar component with button-based symbol insertion
+- [ ] 01-02-PLAN.md — Replace MathJax with KaTeX for consistent rendering
+
 **Success Criteria:**
 1. Student can type a fraction (e.g., 1/2) by clicking buttons without seeing LaTeX syntax
 2. Student can insert Greek letters from a visible palette
@@ -125,7 +131,7 @@ Correcta delivers an AI-powered exam platform for the ESSEC pilot. The roadmap p
 
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
-| 1 - Math Foundation | Math input and consistent rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 | Pending |
+| 1 - Math Foundation | Math input and consistent rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 | Planned |
 | 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Pending |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Pending |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Pending |
