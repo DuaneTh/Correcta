@@ -2573,7 +2573,7 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
                                     key={idx}
                                     type="button"
                                     onClick={() => onInsertSymbol(sym.latex)}
-                                    className="px-2 py-1.5 hover:bg-brand-50 rounded border border-gray-100 hover:border-brand-200 transition-colors min-w-[40px] flex items-center justify-center"
+                                    className="px-2 py-1.5 hover:bg-brand-100 rounded border border-gray-200 hover:border-brand-400 transition-colors min-w-[42px] flex items-center justify-center bg-gray-50 [&_.katex]:text-black"
                                     title={sym.latex}
                                     dangerouslySetInnerHTML={{ __html: renderLatexToString(sym.display) }}
                                 />
