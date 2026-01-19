@@ -17,11 +17,11 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 
 ### Creation d'Examen (EXAM)
 
-- [ ] **EXAM-01**: Interface intuitive de creation (refonte UX de l'existant)
-- [ ] **EXAM-02**: Questions ouvertes avec bareme configurable
-- [ ] **EXAM-03**: QCM avec options multiples et correction automatique
-- [ ] **EXAM-04**: Questions avec image (upload photo dans l'enonce)
-- [ ] **EXAM-05**: Reponses isolees par question (pas de PDF entier)
+- [x] **EXAM-01**: Interface intuitive de creation (refonte UX de l'existant)
+- [x] **EXAM-02**: Questions ouvertes avec bareme configurable
+- [x] **EXAM-03**: QCM avec options multiples et correction automatique
+- [x] **EXAM-04**: Questions avec image (upload photo dans l'enonce)
+- [x] **EXAM-05**: Reponses isolees par question (pas de PDF entier)
 
 ### Correction IA (CORR)
 
@@ -87,11 +87,11 @@ Defere apres pilote ESSEC.
 | MATH-03 | Phase 1 - Math Foundation | Complete |
 | MATH-04 | Phase 1 - Math Foundation | Complete |
 | MATH-05 | Phase 1 - Math Foundation | Complete |
-| EXAM-01 | Phase 2 - Exam Creation | Pending |
-| EXAM-02 | Phase 2 - Exam Creation | Pending |
-| EXAM-03 | Phase 2 - Exam Creation | Pending |
-| EXAM-04 | Phase 2 - Exam Creation | Pending |
-| EXAM-05 | Phase 2 - Exam Creation | Pending |
+| EXAM-01 | Phase 2 - Exam Creation | Complete |
+| EXAM-02 | Phase 2 - Exam Creation | Complete |
+| EXAM-03 | Phase 2 - Exam Creation | Complete |
+| EXAM-04 | Phase 2 - Exam Creation | Complete |
+| EXAM-05 | Phase 2 - Exam Creation | Complete |
 | ORG-01 | Phase 3 - Organization | Pending |
 | ORG-02 | Phase 3 - Organization | Pending |
 | ORG-03 | Phase 3 - Organization | Pending |
@@ -114,4 +114,4 @@ Defere apres pilote ESSEC.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-18 after roadmap creation*
+*Last updated: 2026-01-19 after Phase 2 completion*

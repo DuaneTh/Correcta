@@ -54,6 +54,14 @@ Plans:
 - EXAM-04: Image questions (photo upload in question text)
 - EXAM-05: Isolated answers per question (not whole PDF)
 
+**Plans:** 4 plans
+
+Plans:
+- [x] 02-01-PLAN.md — Exam Editor shell, Zustand store, question management
+- [x] 02-02-PLAN.md — Question type editors (Open with correction guidelines, MCQ)
+- [x] 02-03-PLAN.md — Image upload and math toolbar integration
+- [x] 02-04-PLAN.md — Student exam taking with MCQ auto-scoring
+
 **Success Criteria:**
 1. Teacher can create a 5-question exam (2 open, 2 MCQ, 1 image) in under 10 minutes
 2. Teacher can set point values per question and see total points calculated
@@ -133,7 +141,7 @@ Plans:
 | Phase | Goal | Requirements | Status |
 |-------|------|--------------|--------|
 | 1 - Math Foundation | Math input and consistent web rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 (web) | Complete |
-| 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Pending |
+| 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Complete |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Pending |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Pending |
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Pending |
