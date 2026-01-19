@@ -20,20 +20,20 @@
 
 ## Current Position
 
-**Phase:** 1 of 5 (Math Foundation) COMPLETE
-**Plan:** 3 of 3 complete (including gap closure)
-**Status:** Phase complete
+**Phase:** 2 of 5 (Exam Creation)
+**Plan:** 1 of 4 complete
+**Status:** In progress
 
 **Progress:**
 ```
-Phase 1: Math Foundation     [==========] 3/3 plans complete (incl. gap closure)
-Phase 2: Exam Creation       [          ] Not started
+Phase 1: Math Foundation     [==========] 3/3 plans complete
+Phase 2: Exam Creation       [==--------] 1/4 plans complete (02-01 done)
 Phase 3: Organization        [          ] Not started
 Phase 4: AI Correction       [          ] Not started
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 3/? plans complete
+**Overall:** 4/7 plans complete (Phase 1 done, Phase 2 started)
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 3 | 01-01, 01-02, 01-03 (gap closure) |
-| Success rate | 100% | 3/3 plans succeeded |
-| Avg duration | 8.3 min | (8 + 12 + 5) / 3 |
+| Plans completed | 4 | 01-01, 01-02, 01-03, 02-01 |
+| Success rate | 100% | 4/4 plans succeeded |
+| Avg duration | 8.5 min | (8 + 12 + 5 + 9) / 4 |
 
 ---
 
@@ -62,6 +62,9 @@ Phase 5: Export              [          ] Not started
 | renderLatexToString export | Enables PDF export without re-implementing | 1 |
 | Synchronous math rendering | No loading states, simpler code, faster UX | 1 |
 | Per-segment rendering in GradingView | Preserves answer structure, cleaner than join | 1 |
+| Zustand for exam editor state | Lightweight, TypeScript-friendly, easy selectors | 2 |
+| Server actions for mutations | Better DX with Next.js 15, automatic revalidation | 2 |
+| Type dropdown for questions | Explicit TEXT/MCQ choice, extensible | 2 |
 
 ### Technical Patterns
 
@@ -71,6 +74,8 @@ Phase 5: Export              [          ] Not started
 - **MathLive placeholders:** Use #@ for cursor position, #0 for tab navigation
 - **Math rendering:** KaTeX synchronous, no CDN dependency, bundled via npm
 - **Content display:** Always wrap content in MathRenderer for math support
+- **Exam editor state:** Zustand store with typed selectors, optimistic updates
+- **Server actions:** For data mutations with permission checks and revalidation
 
 ### Known Issues
 
@@ -81,7 +86,11 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 01-01: Math Symbol Toolbar
 - [x] Complete 01-02: Math Rendering with KaTeX
 - [x] Complete 01-03: GradingView MathRenderer Integration (gap closure)
-- [ ] Begin Phase 2: Exam Creation
+- [x] Plan Phase 2: Exam Creation (4 plans created and verified)
+- [x] Complete 02-01: Exam Editor Shell
+- [ ] Complete 02-02: Question Type Editors
+- [ ] Complete 02-03: Image Upload Integration
+- [ ] Complete 02-04: Student Exam Taking
 
 ### Blockers
 
@@ -95,8 +104,12 @@ Phase 5: Export              [          ] Not started
 
 ```
 Continuing Correcta project. Phase 1 (Math Foundation) COMPLETE.
-All plans (Math Toolbar, KaTeX Rendering, GradingView gap closure) executed successfully.
-Next action: Begin Phase 2 (Exam Creation) with /gsd:plan-phase 2.
+Phase 2 (Exam Creation) IN PROGRESS:
+- 02-01: COMPLETE - Exam Editor shell, store, question management, running total
+- 02-02: PENDING - Question type editors (Open with correction guidelines, MCQ)
+- 02-03: PENDING - Image upload and math toolbar integration
+- 02-04: PENDING - Student exam taking with MCQ auto-scoring
+Next action: Execute 02-02-PLAN.md
 ```
 
 ### Context Files
@@ -108,8 +121,9 @@ Next action: Begin Phase 2 (Exam Creation) with /gsd:plan-phase 2.
 - `.planning/phases/01-math-foundation/01-01-SUMMARY.md` - Math Toolbar summary
 - `.planning/phases/01-math-foundation/01-02-SUMMARY.md` - KaTeX Rendering summary
 - `.planning/phases/01-math-foundation/01-03-SUMMARY.md` - GradingView gap closure summary
+- `.planning/phases/02-exam-creation/02-01-SUMMARY.md` - Exam Editor Shell summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-19 - Completed 01-03-PLAN.md (gap closure)*
+*Last execution: 2026-01-19 - Completed 02-01-PLAN.md (Exam Editor Shell)*
