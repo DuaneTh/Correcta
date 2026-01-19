@@ -3,11 +3,12 @@
 
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown } from 'lucide-react'
+import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown, ImagePlus } from 'lucide-react'
 import { ContentSegment, GraphSegment, TableCell } from '@/types/exams'
 import { renderGraphInto } from './graph-utils'
 import MathToolbar from './MathToolbar'
 import { renderLatexToString } from './KaTeXRenderer'
+import ImageUpload from '@/components/ui/ImageUpload'
 
 
 // ------------------------------------------------------------------
@@ -2343,6 +2344,7 @@ interface SegmentedMathFieldProps {
     className?: string
     minRows?: number
     showMathButton?: boolean
+    showImageButton?: boolean
     showTableButton?: boolean
     showGraphButton?: boolean
     showHint?: boolean
@@ -2595,6 +2597,54 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
     )
 }
 
+type ImageButtonProps = {
+    isFrench: boolean
+    disabled?: boolean
+    onImageUploaded: (url: string) => void
+}
+
+function ImageButton({ isFrench, disabled, onImageUploaded }: ImageButtonProps) {
+    const [isOpen, setIsOpen] = useState(false)
+
+    const handleImageChange = (url: string | null) => {
+        if (url) {
+            onImageUploaded(url)
+            setIsOpen(false)
+        }
+    }
+
+    return (
+        <div className="relative inline-block">
+            <button
+                type="button"
+                disabled={disabled}
+                onClick={() => setIsOpen(!isOpen)}
+                className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-gray-600 hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
+            >
+                <ImagePlus className="h-3.5 w-3.5" />
+                <span>{isFrench ? 'Image' : 'Image'}</span>
+            </button>
+            {isOpen && (
+                <div className="absolute left-0 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg p-3 min-w-[280px]">
+                    <ImageUpload
+                        value={null}
+                        onChange={handleImageChange}
+                        disabled={disabled}
+                        locale={isFrench ? 'fr' : 'en'}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setIsOpen(false)}
+                        className="mt-2 w-full text-center px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
+                    >
+                        {isFrench ? 'Annuler' : 'Cancel'}
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}
+
 export default function SegmentedMathField({
     value,
     onChange,
@@ -2604,6 +2654,7 @@ export default function SegmentedMathField({
     className = '',
     minRows = 2,
     showMathButton = true,
+    showImageButton = true,
     showTableButton = true,
     showGraphButton = showTableButton,
     showHint = true,
@@ -3808,6 +3859,25 @@ export default function SegmentedMathField({
         originalLatexRef.current = latex
         handleInput()
     }, [disabled, editingMathId, createMathChipElement, handleInput])
+
+    // ------------------------------------------------------------------
+    // Insert an image at current caret position (as markdown syntax)
+    // ------------------------------------------------------------------
+
+    const insertImage = useCallback((imageUrl: string) => {
+        if (disabled) return
+
+        const editor = editorRef.current
+        if (!editor) return
+
+        editor.focus()
+
+        // Insert markdown image syntax at cursor position
+        const imageMarkdown = `![image](${imageUrl})`
+        document.execCommand('insertText', false, imageMarkdown)
+
+        handleInput()
+    }, [disabled, handleInput])
 
     // ------------------------------------------------------------------
     // Insert a new table at current caret position (always on next line)
@@ -5356,14 +5426,27 @@ export default function SegmentedMathField({
                 />
             )}
 
-            {/* Hover Math Button - shows symbols on hover */}
-            {showMathButton && !shouldShowMathToolbar && (
-                <HoverMathButton
-                    isFrench={isFrench}
-                    disabled={disabled}
-                    onInsertSymbol={handleToolbarInsert}
-                    onInsertMathChip={insertMathChip}
-                />
+            {/* Toolbar buttons row */}
+            {(showMathButton || showImageButton) && !shouldShowMathToolbar && (
+                <div className="flex items-center gap-1">
+                    {/* Hover Math Button - shows symbols on hover */}
+                    {showMathButton && (
+                        <HoverMathButton
+                            isFrench={isFrench}
+                            disabled={disabled}
+                            onInsertSymbol={handleToolbarInsert}
+                            onInsertMathChip={insertMathChip}
+                        />
+                    )}
+                    {/* Image Button */}
+                    {showImageButton && (
+                        <ImageButton
+                            isFrench={isFrench}
+                            disabled={disabled}
+                            onImageUploaded={insertImage}
+                        />
+                    )}
+                </div>
             )}
 
             {/* Editor container */}
