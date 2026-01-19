@@ -9,11 +9,11 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 
 ### Editeur Mathematique (MATH)
 
-- [ ] **MATH-01**: Editeur WYSIWYG avec boutons pour inserer symboles (pas de LaTeX visible)
-- [ ] **MATH-02**: Support fractions, exposants, racines carrees via boutons
-- [ ] **MATH-03**: Support symboles grecs (alpha, beta, theta, pi, etc.) via palette
-- [ ] **MATH-04**: Support integrales, sommes, limites avec positions cliquables (indices sup/inf)
-- [ ] **MATH-05**: Rendu coherent KaTeX dans reponses, correction et export PDF
+- [x] **MATH-01**: Editeur WYSIWYG avec boutons pour inserer symboles (pas de LaTeX visible)
+- [x] **MATH-02**: Support fractions, exposants, racines carrees via boutons
+- [x] **MATH-03**: Support symboles grecs (alpha, beta, theta, pi, etc.) via palette
+- [x] **MATH-04**: Support integrales, sommes, limites avec positions cliquables (indices sup/inf)
+- [x] **MATH-05**: Rendu coherent KaTeX dans reponses, correction et export PDF
 
 ### Creation d'Examen (EXAM)
 
@@ -82,11 +82,11 @@ Defere apres pilote ESSEC.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| MATH-01 | Phase 1 - Math Foundation | Pending |
-| MATH-02 | Phase 1 - Math Foundation | Pending |
-| MATH-03 | Phase 1 - Math Foundation | Pending |
-| MATH-04 | Phase 1 - Math Foundation | Pending |
-| MATH-05 | Phase 1 - Math Foundation | Pending |
+| MATH-01 | Phase 1 - Math Foundation | Complete |
+| MATH-02 | Phase 1 - Math Foundation | Complete |
+| MATH-03 | Phase 1 - Math Foundation | Complete |
+| MATH-04 | Phase 1 - Math Foundation | Complete |
+| MATH-05 | Phase 1 - Math Foundation | Complete |
 | EXAM-01 | Phase 2 - Exam Creation | Pending |
 | EXAM-02 | Phase 2 - Exam Creation | Pending |
 | EXAM-03 | Phase 2 - Exam Creation | Pending |
