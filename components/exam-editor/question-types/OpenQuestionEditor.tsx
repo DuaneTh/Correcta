@@ -3,20 +3,24 @@
 import { useCallback } from 'react'
 import { useExamStore, useQuestion } from '../store'
 import { AlertCircle, Lightbulb } from 'lucide-react'
+import RichTextEditor from '../RichTextEditor'
 
 interface OpenQuestionEditorProps {
   questionId: string
+  /** Locale for labels */
+  locale?: 'fr' | 'en'
 }
 
 /**
  * Editor for open/text questions with correction guidelines for AI grading
  *
  * Features:
- * - Question body editing (text content)
+ * - Rich text editing with MathToolbar and ImageUpload
+ * - Live preview with math and image rendering
  * - Points management per segment
  * - Correction guidelines for AI grading (Phase 4)
  */
-export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorProps) {
+export default function OpenQuestionEditor({ questionId, locale = 'fr' }: OpenQuestionEditorProps) {
   const question = useQuestion(questionId)
   const updateQuestion = useExamStore((state) => state.updateQuestion)
   const updateSegment = useExamStore((state) => state.updateSegment)
@@ -91,27 +95,67 @@ export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorPro
   // Calculate total points from segments
   const totalPoints = question.segments.reduce((sum, s) => sum + (s.maxPoints ?? 0), 0)
 
+  const labels = {
+    fr: {
+      questionBody: 'Corps de la question',
+      placeholder: 'Entrez votre question ici...',
+      emptyWarning: 'Le corps de la question est vide',
+      answerSegments: 'Segments de reponse',
+      totalPoints: 'Total',
+      point: 'point',
+      points: 'points',
+      noSegments: 'Aucun segment defini. Les segments seront ajoutes lors de la configuration de la structure de reponse.',
+      segmentInstruction: 'Segment',
+      instructionPlaceholder: 'Instruction pour ce segment...',
+      pointsLabel: 'Points',
+      correctionGuidelines: 'Consignes de correction',
+      forAiGrading: '(pour la correction IA)',
+      guidelinesPlaceholder: 'Decrivez ce qu\'une reponse correcte devrait contenir, les points cles a evaluer, les criteres de notation partielle...',
+      guidelinesTip: 'L\'ajout de consignes ameliore la precision de la correction IA',
+      guidelinesNote: 'Ces consignes seront utilisees par le correcteur IA pour evaluer les reponses des etudiants.',
+    },
+    en: {
+      questionBody: 'Question Body',
+      placeholder: 'Enter your question here...',
+      emptyWarning: 'Question body is empty',
+      answerSegments: 'Answer Segments',
+      totalPoints: 'Total',
+      point: 'point',
+      points: 'points',
+      noSegments: 'No answer segments defined. Segments will be added when you configure the answer structure.',
+      segmentInstruction: 'Segment',
+      instructionPlaceholder: 'Instruction for this segment...',
+      pointsLabel: 'Points',
+      correctionGuidelines: 'Correction Guidelines',
+      forAiGrading: '(for AI grading)',
+      guidelinesPlaceholder: 'Describe what a correct answer should include, key points to look for, partial credit criteria...',
+      guidelinesTip: 'Adding guidelines improves AI grading accuracy',
+      guidelinesNote: 'These guidelines will be used by the AI grader to evaluate student answers.',
+    },
+  }
+
+  const t = labels[locale]
+
   return (
     <div className="space-y-6">
-      {/* Question Body */}
+      {/* Question Body with Rich Text Editor */}
       <div>
-        <label htmlFor="question-body" className="block text-sm font-medium text-gray-700 mb-2">
-          Question Body
-        </label>
-        <textarea
+        <RichTextEditor
           id="question-body"
           value={contentText}
-          onChange={(e) => handleContentChange(e.target.value)}
-          placeholder="Enter your question here..."
-          className={`w-full min-h-[120px] px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y ${
-            isContentEmpty ? 'border-amber-300 bg-amber-50' : 'border-gray-300'
-          }`}
+          onChange={handleContentChange}
+          label={t.questionBody}
+          placeholder={t.placeholder}
+          showMathToolbar={true}
+          showImageUpload={true}
+          locale={locale}
           rows={4}
+          defaultShowPreview={false}
         />
         {isContentEmpty && (
           <p className="mt-1.5 text-sm text-amber-600 flex items-center gap-1.5">
             <AlertCircle className="w-4 h-4" />
-            Question body is empty
+            {t.emptyWarning}
           </p>
         )}
       </div>
@@ -120,16 +164,16 @@ export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorPro
       <div>
         <div className="flex items-center justify-between mb-3">
           <label className="block text-sm font-medium text-gray-700">
-            Answer Segments
+            {t.answerSegments}
           </label>
           <span className="text-sm text-gray-500">
-            Total: {totalPoints} {totalPoints === 1 ? 'point' : 'points'}
+            {t.totalPoints}: {totalPoints} {totalPoints === 1 ? t.point : t.points}
           </span>
         </div>
 
         {question.segments.length === 0 ? (
           <p className="text-sm text-gray-500 italic py-3 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            No answer segments defined. Segments will be added when you configure the answer structure.
+            {t.noSegments}
           </p>
         ) : (
           <div className="space-y-3">
@@ -144,14 +188,14 @@ export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorPro
                       htmlFor={`segment-${segment.id}-instruction`}
                       className="block text-xs font-medium text-gray-500 mb-1"
                     >
-                      Segment {index + 1} - Instruction
+                      {t.segmentInstruction} {index + 1} - Instruction
                     </label>
                     <input
                       id={`segment-${segment.id}-instruction`}
                       type="text"
                       value={segment.instruction}
                       onChange={(e) => handleSegmentInstructionChange(segment.id, e.target.value)}
-                      placeholder="Instruction for this segment..."
+                      placeholder={t.instructionPlaceholder}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
                   </div>
@@ -160,7 +204,7 @@ export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorPro
                       htmlFor={`segment-${segment.id}-points`}
                       className="block text-xs font-medium text-gray-500 mb-1"
                     >
-                      Points
+                      {t.pointsLabel}
                     </label>
                     <input
                       id={`segment-${segment.id}-points`}
@@ -188,25 +232,25 @@ export default function OpenQuestionEditor({ questionId }: OpenQuestionEditorPro
       {/* Correction Guidelines for AI Grading */}
       <div>
         <label htmlFor="correction-guidelines" className="block text-sm font-medium text-gray-700 mb-2">
-          Correction Guidelines
-          <span className="ml-2 text-xs font-normal text-gray-500">(for AI grading)</span>
+          {t.correctionGuidelines}
+          <span className="ml-2 text-xs font-normal text-gray-500">{t.forAiGrading}</span>
         </label>
         <textarea
           id="correction-guidelines"
           value={question.correctionGuidelines ?? ''}
           onChange={(e) => handleGuidelinesChange(e.target.value)}
-          placeholder="Describe what a correct answer should include, key points to look for, partial credit criteria..."
+          placeholder={t.guidelinesPlaceholder}
           className="w-full min-h-[100px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
           rows={4}
         />
         {!question.correctionGuidelines && (
           <p className="mt-2 text-sm text-blue-600 flex items-center gap-1.5">
             <Lightbulb className="w-4 h-4" />
-            Adding guidelines improves AI grading accuracy
+            {t.guidelinesTip}
           </p>
         )}
         <p className="mt-1 text-xs text-gray-500">
-          These guidelines will be used by the AI grader in Phase 4 to evaluate student answers.
+          {t.guidelinesNote}
         </p>
       </div>
     </div>
