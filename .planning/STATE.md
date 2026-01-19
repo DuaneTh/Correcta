@@ -21,19 +21,19 @@
 ## Current Position
 
 **Phase:** 2 of 5 (Exam Creation)
-**Plan:** 1 of 4 complete
+**Plan:** 2 of 4 complete
 **Status:** In progress
 
 **Progress:**
 ```
 Phase 1: Math Foundation     [==========] 3/3 plans complete
-Phase 2: Exam Creation       [==--------] 1/4 plans complete (02-01 done)
+Phase 2: Exam Creation       [=====-----] 2/4 plans complete (02-02 done)
 Phase 3: Organization        [          ] Not started
 Phase 4: AI Correction       [          ] Not started
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 4/7 plans complete (Phase 1 done, Phase 2 started)
+**Overall:** 5/7 plans complete (Phase 1 done, Phase 2 half done)
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 4 | 01-01, 01-02, 01-03, 02-01 |
-| Success rate | 100% | 4/4 plans succeeded |
-| Avg duration | 8.5 min | (8 + 12 + 5 + 9) / 4 |
+| Plans completed | 5 | 01-01, 01-02, 01-03, 02-01, 02-02 |
+| Success rate | 100% | 5/5 plans succeeded |
+| Avg duration | 9 min | (8 + 12 + 5 + 9 + 11) / 5 |
 
 ---
 
@@ -65,6 +65,10 @@ Phase 5: Export              [          ] Not started
 | Zustand for exam editor state | Lightweight, TypeScript-friendly, easy selectors | 2 |
 | Server actions for mutations | Better DX with Next.js 15, automatic revalidation | 2 |
 | Type dropdown for questions | Explicit TEXT/MCQ choice, extensible | 2 |
+| QuestionEditorFactory pattern | Type-based routing, easy to extend for CODE | 2 |
+| correctionGuidelines at question level | Simpler than per-segment for V1, enables AI grading | 2 |
+| MCQ-specific store actions | Clean API for option management | 2 |
+| All-or-nothing MCQ mode | Supports both per-option and total points scoring | 2 |
 
 ### Technical Patterns
 
@@ -76,6 +80,8 @@ Phase 5: Export              [          ] Not started
 - **Content display:** Always wrap content in MathRenderer for math support
 - **Exam editor state:** Zustand store with typed selectors, optimistic updates
 - **Server actions:** For data mutations with permission checks and revalidation
+- **Question editors:** Factory pattern routes to type-specific components
+- **MCQ options:** Use segments array where instruction is text, isCorrect is flag
 
 ### Known Issues
 
@@ -88,7 +94,7 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 01-03: GradingView MathRenderer Integration (gap closure)
 - [x] Plan Phase 2: Exam Creation (4 plans created and verified)
 - [x] Complete 02-01: Exam Editor Shell
-- [ ] Complete 02-02: Question Type Editors
+- [x] Complete 02-02: Question Type Editors
 - [ ] Complete 02-03: Image Upload Integration
 - [ ] Complete 02-04: Student Exam Taking
 
@@ -106,10 +112,10 @@ Phase 5: Export              [          ] Not started
 Continuing Correcta project. Phase 1 (Math Foundation) COMPLETE.
 Phase 2 (Exam Creation) IN PROGRESS:
 - 02-01: COMPLETE - Exam Editor shell, store, question management, running total
-- 02-02: PENDING - Question type editors (Open with correction guidelines, MCQ)
+- 02-02: COMPLETE - Question type editors (Open with correction guidelines, MCQ)
 - 02-03: PENDING - Image upload and math toolbar integration
 - 02-04: PENDING - Student exam taking with MCQ auto-scoring
-Next action: Execute 02-02-PLAN.md
+Next action: Execute 02-03-PLAN.md
 ```
 
 ### Context Files
@@ -122,8 +128,9 @@ Next action: Execute 02-02-PLAN.md
 - `.planning/phases/01-math-foundation/01-02-SUMMARY.md` - KaTeX Rendering summary
 - `.planning/phases/01-math-foundation/01-03-SUMMARY.md` - GradingView gap closure summary
 - `.planning/phases/02-exam-creation/02-01-SUMMARY.md` - Exam Editor Shell summary
+- `.planning/phases/02-exam-creation/02-02-SUMMARY.md` - Question Type Editors summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-19 - Completed 02-01-PLAN.md (Exam Editor Shell)*
+*Last execution: 2026-01-19 - Completed 02-02-PLAN.md (Question Type Editors)*
