@@ -1,6 +1,6 @@
 # State: Correcta
 
-**Last Updated:** 2026-01-18
+**Last Updated:** 2026-01-19
 
 ---
 
@@ -20,20 +20,20 @@
 
 ## Current Position
 
-**Phase:** Not started
-**Plan:** None active
-**Status:** Roadmap created, awaiting phase planning
+**Phase:** 1 of 5 (Math Foundation)
+**Plan:** 1 of 2 complete
+**Status:** In progress
 
 **Progress:**
 ```
-Phase 1: Math Foundation     [ ] Not started
-Phase 2: Exam Creation       [ ] Not started
-Phase 3: Organization        [ ] Not started
-Phase 4: AI Correction       [ ] Not started
-Phase 5: Export              [ ] Not started
+Phase 1: Math Foundation     [=         ] 1/2 plans complete
+Phase 2: Exam Creation       [          ] Not started
+Phase 3: Organization        [          ] Not started
+Phase 4: AI Correction       [          ] Not started
+Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 0/24 requirements complete (0%)
+**Overall:** 1/? plans complete
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [ ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 0 | - |
-| Success rate | - | No plans executed yet |
-| Avg iterations | - | No plans executed yet |
+| Plans completed | 1 | 01-01 Math Toolbar |
+| Success rate | 100% | 1/1 plans succeeded |
+| Avg duration | 8 min | First plan baseline |
 
 ---
 
@@ -57,12 +57,15 @@ Phase 5: Export              [ ] Not started
 | KaTeX for rendering | Fast, consistent across web/PDF, installed | 1 |
 | BullMQ for AI jobs | Already installed, async prevents timeout | 4 |
 | @react-pdf/renderer | Lightweight, no Chromium needed | 5 |
+| Categorized symbols with MathLive placeholders | Enables tab-navigation in templates | 1 |
+| Callback-based toolbar integration | Allows toolbar to insert into active MathLive field | 1 |
 
 ### Technical Patterns
 
 - **Math interchange:** Store all answers as LaTeX strings in DB
 - **Async grading:** Queue jobs via BullMQ, never call OpenAI in request handlers
 - **Export pattern:** Async job queue for large exports, stream to client
+- **MathLive placeholders:** Use #@ for cursor position, #0 for tab navigation
 
 ### Known Issues
 
@@ -70,7 +73,8 @@ Phase 5: Export              [ ] Not started
 
 ### TODOs
 
-- [ ] Start Phase 1 planning with `/gsd:plan-phase 1`
+- [x] Complete 01-01: Math Symbol Toolbar
+- [ ] Complete 01-02: Math Rendering with KaTeX
 
 ### Blockers
 
@@ -83,8 +87,9 @@ Phase 5: Export              [ ] Not started
 ### Resumption Prompt
 
 ```
-Continuing Correcta project. Currently at roadmap stage, no phase started.
-Next action: Plan Phase 1 (Math Foundation) with /gsd:plan-phase 1
+Continuing Correcta project. Phase 1 in progress.
+Plan 01-01 (Math Toolbar) completed successfully.
+Next action: Execute Plan 01-02 (Math Rendering) with /gsd:execute-phase 1 or plan next phase component.
 ```
 
 ### Context Files
@@ -93,7 +98,9 @@ Next action: Plan Phase 1 (Math Foundation) with /gsd:plan-phase 1
 - `.planning/REQUIREMENTS.md` - All v1 requirements with traceability
 - `.planning/ROADMAP.md` - Phase structure and success criteria
 - `.planning/research/SUMMARY.md` - Technical decisions and pitfalls
+- `.planning/phases/01-math-foundation/01-01-SUMMARY.md` - Math Toolbar summary
 
 ---
 
 *State initialized: 2026-01-18*
+*Last execution: 2026-01-19 - Completed 01-01-PLAN.md*
