@@ -1,8 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState } from 'react'
-import { Eye, EyeOff, ImagePlus, Calculator, ChevronDown, ChevronUp } from 'lucide-react'
-import MathToolbar from '@/components/exams/MathToolbar'
+import { Eye, EyeOff, ImagePlus, Sigma } from 'lucide-react'
 import ImageUpload from '@/components/ui/ImageUpload'
 import QuestionPreview from './QuestionPreview'
 import MathLivePopup from './MathLivePopup'
@@ -16,7 +15,7 @@ interface RichTextEditorProps {
   placeholder?: string
   /** Label for the field */
   label?: string
-  /** Whether to show the math toolbar */
+  /** Whether to show the math button */
   showMathToolbar?: boolean
   /** Whether to show image upload option */
   showImageUpload?: boolean
@@ -38,32 +37,26 @@ const messages = {
   fr: {
     preview: 'Apercu',
     hidePreview: 'Masquer',
-    addImage: 'Ajouter une image',
+    addImage: 'Image',
     uploadImage: 'Envoyer une image',
-    mathTip: 'Cliquez sur un symbole pour l\'inserer',
     imageTip: 'L\'image sera inseree a la position du curseur',
-    mathSymbols: 'Symboles math',
-    showMath: 'Afficher les symboles',
-    hideMath: 'Masquer les symboles',
+    math: 'Maths',
   },
   en: {
     preview: 'Preview',
     hidePreview: 'Hide',
-    addImage: 'Add image',
+    addImage: 'Image',
     uploadImage: 'Upload image',
-    mathTip: 'Click a symbol to insert it',
     imageTip: 'Image will be inserted at cursor position',
-    mathSymbols: 'Math symbols',
-    showMath: 'Show symbols',
-    hideMath: 'Hide symbols',
+    math: 'Math',
   },
 }
 
 /**
- * RichTextEditor - Text area with MathToolbar and ImageUpload integration
+ * RichTextEditor - Text area with math editor and image upload
  *
  * Features:
- * - MathToolbar integration for inserting math symbols
+ * - Simple "Maths" button that opens MathLive WYSIWYG editor
  * - ImageUpload integration for adding images via markdown syntax
  * - Live preview with math rendering
  * - Cursor position tracking for insertions
@@ -87,13 +80,7 @@ export default function RichTextEditor({
   const mathButtonRef = useRef<HTMLButtonElement>(null)
   const [showPreview, setShowPreview] = useState(defaultShowPreview)
   const [showImageModal, setShowImageModal] = useState(false)
-  const [showMathToolbarExpanded, setShowMathToolbarExpanded] = useState(false)
-  const [mathToolbarHovered, setMathToolbarHovered] = useState(false)
   const [showMathPopup, setShowMathPopup] = useState(false)
-  const [mathPopupInitialLatex, setMathPopupInitialLatex] = useState('')
-
-  // Toolbar is visible when explicitly expanded OR when hovered
-  const isMathToolbarVisible = showMathToolbarExpanded || mathToolbarHovered
 
   // Insert text at current cursor position
   const insertAtCursor = useCallback(
@@ -116,7 +103,6 @@ export default function RichTextEditor({
       onChange(newValue)
 
       // Restore focus and set cursor after inserted text
-      // Use requestAnimationFrame to ensure the DOM has updated
       requestAnimationFrame(() => {
         textarea.focus()
         const newCursorPos = start + text.length
@@ -126,25 +112,12 @@ export default function RichTextEditor({
     [value, onChange]
   )
 
-  // Handle math symbol insertion from toolbar - opens MathLive popup for editing
-  const handleMathInsert = useCallback(
-    (latex: string) => {
-      // Clean MathLive placeholders
-      const cleanedLatex = latex.replace(/#[@0]/g, '')
-      // Open MathLive popup with this latex as initial value
-      setMathPopupInitialLatex(cleanedLatex)
-      setShowMathPopup(true)
-    },
-    []
-  )
-
   // Handle MathLive popup result - insert the final latex
   const handleMathPopupInsert = useCallback(
     (latex: string) => {
       // Wrap in $ delimiters for math rendering
       insertAtCursor(`$${latex}$`)
       setShowMathPopup(false)
-      setMathPopupInitialLatex('')
     },
     [insertAtCursor]
   )
@@ -152,7 +125,6 @@ export default function RichTextEditor({
   // Close math popup
   const handleMathPopupClose = useCallback(() => {
     setShowMathPopup(false)
-    setMathPopupInitialLatex('')
   }, [])
 
   // Handle image upload completion
@@ -170,14 +142,28 @@ export default function RichTextEditor({
   return (
     <div className={className}>
       {/* Label and controls row */}
-      {(label || showImageUpload) && (
+      {(label || showImageUpload || showMathToolbar) && (
         <div className="flex items-center justify-between mb-2">
           {label && (
             <label htmlFor={id} className="block text-sm font-medium text-gray-700">
               {label}
             </label>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            {/* Math button - opens MathLive popup */}
+            {showMathToolbar && (
+              <button
+                ref={mathButtonRef}
+                type="button"
+                onClick={() => setShowMathPopup(true)}
+                disabled={disabled}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-600 hover:text-brand-700 hover:bg-brand-50 rounded transition-colors disabled:opacity-50"
+                title={t.math}
+              >
+                <Sigma className="w-4 h-4" />
+                <span>{t.math}</span>
+              </button>
+            )}
             {showImageUpload && (
               <button
                 type="button"
@@ -187,7 +173,7 @@ export default function RichTextEditor({
                 title={t.addImage}
               >
                 <ImagePlus className="w-4 h-4" />
-                <span className="hidden sm:inline">{t.addImage}</span>
+                <span>{t.addImage}</span>
               </button>
             )}
             <button
@@ -199,62 +185,15 @@ export default function RichTextEditor({
               {showPreview ? (
                 <>
                   <EyeOff className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t.hidePreview}</span>
+                  <span>{t.hidePreview}</span>
                 </>
               ) : (
                 <>
                   <Eye className="w-4 h-4" />
-                  <span className="hidden sm:inline">{t.preview}</span>
+                  <span>{t.preview}</span>
                 </>
               )}
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Math Toolbar - Collapsible */}
-      {showMathToolbar && (
-        <div
-          className="mb-2"
-          onMouseEnter={() => setMathToolbarHovered(true)}
-          onMouseLeave={() => setMathToolbarHovered(false)}
-        >
-          {/* Toggle button - always visible */}
-          <button
-            ref={mathButtonRef}
-            type="button"
-            onClick={() => setShowMathToolbarExpanded(!showMathToolbarExpanded)}
-            disabled={disabled}
-            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg border transition-all ${
-              isMathToolbarVisible
-                ? 'bg-brand-50 border-brand-300 text-brand-700'
-                : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 hover:border-gray-300'
-            } disabled:opacity-50`}
-          >
-            <Calculator className="w-4 h-4" />
-            <span>{t.mathSymbols}</span>
-            {showMathToolbarExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-
-          {/* Toolbar - visible when expanded or hovered */}
-          <div
-            className={`mt-2 transition-all duration-200 ${
-              isMathToolbarVisible
-                ? 'opacity-100 max-h-[500px]'
-                : 'opacity-0 max-h-0 overflow-hidden'
-            }`}
-          >
-            <MathToolbar
-              onInsert={handleMathInsert}
-              disabled={disabled}
-              locale={locale}
-              size="sm"
-              showCategories={true}
-            />
           </div>
         </div>
       )}
@@ -303,7 +242,7 @@ export default function RichTextEditor({
         isOpen={showMathPopup}
         onClose={handleMathPopupClose}
         onInsert={handleMathPopupInsert}
-        initialLatex={mathPopupInitialLatex}
+        initialLatex=""
         locale={locale}
         anchorElement={mathButtonRef.current}
       />

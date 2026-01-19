@@ -8,7 +8,6 @@ interface MathfieldElement extends HTMLElement {
   value: string
   getValue: (format?: string) => string
   setValue: (latex: string) => void
-  insert: (latex: string, options?: { focus?: boolean; feedback?: boolean }) => void
   focus: () => void
   executeCommand: (command: string) => void
 }
@@ -27,15 +26,13 @@ const messages = {
     title: 'Editeur de formule',
     insert: 'Inserer',
     cancel: 'Annuler',
-    tip: 'Utilisez les fleches pour naviguer dans la formule. Tab pour passer au champ suivant.',
-    emptyTip: 'Tapez une formule ou utilisez les raccourcis: / pour fraction, ^ pour exposant, _ pour indice',
+    tip: 'Tapez une formule. Utilisez / pour fraction, ^ pour exposant, _ pour indice.',
   },
   en: {
     title: 'Formula Editor',
     insert: 'Insert',
     cancel: 'Cancel',
-    tip: 'Use arrow keys to navigate within the formula. Tab to move to next field.',
-    emptyTip: 'Type a formula or use shortcuts: / for fraction, ^ for superscript, _ for subscript',
+    tip: 'Type a formula. Use / for fraction, ^ for superscript, _ for subscript.',
   },
 }
 
@@ -45,8 +42,8 @@ const messages = {
  * Features:
  * - Arrow key navigation within formulas
  * - Tab to move between fields (numerator/denominator, etc.)
- * - Ctrl+Enter to insert
- * - Escape to cancel
+ * - Built-in virtual keyboard for math symbols
+ * - Ctrl+Enter to insert, Escape to cancel
  */
 export default function MathLivePopup({
   isOpen,
@@ -60,30 +57,23 @@ export default function MathLivePopup({
   const containerRef = useRef<HTMLDivElement>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const mathFieldRef = useRef<MathfieldElement | null>(null)
-  const [mathLiveLoaded, setMathLiveLoaded] = useState(false)
-  const [currentLatex, setCurrentLatex] = useState(initialLatex)
+  const [mounted, setMounted] = useState(false)
   const [position, setPosition] = useState({ top: 100, left: 100 })
+  const hasInsertedRef = useRef(false)
 
-  // Load MathLive
+  // Track mounted state for portal
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    import('mathlive').then((module) => {
-      if ((module as unknown as { MathfieldElement?: { fontsDirectory?: string } }).MathfieldElement) {
-        const mfe = (module as unknown as { MathfieldElement: { fontsDirectory?: string } }).MathfieldElement
-        mfe.fontsDirectory = 'https://unpkg.com/mathlive/fonts/'
-        setMathLiveLoaded(true)
-      }
-    }).catch(console.error)
+    setMounted(true)
+    return () => setMounted(false)
   }, [])
 
-  // Calculate position
+  // Calculate position when popup opens
   useEffect(() => {
-    if (!isOpen || !anchorElement || !popupRef.current) return
+    if (!isOpen || !anchorElement) return
 
     const rect = anchorElement.getBoundingClientRect()
-    const popupWidth = 400
-    const popupHeight = 200
+    const popupWidth = 420
+    const popupHeight = 180
 
     let top = rect.bottom + 8
     let left = rect.left
@@ -102,78 +92,105 @@ export default function MathLivePopup({
     setPosition({ top, left })
   }, [isOpen, anchorElement])
 
-  // Create MathLive field
+  // Create and configure MathLive field
   useEffect(() => {
-    if (!isOpen || !mathLiveLoaded || !containerRef.current) return
+    if (!isOpen || !containerRef.current) return
 
-    // Clear previous
+    // Reset insert flag when opening
+    hasInsertedRef.current = false
+
+    // Clear any existing content
     containerRef.current.innerHTML = ''
 
-    const mf = document.createElement('math-field') as MathfieldElement
-    mf.value = initialLatex
+    // Dynamically import MathLive
+    import('mathlive').then((module) => {
+      if (!containerRef.current || !isOpen) return
 
-    // Style
-    mf.style.display = 'block'
-    mf.style.width = '100%'
-    mf.style.minHeight = '60px'
-    mf.style.padding = '12px'
-    mf.style.fontSize = '1.25rem'
-    mf.style.border = '2px solid #6366f1'
-    mf.style.borderRadius = '8px'
-    mf.style.backgroundColor = 'white'
-    mf.style.outline = 'none'
-
-    // Input handler
-    mf.addEventListener('input', () => {
-      setCurrentLatex(mf.getValue('latex'))
-    })
-
-    // Keyboard handler
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        const latex = mf.getValue('latex')
-        if (latex.trim()) {
-          onInsert(latex)
-        }
-        onClose()
-      } else if (e.key === 'Escape') {
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        onClose()
+      // Configure fonts directory
+      const mfe = (module as { MathfieldElement?: { fontsDirectory?: string } }).MathfieldElement
+      if (mfe) {
+        mfe.fontsDirectory = 'https://unpkg.com/mathlive/fonts/'
       }
-    }
-    mf.addEventListener('keydown', handleKeyDown, { capture: true })
 
-    containerRef.current.appendChild(mf)
-    mathFieldRef.current = mf
+      // Create math-field element
+      const mf = document.createElement('math-field') as MathfieldElement
 
-    // Focus after mount
-    setTimeout(() => {
-      mf.focus()
+      // Set initial value
       if (initialLatex) {
-        mf.executeCommand('moveToMathfieldEnd')
+        mf.value = initialLatex
       }
-    }, 50)
+
+      // Style the math field
+      mf.style.display = 'block'
+      mf.style.width = '100%'
+      mf.style.minHeight = '50px'
+      mf.style.padding = '12px'
+      mf.style.fontSize = '1.25rem'
+      mf.style.border = '2px solid #6366f1'
+      mf.style.borderRadius = '8px'
+      mf.style.backgroundColor = 'white'
+      mf.style.outline = 'none'
+
+      // Configure MathLive options via attributes
+      mf.setAttribute('virtual-keyboard-mode', 'manual')
+      mf.setAttribute('math-virtual-keyboard-policy', 'manual')
+
+      // Store reference
+      mathFieldRef.current = mf
+
+      // Keyboard shortcuts
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault()
+          e.stopPropagation()
+          handleInsertClick()
+        } else if (e.key === 'Escape') {
+          e.preventDefault()
+          e.stopPropagation()
+          onClose()
+        }
+      }
+
+      mf.addEventListener('keydown', handleKeyDown)
+
+      // Append to container
+      containerRef.current.appendChild(mf)
+
+      // Focus after a short delay
+      setTimeout(() => {
+        if (mf && document.body.contains(mf)) {
+          mf.focus()
+          if (initialLatex) {
+            mf.executeCommand('moveToMathfieldEnd')
+          }
+        }
+      }, 100)
+    }).catch(console.error)
 
     return () => {
-      if (containerRef.current && mf.parentNode === containerRef.current) {
-        containerRef.current.removeChild(mf)
+      if (containerRef.current) {
+        containerRef.current.innerHTML = ''
       }
       mathFieldRef.current = null
     }
-  }, [isOpen, mathLiveLoaded, initialLatex, onClose, onInsert])
+  }, [isOpen]) // Only depend on isOpen, not initialLatex or callbacks
 
-  // Handle insert
-  const handleInsert = useCallback(() => {
-    if (currentLatex.trim()) {
-      onInsert(currentLatex)
+  // Handle insert button click
+  const handleInsertClick = useCallback(() => {
+    if (hasInsertedRef.current) return
+
+    const mf = mathFieldRef.current
+    if (mf) {
+      const latex = mf.getValue('latex')
+      if (latex && latex.trim()) {
+        hasInsertedRef.current = true
+        onInsert(latex)
+      }
     }
     onClose()
-  }, [currentLatex, onInsert, onClose])
+  }, [onInsert, onClose])
 
-  // Close on outside click
+  // Close on click outside
   useEffect(() => {
     if (!isOpen) return
 
@@ -186,7 +203,7 @@ export default function MathLivePopup({
     // Delay to prevent immediate close
     const timeoutId = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside)
-    }, 100)
+    }, 150)
 
     return () => {
       clearTimeout(timeoutId)
@@ -194,20 +211,28 @@ export default function MathLivePopup({
     }
   }, [isOpen, onClose])
 
-  if (typeof document === 'undefined' || !isOpen) return null
+  // Show virtual keyboard
+  const showVirtualKeyboard = useCallback(() => {
+    if (typeof window !== 'undefined' && (window as unknown as { mathVirtualKeyboard?: { show: () => void } }).mathVirtualKeyboard) {
+      (window as unknown as { mathVirtualKeyboard: { show: () => void } }).mathVirtualKeyboard.show()
+    }
+  }, [])
+
+  if (!mounted || !isOpen) return null
 
   const popupContent = (
     <div
       ref={popupRef}
-      className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200 w-[400px]"
-      style={{ top: position.top, left: position.left }}
+      className="fixed z-50 bg-white rounded-xl shadow-2xl border border-gray-200"
+      style={{ top: position.top, left: position.left, width: 420 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-gray-50 rounded-t-xl">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 bg-gray-50 rounded-t-xl">
         <h3 className="text-sm font-semibold text-gray-900">{t.title}</h3>
         <button
           onClick={onClose}
           className="p-1 text-gray-400 hover:text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+          type="button"
         >
           <X className="w-4 h-4" />
         </button>
@@ -217,41 +242,42 @@ export default function MathLivePopup({
       <div className="p-4">
         <div ref={containerRef} className="mb-3" />
 
+        {/* Virtual keyboard button */}
+        <button
+          type="button"
+          onClick={showVirtualKeyboard}
+          className="mb-3 text-xs text-brand-600 hover:text-brand-700 hover:underline"
+        >
+          {locale === 'fr' ? 'Afficher le clavier virtuel' : 'Show virtual keyboard'}
+        </button>
+
         {/* Tips */}
-        <p className="text-xs text-gray-500 mb-4">
-          {currentLatex ? t.tip : t.emptyTip}
-        </p>
+        <p className="text-xs text-gray-500 mb-3">{t.tip}</p>
 
         {/* Actions */}
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            {t.cancel}
-          </button>
-          <button
-            onClick={handleInsert}
-            disabled={!currentLatex.trim()}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Check className="w-4 h-4" />
-            {t.insert}
-          </button>
+        <div className="flex items-center justify-between">
+          <div className="text-xs text-gray-400">
+            <kbd className="px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">Ctrl+Enter</kbd>
+            {locale === 'fr' ? ' inserer' : ' insert'}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {t.cancel}
+            </button>
+            <button
+              type="button"
+              onClick={handleInsertClick}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
+            >
+              <Check className="w-4 h-4" />
+              {t.insert}
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Keyboard hint */}
-      <div className="px-4 py-2 bg-gray-50 rounded-b-xl border-t border-gray-100">
-        <p className="text-xs text-gray-400 text-center">
-          <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">Ctrl</kbd>
-          {' + '}
-          <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">Enter</kbd>
-          {locale === 'fr' ? ' pour inserer' : ' to insert'}
-          {' • '}
-          <kbd className="px-1.5 py-0.5 bg-gray-200 rounded text-gray-600">Esc</kbd>
-          {locale === 'fr' ? ' pour annuler' : ' to cancel'}
-        </p>
       </div>
     </div>
   )
