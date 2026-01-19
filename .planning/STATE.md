@@ -21,19 +21,19 @@
 ## Current Position
 
 **Phase:** 2 of 5 (Exam Creation)
-**Plan:** 2 of 4 complete
-**Status:** In progress
+**Plan:** 4 of 4 complete
+**Status:** Phase complete
 
 **Progress:**
 ```
 Phase 1: Math Foundation     [==========] 3/3 plans complete
-Phase 2: Exam Creation       [=====-----] 2/4 plans complete (02-02 done)
+Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [          ] Not started
 Phase 4: AI Correction       [          ] Not started
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 5/7 plans complete (Phase 1 done, Phase 2 half done)
+**Overall:** 7/7 plans complete for Phases 1-2
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 5 | 01-01, 01-02, 01-03, 02-01, 02-02 |
-| Success rate | 100% | 5/5 plans succeeded |
-| Avg duration | 9 min | (8 + 12 + 5 + 9 + 11) / 5 |
+| Plans completed | 7 | 01-01, 01-02, 01-03, 02-01, 02-02, 02-03, 02-04 |
+| Success rate | 100% | 7/7 plans succeeded |
+| Avg duration | 10 min | (8 + 12 + 5 + 9 + 11 + 8 + 12) / 7 |
 
 ---
 
@@ -69,6 +69,10 @@ Phase 5: Export              [          ] Not started
 | correctionGuidelines at question level | Simpler than per-segment for V1, enables AI grading | 2 |
 | MCQ-specific store actions | Clean API for option management | 2 |
 | All-or-nothing MCQ mode | Supports both per-option and total points scoring | 2 |
+| MCQ auto-scoring on submit | Instant feedback, no waiting for grading job | 2 |
+| Partial credit MCQ mode | (correct - incorrect) / total * points formula | 2 |
+| AUTO_SCORED_MCQ flag | aiRationale field distinguishes from AI grading | 2 |
+| GradingTask for TEXT | Placeholder ready for Phase 4 AI grading | 2 |
 
 ### Technical Patterns
 
@@ -82,6 +86,9 @@ Phase 5: Export              [          ] Not started
 - **Server actions:** For data mutations with permission checks and revalidation
 - **Question editors:** Factory pattern routes to type-specific components
 - **MCQ options:** Use segments array where instruction is text, isCorrect is flag
+- **MCQ scoring:** scoreMultipleChoiceAnswer function, supports partial/all-or-nothing
+- **Autosave:** 2-second debounce on answer changes
+- **Timer auto-submit:** Auto-submits when timer reaches 0
 
 ### Known Issues
 
@@ -95,8 +102,11 @@ Phase 5: Export              [          ] Not started
 - [x] Plan Phase 2: Exam Creation (4 plans created and verified)
 - [x] Complete 02-01: Exam Editor Shell
 - [x] Complete 02-02: Question Type Editors
-- [ ] Complete 02-03: Image Upload Integration
-- [ ] Complete 02-04: Student Exam Taking
+- [x] Complete 02-03: Image Upload Integration
+- [x] Complete 02-04: Student Exam Taking
+- [ ] Plan Phase 3: Organization
+- [ ] Plan Phase 4: AI Correction
+- [ ] Plan Phase 5: Export
 
 ### Blockers
 
@@ -109,13 +119,15 @@ Phase 5: Export              [          ] Not started
 ### Resumption Prompt
 
 ```
-Continuing Correcta project. Phase 1 (Math Foundation) COMPLETE.
-Phase 2 (Exam Creation) IN PROGRESS:
+Continuing Correcta project.
+Phase 1 (Math Foundation) COMPLETE.
+Phase 2 (Exam Creation) COMPLETE:
 - 02-01: COMPLETE - Exam Editor shell, store, question management, running total
 - 02-02: COMPLETE - Question type editors (Open with correction guidelines, MCQ)
-- 02-03: PENDING - Image upload and math toolbar integration
-- 02-04: PENDING - Student exam taking with MCQ auto-scoring
-Next action: Execute 02-03-PLAN.md
+- 02-03: COMPLETE - Image upload and math toolbar integration
+- 02-04: COMPLETE - Student exam taking with MCQ auto-scoring
+
+Next action: Plan Phase 3 (Organization) or execute existing plans
 ```
 
 ### Context Files
@@ -129,8 +141,10 @@ Next action: Execute 02-03-PLAN.md
 - `.planning/phases/01-math-foundation/01-03-SUMMARY.md` - GradingView gap closure summary
 - `.planning/phases/02-exam-creation/02-01-SUMMARY.md` - Exam Editor Shell summary
 - `.planning/phases/02-exam-creation/02-02-SUMMARY.md` - Question Type Editors summary
+- `.planning/phases/02-exam-creation/02-03-SUMMARY.md` - Image Upload Integration summary
+- `.planning/phases/02-exam-creation/02-04-SUMMARY.md` - Student Exam Taking summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-19 - Completed 02-02-PLAN.md (Question Type Editors)*
+*Last execution: 2026-01-19 - Completed 02-04-PLAN.md (Student Exam Taking)*
