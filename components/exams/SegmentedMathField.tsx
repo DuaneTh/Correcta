@@ -432,6 +432,16 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
     const initialValueRef = useRef(value)
     const isFrench = locale === 'fr'
 
+    // Store callbacks in refs to avoid useEffect dependency changes causing re-renders
+    const onChangeDraftRef = useRef(onChangeDraft)
+    const onConfirmRef = useRef(onConfirm)
+    const onCancelRef = useRef(onCancel)
+    const onMathFieldReadyRef = useRef(onMathFieldReady)
+    onChangeDraftRef.current = onChangeDraft
+    onConfirmRef.current = onConfirm
+    onCancelRef.current = onCancel
+    onMathFieldReadyRef.current = onMathFieldReady
+
 
     // Dynamically load MathLive CSS and JS
 
@@ -519,7 +529,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
         let isListenerActive = false
 
-        
+
 
         const handleClickOutside = (e: MouseEvent) => {
 
@@ -529,7 +539,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
                 // Click outside the popup - save changes
 
-                onConfirm()
+                onConfirmRef.current()
 
             }
 
@@ -541,7 +551,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
         document.addEventListener('mousedown', handleClickOutside, true)
 
-        
+
 
         // Activate after a small delay to avoid immediately closing on the click that opened the popup
 
@@ -561,7 +571,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
         }
 
-    }, [onConfirm])
+    }, [])
 
 
 
@@ -629,7 +639,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
             const latex = mf.getValue('latex')
 
-            onChangeDraft(latex)
+            onChangeDraftRef.current(latex)
 
         })
 
@@ -649,7 +659,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
                 e.stopImmediatePropagation()
 
-                onConfirm()
+                onConfirmRef.current()
 
             } else if (e.key === 'Enter') {
 
@@ -671,7 +681,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
                 e.stopImmediatePropagation()
 
-                onCancel()
+                onCancelRef.current()
 
             } else if (e.key === ' ') {
                 // Insert a visible space in math mode (~ is non-breaking space in LaTeX)
@@ -696,7 +706,7 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
         mathFieldRef.current = mf
 
         // Notify parent that math field is ready for toolbar insertion
-        onMathFieldReady?.(mf)
+        onMathFieldReadyRef.current?.(mf)
 
         // Focus the field after a short delay
 
@@ -721,11 +731,11 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
             }
 
             mathFieldRef.current = null
-            onMathFieldReady?.(null)
+            onMathFieldReadyRef.current?.(null)
 
         }
 
-    }, [mathLiveLoaded, onChangeDraft, onConfirm, onCancel, onMathFieldReady])
+    }, [mathLiveLoaded])
 
 
 
@@ -2540,8 +2550,8 @@ export default function SegmentedMathField({
     })
     const isFrench = locale === 'fr'
 
-    // Compute whether to show the math toolbar (default: true when showMathButton is true)
-    const shouldShowMathToolbar = showMathToolbar ?? showMathButton
+    // Compute whether to show the math toolbar (default: false - use Insert menu instead)
+    const shouldShowMathToolbar = showMathToolbar ?? false
 
     // Ref to track the active math field element for toolbar insertion
     const activeMathFieldRef = useRef<MathfieldElement | null>(null)
