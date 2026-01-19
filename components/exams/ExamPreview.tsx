@@ -1,26 +1,11 @@
 ﻿'use client'
 
-import { useEffect, useRef } from 'react'
 import { Exam } from '@/types/exams'
 import MathRenderer from '@/components/exams/MathRenderer'
 import ExamChangeLog from '@/components/exams/ExamChangeLog'
 import { parseContent, segmentsToPlainText } from '@/lib/content'
 
-type MathJaxObject = {
-    startup?: { ready?: boolean }
-    typesetPromise?: (nodes?: Element[]) => Promise<void>
-    typeset?: (nodes?: Element[]) => void
-    tex?: {
-        inlineMath: string[][]
-        displayMath: string[][]
-        processEscapes?: boolean
-    }
-    svg?: {
-        fontCache?: string
-    }
-}
-
-type MathJaxWindow = Window & { MathJax?: MathJaxObject }
+// Math rendering is now handled by MathRenderer using KaTeX (synchronous, no loading needed)
 
 type ExamPreviewDictionary = {
     teacher: {
@@ -48,98 +33,9 @@ export default function ExamPreview({
     hideHonorCommitment = false,
 }: ExamPreviewProps) {
     const dict = dictionary.teacher.examBuilderPage
-    const previewRef = useRef<HTMLDivElement>(null)
-    const mathJaxReadyRef = useRef(false)
-    const isTypesettingRef = useRef(false)
-    const pendingTypesetRef = useRef(false)
-    const typesetTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-    
-    const typesetMath = async () => {
-        if (typeof window === 'undefined') return
-        const mathWindow = window as MathJaxWindow
-        const target = previewRef.current
-        if (!target) return
-        if (isTypesettingRef.current) {
-            pendingTypesetRef.current = true
-            return
-        }
-        isTypesettingRef.current = true
-        try {
-            if (mathWindow.MathJax?.typesetPromise) {
-                await mathWindow.MathJax.typesetPromise([target])
-            } else if (mathWindow.MathJax?.typeset) {
-                mathWindow.MathJax.typeset([target])
-            }
-        } catch (error) {
-            console.error('MathJax typeset error:', error)
-        } finally {
-            isTypesettingRef.current = false
-            if (pendingTypesetRef.current) {
-                pendingTypesetRef.current = false
-                void typesetMath()
-            }
-        }
-    }
+    // Math rendering is handled synchronously by MathRenderer using KaTeX
+    // No MathJax loading or typesetting needed
 
-    // Load MathJax once
-    useEffect(() => {
-        if (typeof window === 'undefined') return
-        const mathWindow = window as MathJaxWindow
-        
-        // Check if MathJax script is already in the document
-        let mathJaxScript = document.getElementById('MathJax-script') as HTMLScriptElement
-        
-        if (!mathJaxScript) {
-            // Configure MathJax before loading
-            mathWindow.MathJax = {
-                tex: {
-                    inlineMath: [['$', '$']],
-                    displayMath: [['$$', '$$']],
-                    processEscapes: true
-                },
-                svg: {
-                    fontCache: 'global'
-                }
-            }
-            
-            // Load MathJax from CDN
-            mathJaxScript = document.createElement('script')
-            mathJaxScript.src = 'https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'
-            mathJaxScript.async = true
-            mathJaxScript.id = 'MathJax-script'
-            document.head.appendChild(mathJaxScript)
-        }
-
-        // Wait for MathJax to be ready
-        const checkMathJax = setInterval(() => {
-            if (mathWindow.MathJax?.startup?.ready || mathWindow.MathJax?.typesetPromise) {
-                clearInterval(checkMathJax)
-                mathJaxReadyRef.current = true
-                typesetMath()
-            }
-        }, 100)
-
-        return () => {
-            clearInterval(checkMathJax)
-        }
-    }, [])
-
-    // Re-typeset when exam content changes
-    useEffect(() => {
-        if (!mathJaxReadyRef.current) return
-        if (typesetTimeoutRef.current) {
-            clearTimeout(typesetTimeoutRef.current)
-        }
-        typesetTimeoutRef.current = setTimeout(() => {
-            void typesetMath()
-        }, 200)
-        return () => {
-            if (typesetTimeoutRef.current) {
-                clearTimeout(typesetTimeoutRef.current)
-            }
-        }
-    }, [exam])
-    
     const sortedSections = [...exam.sections].sort((a, b) => {
         const orderA = typeof a.order === 'number' ? a.order : 0
         const orderB = typeof b.order === 'number' ? b.order : 0
@@ -156,7 +52,7 @@ export default function ExamPreview({
     }
 
     return (
-        <div ref={previewRef} className="bg-white rounded-md shadow-sm border border-gray-200">
+        <div className="bg-white rounded-md shadow-sm border border-gray-200">
             {!hideHeader && (
                 <div className="p-6 pb-4 border-b border-gray-100">
                     <div className="flex items-start justify-between gap-4">

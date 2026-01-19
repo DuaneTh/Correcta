@@ -164,7 +164,7 @@ math-field::placeholder {
   opacity: 1 !important;
 }
 
-/* MathJax content wrapping for long formulas */
+/* KaTeX content styling for math rendering */
 .math-chip-content {
   display: inline !important;
   max-width: 100%;
@@ -173,16 +173,14 @@ math-field::placeholder {
 }
 
 /* Keep inline wrapping only for inline math chips */
-.math-chip-content:not(.math-inline-display) mjx-container {
+.math-chip-content:not(.math-inline-display) .katex {
   display: inline !important;
   max-width: 100%;
   white-space: normal !important;
-  word-break: break-all !important;
-  overflow-wrap: anywhere !important;
   font-size: 1em !important;
 }
 
-.math-inline:not(.math-inline-display) mjx-container {
+.math-inline:not(.math-inline-display) .katex {
   font-size: 1.15em !important;
 }
 
@@ -190,41 +188,20 @@ math-field::placeholder {
   font-size: 1.15em !important;
 }
 
-.math-inline mjx-container {
-  transform: scale(1.15);
-  transform-origin: left center;
-}
-
-.math-chip-content:not(.math-inline-display) mjx-container[jax="CHTML"] {
-  display: inline !important;
-  white-space: normal !important;
-}
-
-.math-chip-content:not(.math-inline-display) mjx-math {
-  display: inline !important;
-  white-space: normal !important;
-  word-break: break-all !important;
-}
-
-.math-chip-content:not(.math-inline-display) mjx-mrow {
-  display: inline !important;
-  flex-wrap: wrap !important;
-  white-space: normal !important;
+.math-inline .katex {
+  font-size: inherit;
 }
 
 /* Keep display math inline when used for large operators */
-.math-inline-display mjx-container[display="true"] {
+.math-inline-display .katex-display {
   display: inline-block !important;
   margin: 0 !important;
   vertical-align: middle;
 }
 
-.math-inline-display mjx-math,
-.math-inline-display mjx-mrow {
+.math-inline-display .katex {
   display: inline-block !important;
   white-space: normal !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
 }
 
 /* Ensure math chips don't overflow their container */
