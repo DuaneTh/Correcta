@@ -1,7 +1,8 @@
 'use client'
 
 import { useExamStore, useQuestion } from './store'
-import { FileText, ListChecks } from 'lucide-react'
+import { FileText, ListChecks, Code } from 'lucide-react'
+import QuestionEditorFactory from './question-types/QuestionEditorFactory'
 
 export default function QuestionPanel() {
   const exam = useExamStore((state) => state.exam)
@@ -30,7 +31,31 @@ export default function QuestionPanel() {
     )
   }
 
-  const TypeIcon = question.type === 'MCQ' ? ListChecks : FileText
+  // Get the appropriate icon for the question type
+  const getTypeIcon = () => {
+    switch (question.type) {
+      case 'MCQ':
+        return ListChecks
+      case 'CODE':
+        return Code
+      default:
+        return FileText
+    }
+  }
+
+  const TypeIcon = getTypeIcon()
+
+  // Get the label for the question type
+  const getTypeLabel = () => {
+    switch (question.type) {
+      case 'MCQ':
+        return 'Multiple Choice'
+      case 'CODE':
+        return 'Code'
+      default:
+        return 'Open Question'
+    }
+  }
 
   // Calculate points for this question
   const points =
@@ -51,113 +76,16 @@ export default function QuestionPanel() {
                   {question.customLabel || `Question`}
                 </h2>
                 <p className="text-sm text-gray-500">
-                  {question.type === 'MCQ' ? 'Multiple Choice' : 'Open Question'} - {points}{' '}
-                  {points === 1 ? 'point' : 'points'}
+                  {getTypeLabel()} - {points} {points === 1 ? 'point' : 'points'}
                 </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Question content preview */}
+        {/* Question editor - rendered by factory based on type */}
         <div className="p-6">
-          <div className="prose prose-sm max-w-none">
-            {question.content && question.content.length > 0 ? (
-              <div className="text-gray-700">
-                {question.content.map((segment) => {
-                  if (segment.type === 'text') {
-                    return (
-                      <span key={segment.id}>
-                        {segment.text || (
-                          <span className="text-gray-400 italic">No content yet</span>
-                        )}
-                      </span>
-                    )
-                  }
-                  if (segment.type === 'math') {
-                    return (
-                      <span key={segment.id} className="font-mono bg-gray-100 px-1 rounded">
-                        {segment.latex}
-                      </span>
-                    )
-                  }
-                  return null
-                })}
-              </div>
-            ) : (
-              <p className="text-gray-400 italic">No content yet. Click to edit.</p>
-            )}
-          </div>
-
-          {/* Segments (for TEXT questions) */}
-          {question.type === 'TEXT' && question.segments.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Answer Segments</h3>
-              <div className="space-y-3">
-                {question.segments.map((segment, index) => (
-                  <div
-                    key={segment.id}
-                    className="p-3 bg-gray-50 rounded-lg border border-gray-200"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-gray-700">
-                        Segment {index + 1}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {segment.maxPoints ?? 0} {(segment.maxPoints ?? 0) === 1 ? 'pt' : 'pts'}
-                      </span>
-                    </div>
-                    {segment.instruction && (
-                      <p className="text-sm text-gray-600 mt-1">{segment.instruction}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* MCQ Options placeholder */}
-          {question.type === 'MCQ' && (
-            <div className="mt-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">Options</h3>
-              {question.segments.length === 0 ? (
-                <p className="text-sm text-gray-400 italic">
-                  No options added yet. Add options in the question editor.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {question.segments.map((segment, index) => (
-                    <div
-                      key={segment.id}
-                      className={`p-3 rounded-lg border ${
-                        segment.isCorrect
-                          ? 'bg-green-50 border-green-200'
-                          : 'bg-gray-50 border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-gray-700">
-                          {String.fromCharCode(65 + index)}. {segment.instruction || 'Option'}
-                        </span>
-                        {segment.isCorrect && (
-                          <span className="text-xs text-green-600 font-medium">Correct</span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Placeholder for full editor */}
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-            <p className="text-sm text-gray-500 text-center">
-              Full question editor will be implemented in Plan 02-02.
-              <br />
-              This is a preview of the question structure.
-            </p>
-          </div>
+          <QuestionEditorFactory questionId={activeQuestionId} />
         </div>
       </div>
     </div>
