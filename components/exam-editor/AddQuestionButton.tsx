@@ -95,6 +95,7 @@ export default function AddQuestionButton() {
             customLabel: result.question.customLabel,
             requireAllCorrect: result.question.requireAllCorrect,
             maxPoints: result.question.maxPoints,
+            correctionGuidelines: result.question.correctionGuidelines ?? null,
             segments: result.question.segments.map(seg => ({
               id: seg.id,
               order: seg.order,

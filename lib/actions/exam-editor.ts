@@ -165,6 +165,9 @@ export async function getExamForEditor(examId: string) {
         customLabel: question.customLabel,
         requireAllCorrect: question.requireAllCorrect,
         maxPoints: question.maxPoints,
+        // correctionGuidelines is stored in segment rubric criteria for now
+        // TODO: Add dedicated field when schema is updated for Phase 4
+        correctionGuidelines: question.segments[0]?.rubric?.criteria ?? null,
         segments: question.segments.map(segment => ({
           id: segment.id,
           order: segment.order,
@@ -396,6 +399,7 @@ export async function addQuestion(
         customLabel: fullQuestion.customLabel,
         requireAllCorrect: fullQuestion.requireAllCorrect,
         maxPoints: fullQuestion.maxPoints,
+        correctionGuidelines: null, // New questions start with no guidelines
         segments: fullQuestion.segments.map(segment => ({
           id: segment.id,
           order: segment.order,

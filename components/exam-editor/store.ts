@@ -64,6 +64,8 @@ export interface EditorQuestion {
   requireAllCorrect: boolean
   maxPoints: number | null
   segments: EditorSegment[]
+  /** AI grading guidelines for TEXT questions (Phase 4) */
+  correctionGuidelines: string | null
 }
 
 /**
