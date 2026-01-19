@@ -73,6 +73,9 @@ Phase 5: Export              [          ] Not started
 | Partial credit MCQ mode | (correct - incorrect) / total * points formula | 2 |
 | AUTO_SCORED_MCQ flag | aiRationale field distinguishes from AI grading | 2 |
 | GradingTask for TEXT | Placeholder ready for Phase 4 AI grading | 2 |
+| Proxy upload through Next.js API | Avoids CORS/presigned URL complexity with local MinIO | 2 |
+| Markdown image syntax ![alt](url) | Standard, portable between storage backends | 2 |
+| $...$ math delimiters in textarea | Works with MathRenderer, familiar LaTeX syntax | 2 |
 
 ### Technical Patterns
 
@@ -89,6 +92,9 @@ Phase 5: Export              [          ] Not started
 - **MCQ scoring:** scoreMultipleChoiceAnswer function, supports partial/all-or-nothing
 - **Autosave:** 2-second debounce on answer changes
 - **Timer auto-submit:** Auto-submits when timer reaches 0
+- **Image storage:** MinIO with public bucket, proxy upload via API route
+- **Rich text editing:** RichTextEditor combines MathToolbar + ImageUpload + Preview
+- **Content rendering:** QuestionPreview parses markdown images + $...$ math
 
 ### Known Issues
 
@@ -147,4 +153,4 @@ Next action: Plan Phase 3 (Organization) or execute existing plans
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-19 - Completed 02-04-PLAN.md (Student Exam Taking)*
+*Last execution: 2026-01-19 - Completed 02-03-PLAN.md (Image Upload Integration)*
