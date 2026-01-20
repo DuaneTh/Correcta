@@ -263,12 +263,21 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                 {showActionsDropdown && (
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                                         <button
-                                            disabled
-                                            className="w-full px-4 py-2 text-left text-gray-400 cursor-not-allowed flex items-center gap-2 hover:bg-gray-50"
-                                            title="Disponible bientot"
+                                            onClick={() => {
+                                                // Trigger CSV download
+                                                const url = `/api/exams/${examId}/export/csv`
+                                                const link = document.createElement('a')
+                                                link.href = url
+                                                link.download = '' // Let server set filename
+                                                document.body.appendChild(link)
+                                                link.click()
+                                                document.body.removeChild(link)
+                                                setShowActionsDropdown(false)
+                                            }}
+                                            className="w-full px-4 py-2 text-left text-gray-700 flex items-center gap-2 hover:bg-gray-50"
                                         >
                                             <FileDown className="w-4 h-4" />
-                                            Exporter les notes
+                                            Exporter les notes (CSV)
                                         </button>
                                         <button
                                             disabled
