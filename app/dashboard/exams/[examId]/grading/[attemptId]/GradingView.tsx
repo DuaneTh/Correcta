@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Check, ExternalLink, Clock } from 'lucide-react'
+import { ArrowLeft, Check, ExternalLink, Clock, Pencil, Sparkles, UserCheck } from 'lucide-react'
 import Link from 'next/link'
 import { getCsrfToken } from '@/lib/csrfClient'
 import MathRenderer from '@/components/exams/MathRenderer'
+import GradeEditModal from '@/components/grading/GradeEditModal'
+import ReGradeButton from '@/components/grading/ReGradeButton'
 
 interface GradingData {
     attempt: {
@@ -33,6 +35,9 @@ interface GradingData {
                     id: string
                     score: number
                     feedback: string | null
+                    aiRationale: string | null
+                    isOverridden: boolean
+                    gradedByUserId: string | null
                 } | null
             }[]
         }[]
@@ -75,6 +80,19 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
     // Anti-Cheat State
     const [antiCheatData, setAntiCheatData] = useState<AntiCheatData | null>(null)
     const [antiCheatLoading, setAntiCheatLoading] = useState(true)
+
+    // Edit Modal State
+    const [editingQuestion, setEditingQuestion] = useState<{
+        questionId: string
+        answerId: string
+        questionContent: string
+        studentAnswer: string
+        maxPoints: number
+        currentScore: number
+        currentFeedback: string
+        aiRationale?: string
+        isAiGrade: boolean
+    } | null>(null)
 
     const handleAiGrading = async () => {
         setIsAiLoading(true)
@@ -402,18 +420,50 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                             const isSaving = saving[question.id]
                             const isSaved = saved[question.id]
 
+                            // Grade source badges
+                            const isAiGrade = question.grade && question.grade.gradedByUserId === null && !question.grade.isOverridden
+                            const isHumanModified = question.grade?.isOverridden || (question.grade && question.grade.gradedByUserId !== null)
+
+                            // Score color (green >= 70%, yellow 40-70%, red < 40%)
+                            const scorePercent = question.maxPoints > 0 ? (currentScore / question.maxPoints) * 100 : 0
+                            const scoreColorClass = scorePercent >= 70
+                                ? 'text-green-600'
+                                : scorePercent >= 40
+                                    ? 'text-yellow-600'
+                                    : 'text-red-600'
+
+                            // Student answer as string for modal
+                            const studentAnswerStr = question.answer?.segments
+                                ?.map(s => s.content)
+                                .join('\n') || ''
+
                             return (
                                 <div key={question.id} className="bg-white shadow rounded-lg p-6 border border-gray-200">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className="flex-1">
-                                            <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded mb-2">
-                                                Question {index + 1} • {question.maxPoints} pts
-                                            </span>
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded">
+                                                    Question {index + 1} - {question.maxPoints} pts
+                                                </span>
+                                                {/* AI/Human badges */}
+                                                {isAiGrade && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                                        <Sparkles className="w-3 h-3" />
+                                                        IA
+                                                    </span>
+                                                )}
+                                                {isHumanModified && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-700 rounded">
+                                                        <UserCheck className="w-3 h-3" />
+                                                        Modifie par prof
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-lg text-gray-900 font-medium mb-4">
                                                 <MathRenderer text={question.content} />
                                             </div>
                                             <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-                                                <h4 className="text-xs font-bold text-blue-800 uppercase mb-1">Student Answer</h4>
+                                                <h4 className="text-xs font-bold text-blue-800 uppercase mb-1">Reponse de l&apos;etudiant</h4>
                                                 <div className="text-gray-800">
                                                     {question.answer?.segments && question.answer.segments.length > 0 ? (
                                                         question.answer.segments.map((s, i) => (
@@ -422,41 +472,71 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                                                             </div>
                                                         ))
                                                     ) : (
-                                                        <span className="italic text-gray-400">No answer provided</span>
+                                                        <span className="italic text-gray-400">Aucune reponse fournie</span>
                                                     )}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="ml-6 w-64 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                        <div className="ml-6 w-72 bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            {/* Score display */}
                                             <div className="mb-4">
                                                 <label className="block text-xs font-medium text-gray-700 mb-1">Score (0 - {question.maxPoints})</label>
                                                 <div className="flex items-center">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        max={question.maxPoints}
-                                                        value={currentScore}
-                                                        onChange={(e) => handleScoreChange(question.id, answerId, e.target.value)}
-                                                        onBlur={() => handleScoreBlur(question.id, answerId)}
-                                                        className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                    />
+                                                    <span className={`text-2xl font-bold ${scoreColorClass}`}>
+                                                        {currentScore}
+                                                    </span>
                                                     <span className="ml-2 text-gray-500 text-sm">/ {question.maxPoints}</span>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-xs font-medium text-gray-700 mb-1">Feedback / Comment</label>
-                                                <textarea
-                                                    rows={3}
-                                                    value={currentFeedback}
-                                                    onChange={(e) => handleFeedbackChange(question.id, answerId, e.target.value)}
-                                                    onBlur={() => handleFeedbackBlur(question.id, answerId)}
-                                                    className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-                                                    placeholder="Good job..."
+
+                                            {/* Feedback display with MathRenderer */}
+                                            {currentFeedback && (
+                                                <div className="mb-4">
+                                                    <label className="block text-xs font-medium text-gray-700 mb-1">Commentaire</label>
+                                                    <div className="text-sm text-gray-700 bg-white p-2 rounded border border-gray-200">
+                                                        <MathRenderer text={currentFeedback} />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Action buttons */}
+                                            <div className="flex flex-col gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingQuestion({
+                                                        questionId: question.id,
+                                                        answerId,
+                                                        questionContent: question.content,
+                                                        studentAnswer: studentAnswerStr,
+                                                        maxPoints: question.maxPoints,
+                                                        currentScore,
+                                                        currentFeedback,
+                                                        aiRationale: question.grade?.aiRationale || undefined,
+                                                        isAiGrade: !!isAiGrade
+                                                    })}
+                                                    className="inline-flex items-center justify-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded transition-colors"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                    Modifier
+                                                </button>
+
+                                                <ReGradeButton
+                                                    attemptId={attemptId}
+                                                    answerId={answerId}
+                                                    hasHumanOverride={!!isHumanModified}
+                                                    onSuccess={() => {
+                                                        setAiStatus({
+                                                            type: 'success',
+                                                            message: 'Correction IA relancee. Actualisez apres quelques secondes.'
+                                                        })
+                                                    }}
                                                 />
                                             </div>
+
+                                            {/* Save status */}
                                             <div className="mt-2 h-5 flex items-center justify-end text-xs">
-                                                {isSaving && <span className="text-gray-500 flex items-center"><Clock className="w-3 h-3 mr-1" /> Saving...</span>}
-                                                {isSaved && <span className="text-green-600 flex items-center"><Check className="w-3 h-3 mr-1" /> Saved</span>}
+                                                {isSaving && <span className="text-gray-500 flex items-center"><Clock className="w-3 h-3 mr-1" /> Enregistrement...</span>}
+                                                {isSaved && <span className="text-green-600 flex items-center"><Check className="w-3 h-3 mr-1" /> Enregistre</span>}
                                             </div>
                                         </div>
                                     </div>
@@ -466,6 +546,35 @@ export default function GradingView({ examId, attemptId }: GradingViewProps) {
                     </div>
                 ))}
             </div>
+
+            {/* Grade Edit Modal */}
+            {editingQuestion && (
+                <GradeEditModal
+                    isOpen={true}
+                    onClose={() => setEditingQuestion(null)}
+                    onSave={async (score, feedback) => {
+                        await saveGrade(
+                            editingQuestion.questionId,
+                            editingQuestion.answerId,
+                            score,
+                            feedback
+                        )
+                        // Update local state
+                        setGrades(prev => ({ ...prev, [editingQuestion.questionId]: score }))
+                        setFeedbacks(prev => ({ ...prev, [editingQuestion.questionId]: feedback }))
+                        setEditingQuestion(null)
+                        // Refresh data to get updated badges
+                        fetchData()
+                    }}
+                    questionContent={editingQuestion.questionContent}
+                    studentAnswer={editingQuestion.studentAnswer}
+                    maxPoints={editingQuestion.maxPoints}
+                    currentScore={editingQuestion.currentScore}
+                    currentFeedback={editingQuestion.currentFeedback}
+                    aiRationale={editingQuestion.aiRationale}
+                    isAiGrade={editingQuestion.isAiGrade}
+                />
+            )}
         </div>
     )
 }

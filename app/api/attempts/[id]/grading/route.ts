@@ -116,7 +116,10 @@ export async function GET(
                             grade: grade ? {
                                 id: grade.id,
                                 score: grade.score,
-                                feedback: grade.feedback
+                                feedback: grade.feedback,
+                                aiRationale: grade.aiRationale,
+                                isOverridden: grade.isOverridden,
+                                gradedByUserId: grade.gradedByUserId
                             } : null
                         }
                     })
