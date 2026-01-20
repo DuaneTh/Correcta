@@ -54,6 +54,8 @@ const normalizeSegments = (segments: ContentSegment[]): ContentSegment[] => {
     return segments.map((s) =>
         s.type === 'math'
             ? { id: s.id || createId(), type: 'math', latex: s.latex || '' }
+            : s.type === 'image'
+            ? { id: s.id || createId(), type: 'image', url: s.url || '', alt: s.alt || '' }
             : s.type === 'table' ? (() => {
                 const payload = normalizeTablePayload(s)
                 return {
@@ -342,10 +344,10 @@ const parseGraphPayload = (raw: string | null): GraphPayload => {
 }
 
 const isSegmentElement = (el: HTMLElement | null) =>
-    !!el && (el.hasAttribute('data-math-id') || el.hasAttribute('data-table-id') || el.hasAttribute('data-graph-id'))
+    !!el && (el.hasAttribute('data-math-id') || el.hasAttribute('data-table-id') || el.hasAttribute('data-graph-id') || el.hasAttribute('data-image-id'))
 
 const getSegmentId = (el: HTMLElement | null) =>
-    el?.getAttribute('data-math-id') ?? el?.getAttribute('data-table-id') ?? el?.getAttribute('data-graph-id') ?? null
+    el?.getAttribute('data-math-id') ?? el?.getAttribute('data-table-id') ?? el?.getAttribute('data-graph-id') ?? el?.getAttribute('data-image-id') ?? null
 
 const isSegmentsEmpty = (segments: ContentSegment[]): boolean => {
     if (segments.length === 0) return true
@@ -2798,6 +2800,12 @@ export default function SegmentedMathField({
                         height: payload.height,
                         background: payload.background,
                     })
+                } else if (el.hasAttribute('data-image-id')) {
+                    flushText()
+                    const imageId = el.getAttribute('data-image-id') || createId()
+                    const url = el.getAttribute('data-image-url') || ''
+                    const alt = el.getAttribute('data-image-alt') || ''
+                    segments.push({ id: imageId, type: 'image', url, alt })
                 } else if (el.tagName === 'BR') {
                     // Handle line breaks
                     textBuffer += '\n'
@@ -2909,6 +2917,46 @@ export default function SegmentedMathField({
         inner.innerHTML = latex ? renderLatexToString(latex, false) : '\u25A1'
         chip.appendChild(inner)
         return chip
+    }, [])
+
+    // ------------------------------------------------------------------
+    // Image element creation
+    // ------------------------------------------------------------------
+
+    const createImageElement = useCallback((id: string, url: string, alt: string = ''): HTMLDivElement => {
+        const container = document.createElement('div')
+        container.setAttribute('data-image-id', id)
+        container.setAttribute('data-image-url', url)
+        container.setAttribute('data-image-alt', alt)
+        container.setAttribute('contenteditable', 'false')
+        container.className = 'my-2 rounded-lg border border-gray-200 overflow-hidden inline-block max-w-full'
+        container.style.display = 'block'
+
+        const img = document.createElement('img')
+        img.src = url
+        img.alt = alt || 'Image'
+        img.className = 'max-w-full h-auto max-h-64 object-contain'
+        img.style.display = 'block'
+
+        // Add delete button on hover
+        const deleteBtn = document.createElement('button')
+        deleteBtn.type = 'button'
+        deleteBtn.className = 'absolute top-1 right-1 p-1 bg-white/90 hover:bg-red-50 rounded-full shadow-sm border border-gray-200 text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity'
+        deleteBtn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>'
+        deleteBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            container.remove()
+            handleInputRef.current()
+        }
+
+        const wrapper = document.createElement('div')
+        wrapper.className = 'relative group'
+        wrapper.appendChild(img)
+        wrapper.appendChild(deleteBtn)
+
+        container.appendChild(wrapper)
+        return container
     }, [])
 
     // ------------------------------------------------------------------
@@ -3311,13 +3359,16 @@ export default function SegmentedMathField({
                 const payload = normalizeGraphPayload(seg)
                 const graph = createGraphElement(seg.id, payload, pendingDeletionId === seg.id)
                 editor.appendChild(graph)
+            } else if (seg.type === 'image') {
+                const imageEl = createImageElement(seg.id, seg.url, seg.alt)
+                editor.appendChild(imageEl)
             }
         }
 
 
         // Typeset math
         typesetMathElements()
-    }, [createMathChipElement, createTableElement, createGraphElement, typesetMathElements, pendingDeletionId, scheduleTableLayoutRefresh])
+    }, [createMathChipElement, createTableElement, createGraphElement, createImageElement, typesetMathElements, pendingDeletionId, scheduleTableLayoutRefresh])
 
 
     // ------------------------------------------------------------------
@@ -3861,7 +3912,7 @@ export default function SegmentedMathField({
     }, [disabled, editingMathId, createMathChipElement, handleInput])
 
     // ------------------------------------------------------------------
-    // Insert an image at current caret position (as markdown syntax)
+    // Insert an image at current caret position
     // ------------------------------------------------------------------
 
     const insertImage = useCallback((imageUrl: string) => {
@@ -3870,14 +3921,34 @@ export default function SegmentedMathField({
         const editor = editorRef.current
         if (!editor) return
 
-        editor.focus()
+        const newId = createId()
+        const imageEl = createImageElement(newId, imageUrl, '')
 
-        // Insert markdown image syntax at cursor position
-        const imageMarkdown = `![image](${imageUrl})`
-        document.execCommand('insertText', false, imageMarkdown)
+        const selection = window.getSelection()
+        let range: Range | null = null
+
+        if (selection && selection.rangeCount > 0) {
+            const testRange = selection.getRangeAt(0)
+            if (editor.contains(testRange.commonAncestorContainer)) {
+                range = testRange
+            }
+        }
+
+        if (range) {
+            range.deleteContents()
+            range.insertNode(imageEl)
+            // Move cursor after the image
+            range.setStartAfter(imageEl)
+            range.setEndAfter(imageEl)
+            selection?.removeAllRanges()
+            selection?.addRange(range)
+        } else {
+            // Insert at end if no selection
+            editor.appendChild(imageEl)
+        }
 
         handleInput()
-    }, [disabled, handleInput])
+    }, [disabled, createImageElement, handleInput])
 
     // ------------------------------------------------------------------
     // Insert a new table at current caret position (always on next line)
@@ -3973,7 +4044,7 @@ export default function SegmentedMathField({
         }
 
         const isEditorEffectivelyEmpty = () => {
-            const hasSegment = editor.querySelector('[data-math-id], [data-table-id], [data-graph-id]')
+            const hasSegment = editor.querySelector('[data-math-id], [data-table-id], [data-graph-id], [data-image-id]')
             if (hasSegment) return false
             const text = editor.textContent?.replace(/\u200B/g, '').trim() ?? ''
             return text.length === 0
@@ -4117,7 +4188,7 @@ export default function SegmentedMathField({
 
         const isEditorEffectivelyEmpty = () => {
             const content = editor.textContent?.replace(/\u200B/g, '').trim() ?? ''
-            const hasSegment = editor.querySelector('[data-math-id], [data-table-id], [data-graph-id]')
+            const hasSegment = editor.querySelector('[data-math-id], [data-table-id], [data-graph-id], [data-image-id]')
             return !content && !hasSegment
         }
 
@@ -4751,7 +4822,7 @@ export default function SegmentedMathField({
 
 
         // Update all chips to reflect pending deletion state
-        const chips = editor.querySelectorAll('[data-math-id], [data-table-id], [data-graph-id]')
+        const chips = editor.querySelectorAll('[data-math-id], [data-table-id], [data-graph-id], [data-image-id]')
         chips.forEach((chipEl) => {
             const chip = chipEl as HTMLElement
             const segmentId = getSegmentId(chip)
@@ -4944,7 +5015,7 @@ export default function SegmentedMathField({
             const isCollapsed = range.collapsed
 
             const selectionHasSegments = () => {
-                const segments = editor.querySelectorAll('[data-math-id], [data-table-id], [data-graph-id]')
+                const segments = editor.querySelectorAll('[data-math-id], [data-table-id], [data-graph-id], [data-image-id]')
                 for (const segment of Array.from(segments)) {
                     try {
                         if (range.intersectsNode(segment)) return true

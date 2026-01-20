@@ -166,9 +166,17 @@ export type GraphSegment = {
     background?: string
 }
 
+export type ImageSegment = {
+    id: string
+    type: 'image'
+    url: string
+    alt?: string
+}
+
 export type ContentSegment =
     | { id: string; type: 'text'; text: string }
     | { id: string; type: 'math'; latex: string }
+    | ImageSegment
     | TableSegment
     | GraphSegment
 

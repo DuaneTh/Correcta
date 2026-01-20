@@ -293,6 +293,9 @@ export const segmentsToLatexString = (segments: ContentSegment[]): string => {
                         .map((row) => row.map((cell) => toLatex(cell)).join('\t'))
                         .join('\n')
                 }
+                if (segment.type === 'image') {
+                    return `![${segment.alt || 'image'}](${segment.url})`
+                }
                 return segment.text
             })
             .join('')
@@ -307,6 +310,7 @@ export const segmentsToPlainText = (segments: ContentSegment[]): string => {
             .map((segment) => {
                 if (segment.type === 'math') return segment.latex
                 if (segment.type === 'graph') return '[graph]'
+                if (segment.type === 'image') return '[image]'
                 if (segment.type === 'table') {
                     return segment.rows
                         .map((row) => row.map((cell) => toPlain(cell)).join('\t'))
