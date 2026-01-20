@@ -22,6 +22,8 @@ export async function GET(req: NextRequest) {
             id: true,
             name: true,
             archivedAt: true,
+            parentId: true,
+            parent: { select: { id: true, name: true } },
             course: { select: { id: true, code: true, name: true, archivedAt: true } },
             enrollments: {
                 where: includeArchived ? {} : { user: { archivedAt: null } },
@@ -30,9 +32,13 @@ export async function GET(req: NextRequest) {
                     role: true,
                     user: { select: { id: true, name: true, email: true, archivedAt: true } }
                 }
+            },
+            children: {
+                where: includeArchived ? {} : { archivedAt: null },
+                select: { id: true, name: true }
             }
         },
-        orderBy: { name: 'asc' }
+        orderBy: [{ parentId: 'asc' }, { name: 'asc' }]
     })
 
     return NextResponse.json({ sections })
@@ -110,6 +116,7 @@ export async function POST(req: NextRequest) {
 
     const courseId = typeof body?.courseId === 'string' ? body.courseId : ''
     const name = typeof body?.name === 'string' ? body.name.trim() : ''
+    const parentId = typeof body?.parentId === 'string' && body.parentId ? body.parentId : null
 
     if (!courseId || !name) {
         return NextResponse.json({ error: 'Missing courseId or name' }, { status: 400 })
@@ -124,17 +131,45 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Invalid course' }, { status: 400 })
     }
 
+    // Validate parentId if provided
+    if (parentId) {
+        const parentSection = await prisma.class.findUnique({
+            where: { id: parentId },
+            select: { id: true, courseId: true, parentId: true, archivedAt: true }
+        })
+
+        if (!parentSection) {
+            return NextResponse.json({ error: 'Parent section not found' }, { status: 400 })
+        }
+
+        if (parentSection.courseId !== courseId) {
+            return NextResponse.json({ error: 'Parent section must be in the same course' }, { status: 400 })
+        }
+
+        if (parentSection.parentId) {
+            return NextResponse.json({ error: 'Cannot create subgroup of a subgroup (max 1 level deep)' }, { status: 400 })
+        }
+
+        if (parentSection.archivedAt) {
+            return NextResponse.json({ error: 'Cannot create subgroup under archived section' }, { status: 400 })
+        }
+    }
+
     const section = await prisma.class.create({
         data: {
             name,
             courseId,
+            parentId,
         },
         select: {
             id: true,
             name: true,
             archivedAt: true,
+            parentId: true,
+            parent: { select: { id: true, name: true } },
             course: { select: { id: true, code: true, name: true, archivedAt: true } },
-            enrollments: { select: { id: true, role: true, user: { select: { id: true, name: true, email: true, archivedAt: true } } } }
+            enrollments: { select: { id: true, role: true, user: { select: { id: true, name: true, email: true, archivedAt: true } } } },
+            children: { select: { id: true, name: true } }
         }
     })
 
@@ -152,6 +187,9 @@ export async function PATCH(req: NextRequest) {
     const sectionId = typeof body?.sectionId === 'string' ? body.sectionId : ''
     const name = typeof body?.name === 'string' ? body.name.trim() : undefined
     const archived = typeof body?.archived === 'boolean' ? body.archived : undefined
+    // parentId can be a string (set parent), null (remove parent), or undefined (don't change)
+    const parentIdProvided = 'parentId' in body
+    const parentId = parentIdProvided ? (typeof body.parentId === 'string' && body.parentId ? body.parentId : null) : undefined
 
     if (!sectionId) {
         return NextResponse.json({ error: 'Missing sectionId' }, { status: 400 })
@@ -162,7 +200,9 @@ export async function PATCH(req: NextRequest) {
         select: {
             id: true,
             courseId: true,
-            course: { select: { institutionId: true } }
+            parentId: true,
+            course: { select: { institutionId: true } },
+            children: { select: { id: true } }
         }
     })
 
@@ -170,9 +210,46 @@ export async function PATCH(req: NextRequest) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
+    // Validate parentId if provided
+    if (parentIdProvided && parentId !== undefined) {
+        if (parentId !== null) {
+            // Cannot set self as parent
+            if (parentId === sectionId) {
+                return NextResponse.json({ error: 'Cannot set self as parent' }, { status: 400 })
+            }
+
+            const parentSection = await prisma.class.findUnique({
+                where: { id: parentId },
+                select: { id: true, courseId: true, parentId: true, archivedAt: true }
+            })
+
+            if (!parentSection) {
+                return NextResponse.json({ error: 'Parent section not found' }, { status: 400 })
+            }
+
+            if (parentSection.courseId !== section.courseId) {
+                return NextResponse.json({ error: 'Parent section must be in the same course' }, { status: 400 })
+            }
+
+            if (parentSection.parentId) {
+                return NextResponse.json({ error: 'Cannot become subgroup of a subgroup (max 1 level deep)' }, { status: 400 })
+            }
+
+            if (parentSection.archivedAt) {
+                return NextResponse.json({ error: 'Cannot set archived section as parent' }, { status: 400 })
+            }
+
+            // If this section has children, it cannot become a subgroup
+            if (section.children && section.children.length > 0) {
+                return NextResponse.json({ error: 'Cannot move section with children to become a subgroup' }, { status: 400 })
+            }
+        }
+    }
+
     const updateData: Record<string, unknown> = {}
     if (name !== undefined) updateData.name = name
     if (archived !== undefined) updateData.archivedAt = archived ? new Date() : null
+    if (parentIdProvided && parentId !== undefined) updateData.parentId = parentId
 
     const updated = await prisma.class.update({
         where: { id: sectionId },
@@ -181,6 +258,8 @@ export async function PATCH(req: NextRequest) {
             id: true,
             name: true,
             archivedAt: true,
+            parentId: true,
+            parent: { select: { id: true, name: true } },
             course: { select: { id: true, code: true, name: true, archivedAt: true } },
             enrollments: {
                 select: {
@@ -188,7 +267,8 @@ export async function PATCH(req: NextRequest) {
                     role: true,
                     user: { select: { id: true, name: true, email: true, archivedAt: true } }
                 }
-            }
+            },
+            children: { select: { id: true, name: true } }
         }
     })
 

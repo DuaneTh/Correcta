@@ -28,8 +28,11 @@ export type SectionRow = {
     id: string
     name: string
     archivedAt?: string | null
+    parentId?: string | null
+    parent?: { id: string; name: string } | null
     course: { id: string; code: string; name: string }
     enrollments: EnrollmentRow[]
+    children?: SectionRow[]
 }
 
 export type ExamRow = {
@@ -133,6 +136,8 @@ export async function loadSchoolAdminData(institutionId: string): Promise<School
                 id: true,
                 name: true,
                 archivedAt: true,
+                parentId: true,
+                parent: { select: { id: true, name: true } },
                 course: { select: { id: true, code: true, name: true } },
                 enrollments: {
                     where: { user: { archivedAt: null } },
@@ -174,6 +179,8 @@ export async function loadSchoolAdminData(institutionId: string): Promise<School
         sections: sections.map(sec => ({
             ...sec,
             archivedAt: sec.archivedAt?.toISOString() ?? null,
+            parentId: sec.parentId ?? null,
+            parent: sec.parent ?? null,
             enrollments: sec.enrollments.map(enr => ({
                 ...enr,
                 user: {
