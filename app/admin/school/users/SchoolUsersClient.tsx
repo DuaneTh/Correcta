@@ -7,6 +7,11 @@ import type { PersonRow, CourseRow, SectionRow } from '@/lib/school-admin-data'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Drawer from '@/components/ui/Drawer'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CsvUploader from '@/components/ui/CsvUploader'
+import { promoteToSchoolAdmin } from '@/lib/actions/organization'
+
+type CsvUser = { email: string; name: string }
+type CsvUserStatus = 'valid' | 'invalid-email' | 'duplicate'
 
 type SchoolUsersClientProps = {
     dictionary: Dictionary
@@ -59,7 +64,19 @@ export default function SchoolUsersClient({
     const [confirmOpen, setConfirmOpen] = useState(false)
     const [pendingArchiveId, setPendingArchiveId] = useState('')
 
+    const [promoteConfirmOpen, setPromoteConfirmOpen] = useState(false)
+    const [pendingPromoteUser, setPendingPromoteUser] = useState<{ id: string; name: string | null } | null>(null)
+    const [promoting, setPromoting] = useState(false)
+
+    // CSV Import state
+    const [csvDrawerOpen, setCsvDrawerOpen] = useState(false)
+    const [csvData, setCsvData] = useState<CsvUser[]>([])
+    const [csvErrors, setCsvErrors] = useState<string[]>([])
+    const [csvImporting, setCsvImporting] = useState(false)
+    const [csvResult, setCsvResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null)
+
     const drawerReturnFocusRef = useRef<HTMLElement | null>(null)
+    const closingRef = useRef(false)
 
     const users = activeRole === 'teacher' ? teachers : students
     const setUsers = activeRole === 'teacher' ? setTeachers : setStudents
@@ -129,6 +146,7 @@ export default function SchoolUsersClient({
     }, [buildUrl, router, users])
 
     const closeDrawer = useCallback(() => {
+        closingRef.current = true
         setDrawerOpen(false)
         const url = buildUrl((params) => {
             params.delete('action')
@@ -139,6 +157,10 @@ export default function SchoolUsersClient({
 
     // Handle URL params on mount/change
     useEffect(() => {
+        if (closingRef.current) {
+            closingRef.current = false
+            return
+        }
         if (actionParam === 'add' && !drawerOpen) {
             openCreateDrawer()
         } else if (userIdParam && !drawerOpen) {
@@ -174,11 +196,13 @@ export default function SchoolUsersClient({
                 )
                 if (result?.user) {
                     setUsers((prev) => [...prev, { ...result.user!, archivedAt: null, enrollments: [] }])
+                    // Refresh SSR data so other pages (Enrollments, Dashboard) see the new user
+                    router.refresh()
                 }
             } else if (editingUserId) {
                 await fetchJsonWithCsrf(
-                    `/api/admin/school/users?userId=${editingUserId}`,
-                    { method: 'PATCH', body: payload }
+                    '/api/admin/school/users',
+                    { method: 'PATCH', body: { ...payload, userId: editingUserId } }
                 )
                 setUsers((prev) =>
                     prev.map((u) =>
@@ -233,6 +257,95 @@ export default function SchoolUsersClient({
         setConfirmOpen(true)
     }
 
+    const handlePromote = async () => {
+        if (!pendingPromoteUser) return
+
+        setPromoting(true)
+        try {
+            const result = await promoteToSchoolAdmin(pendingPromoteUser.id)
+            if (result.success) {
+                // Remove user from teachers list (they're now a school admin, not shown in this UI)
+                setTeachers(prev => prev.filter(t => t.id !== pendingPromoteUser.id))
+                router.refresh()
+            } else {
+                setError(result.error || dict.rolePromotion.promoteError)
+            }
+        } catch (err) {
+            console.error('[Users] Promote failed', err)
+            setError(dict.rolePromotion.promoteError)
+        } finally {
+            setPromoting(false)
+            setPromoteConfirmOpen(false)
+            setPendingPromoteUser(null)
+        }
+    }
+
+    // CSV Import handlers
+    const handleCsvParsed = useCallback((data: Record<string, string>[], errors: string[]) => {
+        const users = data.map(row => ({
+            email: row.email?.trim().toLowerCase() || '',
+            name: row.name?.trim() || '',
+        }))
+        setCsvData(users)
+        setCsvErrors(errors)
+        setCsvResult(null)
+    }, [])
+
+    const getCsvUserStatus = useCallback((user: CsvUser, index: number): CsvUserStatus => {
+        if (!user.email || !user.email.includes('@')) {
+            return 'invalid-email'
+        }
+        // Check for duplicates within CSV (same email appears earlier)
+        const firstIndex = csvData.findIndex(u => u.email === user.email)
+        if (firstIndex !== index) {
+            return 'duplicate'
+        }
+        return 'valid'
+    }, [csvData])
+
+    const csvValidUsers = useMemo(() => {
+        return csvData.filter((user, index) => getCsvUserStatus(user, index) === 'valid')
+    }, [csvData, getCsvUserStatus])
+
+    const csvInvalidCount = useMemo(() => {
+        return csvData.filter((user, index) => getCsvUserStatus(user, index) === 'invalid-email').length
+    }, [csvData, getCsvUserStatus])
+
+    const csvDuplicateCount = useMemo(() => {
+        return csvData.filter((user, index) => getCsvUserStatus(user, index) === 'duplicate').length
+    }, [csvData, getCsvUserStatus])
+
+    const handleCsvImport = async () => {
+        if (csvValidUsers.length === 0) return
+
+        setCsvImporting(true)
+        try {
+            const role = activeRole === 'teacher' ? 'TEACHER' : 'STUDENT'
+            const result = await fetchJsonWithCsrf<{ createdCount: number; skippedCount: number; errors: string[] }>(
+                '/api/admin/school/users',
+                { method: 'POST', body: { role, users: csvValidUsers } }
+            )
+            setCsvResult({
+                created: result.createdCount,
+                skipped: result.skippedCount,
+                errors: result.errors || []
+            })
+            router.refresh()
+        } catch (err) {
+            console.error('[Users] CSV import failed', err)
+            setCsvResult({ created: 0, skipped: 0, errors: ['Import failed'] })
+        } finally {
+            setCsvImporting(false)
+        }
+    }
+
+    const closeCsvDrawer = useCallback(() => {
+        setCsvDrawerOpen(false)
+        setCsvData([])
+        setCsvErrors([])
+        setCsvResult(null)
+    }, [])
+
     return (
         <div className="flex flex-col gap-6">
             {/* Header */}
@@ -243,13 +356,22 @@ export default function SchoolUsersClient({
                         {activeRole === 'teacher' ? dict.tabs.teachers : dict.tabs.students}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={(e) => openCreateDrawer(e.currentTarget)}
-                    className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
-                >
-                    {activeRole === 'teacher' ? dict.createTeacherButton : dict.createStudentButton}
-                </button>
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setCsvDrawerOpen(true)}
+                        className="inline-flex items-center rounded-md border border-brand-900 px-4 py-2 text-sm font-medium text-brand-900 hover:bg-brand-50"
+                    >
+                        {dict.csvImport.button}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={(e) => openCreateDrawer(e.currentTarget)}
+                        className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                    >
+                        {activeRole === 'teacher' ? dict.createTeacherButton : dict.createStudentButton}
+                    </button>
+                </div>
             </div>
 
             {/* Role tabs + Search */}
@@ -356,6 +478,18 @@ export default function SchoolUsersClient({
                                                     >
                                                         {dict.users.edit}
                                                     </button>
+                                                    {activeRole === 'teacher' && !archived && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setPendingPromoteUser({ id: user.id, name: user.name })
+                                                                setPromoteConfirmOpen(true)
+                                                            }}
+                                                            className="rounded-md border border-brand-900 px-3 py-1 text-xs font-medium text-brand-900 hover:bg-brand-50"
+                                                        >
+                                                            {dict.rolePromotion.promoteButton}
+                                                        </button>
+                                                    )}
                                                     <button
                                                         type="button"
                                                         onClick={() => requestArchive(user.id)}
@@ -456,6 +590,162 @@ export default function SchoolUsersClient({
                     setPendingArchiveId('')
                 }}
             />
+
+            {/* Promote Confirm Modal */}
+            <ConfirmModal
+                open={promoteConfirmOpen}
+                title={dict.rolePromotion.promoteConfirmTitle}
+                description={dict.rolePromotion.promoteConfirmDescription.replace('{{name}}', pendingPromoteUser?.name || dict.unknownName)}
+                confirmLabel={dict.rolePromotion.promoteConfirmLabel}
+                cancelLabel={dict.rolePromotion.promoteCancelLabel}
+                onConfirm={handlePromote}
+                onCancel={() => {
+                    setPromoteConfirmOpen(false)
+                    setPendingPromoteUser(null)
+                }}
+            />
+
+            {/* CSV Import Drawer */}
+            <Drawer
+                open={csvDrawerOpen}
+                onClose={closeCsvDrawer}
+                title={dict.csvImport.title}
+            >
+                {csvResult ? (
+                    // Result view
+                    <div className="flex flex-col gap-4">
+                        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+                            {dict.csvImport.resultSuccess
+                                .replace('{{created}}', String(csvResult.created))
+                                .replace('{{skipped}}', String(csvResult.skipped))}
+                        </div>
+                        {csvResult.errors.length > 0 && (
+                            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                <p className="font-medium">{dict.csvImport.resultErrors}</p>
+                                <ul className="mt-1 list-inside list-disc">
+                                    {csvResult.errors.slice(0, 5).map((err, i) => (
+                                        <li key={i}>{err}</li>
+                                    ))}
+                                    {csvResult.errors.length > 5 && (
+                                        <li>+{csvResult.errors.length - 5} more...</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={closeCsvDrawer}
+                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                            >
+                                {dict.csvImport.closeButton}
+                            </button>
+                        </div>
+                    </div>
+                ) : csvData.length === 0 ? (
+                    // Upload view
+                    <div className="flex flex-col gap-4">
+                        <CsvUploader
+                            onParsed={handleCsvParsed}
+                            requiredColumns={['email']}
+                            optionalColumns={['name']}
+                            labels={{
+                                dropzone: dict.csvImport.dropzone,
+                                selectFile: dict.csvImport.selectFile,
+                                parsing: dict.csvImport.parsing,
+                                invalidFormat: dict.csvImport.invalidFormat,
+                                missingColumns: dict.csvImport.missingColumns,
+                                tooManyRows: dict.csvImport.tooManyRows,
+                            }}
+                        />
+                        {csvErrors.length > 0 && (
+                            <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                {csvErrors.map((err, i) => (
+                                    <p key={i}>{err}</p>
+                                ))}
+                            </div>
+                        )}
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={closeCsvDrawer}
+                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                {dict.csvImport.cancelButton}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    // Preview view
+                    <div className="flex flex-col gap-4">
+                        <p className="text-sm font-medium text-gray-700">
+                            {dict.csvImport.previewTitle.replace('{{count}}', String(csvData.length))}
+                        </p>
+                        <div className="text-xs text-gray-500">
+                            {csvValidUsers.length} {dict.csvImport.statusValid.toLowerCase()}
+                            {csvInvalidCount > 0 && `, ${csvInvalidCount} ${dict.csvImport.statusInvalidEmail.toLowerCase()}`}
+                            {csvDuplicateCount > 0 && `, ${csvDuplicateCount} ${dict.csvImport.statusDuplicate.toLowerCase()}`}
+                        </div>
+                        <div className="max-h-80 overflow-auto rounded-md border border-gray-200">
+                            <table className="min-w-full text-left text-sm">
+                                <thead className="sticky top-0 border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                                    <tr>
+                                        <th className="px-3 py-2">{dict.csvImport.previewColumnName}</th>
+                                        <th className="px-3 py-2">{dict.csvImport.previewColumnEmail}</th>
+                                        <th className="px-3 py-2">{dict.csvImport.previewColumnStatus}</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-200">
+                                    {csvData.slice(0, 50).map((user, index) => {
+                                        const status = getCsvUserStatus(user, index)
+                                        return (
+                                            <tr key={index} className={status !== 'valid' ? 'bg-red-50' : ''}>
+                                                <td className="px-3 py-2 text-gray-900">{user.name || '-'}</td>
+                                                <td className="px-3 py-2 text-gray-600">{user.email || '-'}</td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                        status === 'valid'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {status === 'valid' && dict.csvImport.statusValid}
+                                                        {status === 'invalid-email' && dict.csvImport.statusInvalidEmail}
+                                                        {status === 'duplicate' && dict.csvImport.statusDuplicate}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                            {csvData.length > 50 && (
+                                <div className="border-t border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                                    +{csvData.length - 50} more rows...
+                                </div>
+                            )}
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={closeCsvDrawer}
+                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                {dict.csvImport.cancelButton}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCsvImport}
+                                disabled={csvImporting || csvValidUsers.length === 0}
+                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                                {csvImporting
+                                    ? dict.csvImport.importing
+                                    : dict.csvImport.importButton.replace('{{count}}', String(csvValidUsers.length))}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Drawer>
         </div>
     )
 }
