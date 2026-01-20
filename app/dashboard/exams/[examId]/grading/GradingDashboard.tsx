@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, FileDown, FileText } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { GradeAllButton } from '@/components/grading/GradeAllButton'
+import { ExportProgressModal } from '@/components/export/ExportProgressModal'
 
 interface AttemptSummary {
     attemptId: string
@@ -43,6 +44,8 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
     const [filterOption, setFilterOption] = useState<FilterOption>('all')
     const [showFilterDropdown, setShowFilterDropdown] = useState(false)
     const [showActionsDropdown, setShowActionsDropdown] = useState(false)
+    const [exportJobId, setExportJobId] = useState<string | null>(null)
+    const [isStartingExport, setIsStartingExport] = useState(false)
 
     const fetchAttempts = useCallback(async () => {
         try {
@@ -178,6 +181,36 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         }
     }
 
+    const handlePdfExport = async () => {
+        setIsStartingExport(true)
+        setShowActionsDropdown(false)
+
+        try {
+            const csrfToken = await getCsrfToken()
+            const res = await fetch(`/api/exams/${examId}/export/pdf`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-csrf-token': csrfToken
+                },
+                body: JSON.stringify({})  // Could add classIds filter here
+            })
+
+            if (res.ok) {
+                const data = await res.json()
+                setExportJobId(data.jobId)
+            } else {
+                console.error('Failed to start export')
+                alert('Erreur lors du demarrage de l\'export')
+            }
+        } catch (error) {
+            console.error('Export error:', error)
+            alert('Erreur lors du demarrage de l\'export')
+        } finally {
+            setIsStartingExport(false)
+        }
+    }
+
     const getFilterLabel = (filter: FilterOption) => {
         switch (filter) {
             case 'all': return 'Toutes les copies'
@@ -280,12 +313,12 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                             Exporter les notes (CSV)
                                         </button>
                                         <button
-                                            disabled
-                                            className="w-full px-4 py-2 text-left text-gray-400 cursor-not-allowed flex items-center gap-2 hover:bg-gray-50"
-                                            title="Disponible bientot"
+                                            onClick={handlePdfExport}
+                                            disabled={isStartingExport}
+                                            className="w-full px-4 py-2 text-left text-gray-700 flex items-center gap-2 hover:bg-gray-50 disabled:text-gray-400"
                                         >
                                             <FileText className="w-4 h-4" />
-                                            Telecharger rapport
+                                            {isStartingExport ? 'Demarrage...' : 'Telecharger rapport (PDF)'}
                                         </button>
                                     </div>
                                 )}
@@ -540,6 +573,15 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                     )}
                 </div>
             </div>
+
+            {/* Export Progress Modal */}
+            {exportJobId && (
+                <ExportProgressModal
+                    examId={examId}
+                    jobId={exportJobId}
+                    onClose={() => setExportJobId(null)}
+                />
+            )}
         </div>
     )
 }
