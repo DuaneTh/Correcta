@@ -71,11 +71,45 @@ if (!aiGradingQueue) {
 }
 
 /**
+ * Export Queue
+ *
+ * Used to queue PDF/CSV export jobs for large datasets.
+ * Jobs include: { examId, classIds?, type: 'pdf' | 'csv' }
+ */
+export const exportQueue = connection
+    ? new Queue('export', {
+        connection,
+        defaultJobOptions: {
+            attempts: 2,
+            backoff: {
+                type: 'fixed',
+                delay: 5000
+            },
+            removeOnComplete: {
+                age: 3600, // Keep completed jobs for 1 hour
+                count: 50
+            },
+            removeOnFail: {
+                age: 24 * 3600, // Keep failed jobs for 24 hours
+                count: 100
+            }
+        }
+    })
+    : null
+
+if (!exportQueue) {
+    console.warn('[Queue] Export queue not initialized due to Redis connection failure')
+}
+
+/**
  * Gracefully close the queue and Redis connection
  */
 export async function closeQueue() {
     if (aiGradingQueue) {
         await aiGradingQueue.close()
+    }
+    if (exportQueue) {
+        await exportQueue.close()
     }
     if (connection) {
         await connection.quit()
