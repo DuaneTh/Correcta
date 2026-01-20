@@ -9,13 +9,15 @@ import { RubricReviewModal } from './RubricReviewModal'
 interface GradeAllButtonProps {
     examId: string
     onComplete?: () => void
+    onPublishAfterGrading?: () => void
 }
 
-export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
+export function GradeAllButton({ examId, onComplete, onPublishAfterGrading }: GradeAllButtonProps) {
     const [loading, setLoading] = useState(false)
     const [showRubricReview, setShowRubricReview] = useState(false)
     const [showProgress, setShowProgress] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [publishAfterGrading, setPublishAfterGrading] = useState(false)
 
     // Step 1: Open rubric review modal
     const handleClick = () => {
@@ -69,6 +71,13 @@ export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
     const handleProgressComplete = () => {
         setShowProgress(false)
         onComplete?.()
+
+        // If publish after grading was checked, trigger publish
+        if (publishAfterGrading && onPublishAfterGrading) {
+            onPublishAfterGrading()
+        }
+        // Reset for next time
+        setPublishAfterGrading(false)
     }
 
     const handleProgressClose = () => {
@@ -108,6 +117,8 @@ export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
                 isOpen={showProgress}
                 onClose={handleProgressClose}
                 onComplete={handleProgressComplete}
+                publishAfterGrading={publishAfterGrading}
+                onPublishAfterGradingChange={setPublishAfterGrading}
             />
         </>
     )

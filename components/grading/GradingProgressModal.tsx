@@ -9,6 +9,8 @@ interface GradingProgressModalProps {
     isOpen: boolean
     onClose: () => void
     onComplete: () => void
+    publishAfterGrading?: boolean
+    onPublishAfterGradingChange?: (value: boolean) => void
 }
 
 interface ProgressData {
@@ -23,7 +25,9 @@ export function GradingProgressModal({
     examId,
     isOpen,
     onClose,
-    onComplete
+    onComplete,
+    publishAfterGrading,
+    onPublishAfterGradingChange
 }: GradingProgressModalProps) {
     const [progress, setProgress] = useState<ProgressData | null>(null)
     const [isCancelling, setIsCancelling] = useState(false)
@@ -177,6 +181,27 @@ export function GradingProgressModal({
                         <p className="text-center text-2xl font-bold text-gray-900">
                             {progress.percentage}%
                         </p>
+
+                        {/* Publish option checkbox */}
+                        {onPublishAfterGradingChange && (
+                            <div className="pt-2 border-t border-gray-200">
+                                <label className="flex items-center gap-3 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={publishAfterGrading || false}
+                                        onChange={(e) => onPublishAfterGradingChange(e.target.checked)}
+                                        className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                        disabled={isComplete}
+                                    />
+                                    <span className="text-sm text-gray-700">
+                                        Publier les notes immediatement apres correction
+                                    </span>
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1 ml-7">
+                                    Les etudiants pourront voir leurs notes des la fin de la correction.
+                                </p>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     <div className="flex justify-center py-4">

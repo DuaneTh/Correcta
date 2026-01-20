@@ -55,10 +55,36 @@ export async function GET(
             }
         })
 
+        // Get exam max points
+        const examWithQuestions = await prisma.exam.findUnique({
+            where: { id: examId },
+            include: {
+                sections: {
+                    include: {
+                        questions: {
+                            include: { segments: true }
+                        }
+                    }
+                }
+            }
+        })
+
+        let examMaxPoints = 0
+        if (examWithQuestions) {
+            examWithQuestions.sections.forEach(section => {
+                section.questions.forEach(question => {
+                    question.segments.forEach(segment => {
+                        examMaxPoints += segment.maxPoints || 0
+                    })
+                })
+            })
+        }
+
         // Calculate scores
         const gradingList = attempts.map(attempt => {
             let totalScore = 0
             let gradedQuestionsCount = 0
+            let humanModifiedCount = 0
 
             // Sum up scores from question-level grades
             attempt.answers.forEach(answer => {
@@ -67,6 +93,11 @@ export async function GET(
                     const grade = answer.grades[0]
                     totalScore += grade.score
                     gradedQuestionsCount++
+
+                    // Count human-modified grades
+                    if (grade.isOverridden || grade.gradedByUserId !== null) {
+                        humanModifiedCount++
+                    }
                 }
             })
 
@@ -80,8 +111,10 @@ export async function GET(
                 status: attempt.status,
                 submittedAt: attempt.submittedAt,
                 totalScore: hasGrades ? totalScore : null,
+                maxPoints: examMaxPoints || null,
                 gradedQuestionsCount,
-                isFullyGraded
+                isFullyGraded,
+                humanModifiedCount
             }
         })
 
