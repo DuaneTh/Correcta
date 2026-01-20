@@ -20,9 +20,9 @@
 
 ## Current Position
 
-**Phase:** 4 of 5 (AI Correction)
-**Plan:** 4 of 4 complete
-**Status:** Phase complete
+**Phase:** 5 of 5 (Export)
+**Plan:** 2 of 3 complete
+**Status:** In progress
 
 **Progress:**
 ```
@@ -30,10 +30,10 @@ Phase 1: Math Foundation     [==========] 3/3 plans complete
 Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [==========] 3/3 plans complete
 Phase 4: AI Correction       [==========] 4/4 plans complete
-Phase 5: Export              [          ] Not started
+Phase 5: Export              [======    ] 2/3 plans complete
 ```
 
-**Overall:** 14/15 plans complete
+**Overall:** 16/18 plans complete
 
 ---
 
@@ -41,8 +41,8 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 14 | 01-01 through 04-04 |
-| Success rate | 100% | 14/14 plans succeeded |
+| Plans completed | 16 | 01-01 through 05-02 |
+| Success rate | 100% | 16/16 plans succeeded |
 | Avg duration | 10 min | Consistent execution time |
 
 ---
@@ -93,6 +93,9 @@ Phase 5: Export              [          ] Not started
 | Confirmation modal for publish | Extra safeguard before students see grades | 4 |
 | Color-coded scores and borders | Quick visual feedback on grade quality in student view | 4 |
 | Default feedback messages | Better UX when AI doesn't provide explicit feedback | 4 |
+| MathJax for PDF math (not KaTeX) | KaTeX outputs HTML, @react-pdf needs SVG primitives | 5 |
+| svg-parser for SVG transformation | Parses SVG to AST for react-pdf element conversion | 5 |
+| mathjax-full v3 (not v4) | v4 is beta only, v3 is stable and tested | 5 |
 
 ### Technical Patterns
 
@@ -126,6 +129,8 @@ Phase 5: Export              [          ] Not started
 - **Grading statistics:** Copies corrigees sur Y, modifications manuelles, score moyen
 - **Grading filters:** Toutes les copies, Non corrigees, Corrigees, Modifiees
 - **Student results:** AI badge, color-coded scores, default feedback messages
+- **PDF math rendering:** MathJax SVG -> svg-parser AST -> react-pdf Svg elements
+- **PDF document:** ExportDocument for multi-student, StudentReportDocument for single
 
 ### Known Issues
 
@@ -148,7 +153,10 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 04-02: Grading UI
 - [x] Complete 04-03: Teacher Review Interface
 - [x] Complete 04-04: Publication Flow and Dashboard Polish
-- [ ] Plan Phase 5: Export
+- [x] Plan Phase 5: Export
+- [x] Complete 05-01: CSV Export
+- [x] Complete 05-02: PDF Infrastructure with Math Rendering
+- [ ] Complete 05-03: PDF Export API
 
 ### Blockers
 
@@ -165,13 +173,12 @@ Continuing Correcta project.
 Phase 1 (Math Foundation) COMPLETE.
 Phase 2 (Exam Creation) COMPLETE.
 Phase 3 (Organization) COMPLETE.
-Phase 4 (AI Correction) COMPLETE:
-- 04-01: COMPLETE - GPT-4 Integration with structured outputs
-- 04-02: COMPLETE - Grading UI with batch grading and rubric review
-- 04-03: COMPLETE - Teacher Review Interface with edit modal and re-grade
-- 04-04: COMPLETE - Publication Flow and Dashboard Polish
+Phase 4 (AI Correction) COMPLETE.
+Phase 5 (Export) IN PROGRESS:
+- 05-01: COMPLETE - CSV Export with class filtering
+- 05-02: COMPLETE - PDF Infrastructure with MathJax SVG math rendering
 
-Next action: Plan Phase 5 (Export)
+Next action: Execute 05-03 (PDF Export API)
 ```
 
 ### Context Files
@@ -194,8 +201,10 @@ Next action: Plan Phase 5 (Export)
 - `.planning/phases/04-ai-correction/04-02-SUMMARY.md` - Grading UI summary
 - `.planning/phases/04-ai-correction/04-03-SUMMARY.md` - Teacher Review Interface summary
 - `.planning/phases/04-ai-correction/04-04-SUMMARY.md` - Publication Flow and Dashboard Polish summary
+- `.planning/phases/05-export/05-01-SUMMARY.md` - CSV Export summary
+- `.planning/phases/05-export/05-02-SUMMARY.md` - PDF Infrastructure summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-20 - Completed 04-04-PLAN.md (Publication Flow and Dashboard Polish)*
+*Last execution: 2026-01-20 - Completed 05-02-PLAN.md (PDF Infrastructure with Math Rendering)*
