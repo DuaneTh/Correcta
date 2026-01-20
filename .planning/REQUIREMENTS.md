@@ -40,11 +40,11 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 
 ### Gestion Organisation (ORG)
 
-- [ ] **ORG-01**: Creation de classes par admin ecole
-- [ ] **ORG-02**: Creation de sous-groupes dans une classe (TD, TP, etc.)
-- [ ] **ORG-03**: Affectation d'etudiants aux classes et sous-groupes
-- [ ] **ORG-04**: Import CSV/Excel pour creation massive d'utilisateurs
-- [ ] **ORG-05**: Attribution des roles (professeur, admin ecole)
+- [x] **ORG-01**: Creation de classes par admin ecole
+- [x] **ORG-02**: Creation de sous-groupes dans une classe (TD, TP, etc.)
+- [x] **ORG-03**: Affectation d'etudiants aux classes et sous-groupes
+- [x] **ORG-04**: Import CSV/Excel pour creation massive d'utilisateurs
+- [x] **ORG-05**: Attribution des roles (professeur, admin ecole)
 
 ## v2 Requirements
 
@@ -92,11 +92,11 @@ Defere apres pilote ESSEC.
 | EXAM-03 | Phase 2 - Exam Creation | Complete |
 | EXAM-04 | Phase 2 - Exam Creation | Complete |
 | EXAM-05 | Phase 2 - Exam Creation | Complete |
-| ORG-01 | Phase 3 - Organization | Pending |
-| ORG-02 | Phase 3 - Organization | Pending |
-| ORG-03 | Phase 3 - Organization | Pending |
-| ORG-04 | Phase 3 - Organization | Pending |
-| ORG-05 | Phase 3 - Organization | Pending |
+| ORG-01 | Phase 3 - Organization | Complete |
+| ORG-02 | Phase 3 - Organization | Complete |
+| ORG-03 | Phase 3 - Organization | Complete |
+| ORG-04 | Phase 3 - Organization | Complete |
+| ORG-05 | Phase 3 - Organization | Complete |
 | CORR-01 | Phase 4 - AI Correction | Pending |
 | CORR-02 | Phase 4 - AI Correction | Pending |
 | CORR-03 | Phase 4 - AI Correction | Pending |
@@ -114,4 +114,4 @@ Defere apres pilote ESSEC.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-19 after Phase 2 completion*
+*Last updated: 2026-01-20 after Phase 3 completion*
