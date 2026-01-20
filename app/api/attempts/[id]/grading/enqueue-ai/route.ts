@@ -8,6 +8,7 @@ import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
 
 // POST /api/attempts/[id]/grading/enqueue-ai
 // Enqueue AI grading jobs for all answers in an attempt
+// If body contains { answerId }, only enqueue that answer (force re-grade)
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -30,6 +31,15 @@ export async function POST(
         if (!csrfResult.ok) {
             return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
+
+        // Parse body for optional answerId (single re-grade)
+        let body: { answerId?: string } = {}
+        try {
+            body = await req.json()
+        } catch {
+            // No body or invalid JSON - that's fine, we'll grade all
+        }
+        const singleAnswerId = body.answerId
 
         const attemptAuth = await getAttemptAuthContext(id)
         if (!attemptAuth) {
@@ -95,7 +105,40 @@ export async function POST(
             return NextResponse.json({ error: "Attempt not found" }, { status: 404 })
         }
 
-        // 5. Filter answers: only enqueue those WITHOUT human grades
+        // 4. If single answerId provided, only grade that answer (force re-grade)
+        if (singleAnswerId) {
+            const answer = attempt.answers.find(a => a.id === singleAnswerId)
+            if (!answer) {
+                return NextResponse.json({ error: "Answer not found" }, { status: 404 })
+            }
+
+            // Clear existing grade flags to allow re-grading
+            await prisma.grade.updateMany({
+                where: { answerId: singleAnswerId },
+                data: {
+                    isOverridden: false,
+                    gradedByUserId: null
+                }
+            })
+
+            // Enqueue single job with forceRegrade flag
+            await aiGradingQueue.add('grade-answer', {
+                attemptId: attempt.id,
+                answerId: answer.id,
+                questionId: answer.questionId,
+                forceRegrade: true
+            })
+
+            return NextResponse.json({
+                success: true,
+                total: 1,
+                enqueued: 1,
+                skipped: 0,
+                mode: 'single'
+            })
+        }
+
+        // 5. Filter answers: only enqueue those WITHOUT human grades (batch mode)
         const answersToGrade = attempt.answers.filter(answer => {
             // Skip if grade exists and is human (gradedByUserId not null OR isOverridden)
             const hasHumanGrade = answer.grades.length > 0 &&
@@ -123,7 +166,8 @@ export async function POST(
             success: true,
             total: attempt.answers.length,
             enqueued: jobs.length,
-            skipped: attempt.answers.length - jobs.length
+            skipped: attempt.answers.length - jobs.length,
+            mode: 'batch'
         })
 
     } catch (error) {
