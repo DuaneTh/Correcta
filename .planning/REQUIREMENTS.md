@@ -25,11 +25,11 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 
 ### Correction IA (CORR)
 
-- [ ] **CORR-01**: Correction automatique via GPT-4 selon bareme defini
-- [ ] **CORR-02**: Feedback personnalise genere pour chaque reponse d'etudiant
-- [ ] **CORR-03**: Review optionnel par prof avant publication des notes (peut publier directement)
-- [ ] **CORR-04**: Interface de review pour valider/modifier notes et feedback
-- [ ] **CORR-05**: Support des reponses mathematiques (LaTeX) dans le prompt IA
+- [x] **CORR-01**: Correction automatique via GPT-4 selon bareme defini
+- [x] **CORR-02**: Feedback personnalise genere pour chaque reponse d'etudiant
+- [x] **CORR-03**: Review optionnel par prof avant publication des notes (peut publier directement)
+- [x] **CORR-04**: Interface de review pour valider/modifier notes et feedback
+- [x] **CORR-05**: Support des reponses mathematiques (LaTeX) dans le prompt IA
 
 ### Export (EXPO)
 
@@ -97,11 +97,11 @@ Defere apres pilote ESSEC.
 | ORG-03 | Phase 3 - Organization | Complete |
 | ORG-04 | Phase 3 - Organization | Complete |
 | ORG-05 | Phase 3 - Organization | Complete |
-| CORR-01 | Phase 4 - AI Correction | Pending |
-| CORR-02 | Phase 4 - AI Correction | Pending |
-| CORR-03 | Phase 4 - AI Correction | Pending |
-| CORR-04 | Phase 4 - AI Correction | Pending |
-| CORR-05 | Phase 4 - AI Correction | Pending |
+| CORR-01 | Phase 4 - AI Correction | Complete |
+| CORR-02 | Phase 4 - AI Correction | Complete |
+| CORR-03 | Phase 4 - AI Correction | Complete |
+| CORR-04 | Phase 4 - AI Correction | Complete |
+| CORR-05 | Phase 4 - AI Correction | Complete |
 | EXPO-01 | Phase 5 - Export | Pending |
 | EXPO-02 | Phase 5 - Export | Pending |
 | EXPO-03 | Phase 5 - Export | Pending |
@@ -114,4 +114,4 @@ Defere apres pilote ESSEC.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-20 after Phase 3 completion*
+*Last updated: 2026-01-20 after Phase 4 completion*
