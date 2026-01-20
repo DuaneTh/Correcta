@@ -132,8 +132,11 @@ model Class {
   name      String       // e.g. "Group A", "TD 1"
   courseId  String
   course    Course       @relation(fields: [courseId], references: [id])
+  parentId  String?      // Reference to parent class for subgroups
+  parent    Class?       @relation("ClassHierarchy", fields: [parentId], references: [id])
+  children  Class[]      @relation("ClassHierarchy")  // Subgroups
   archivedAt DateTime?
-  
+
   enrollments Enrollment[]
   exams       Exam[]
 }
