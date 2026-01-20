@@ -145,9 +145,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — CSV export with Papaparse (grades table download)
-- [ ] 05-02-PLAN.md — PDF infrastructure (@react-pdf/renderer + MathJax SVG)
-- [ ] 05-03-PLAN.md — Async PDF export with progress tracking
+- [x] 05-01-PLAN.md — CSV export with Papaparse (grades table download)
+- [x] 05-02-PLAN.md — PDF infrastructure (@react-pdf/renderer + MathJax SVG)
+- [x] 05-03-PLAN.md — Async PDF export with progress tracking
 
 **Success Criteria:**
 1. Teacher can download CSV with all grades for an exam in under 5 seconds
@@ -166,7 +166,7 @@ Plans:
 | 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Complete |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Complete |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Complete |
-| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | In Progress |
+| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Complete |
 
 ---
 

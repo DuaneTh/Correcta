@@ -33,10 +33,10 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 
 ### Export (EXPO)
 
-- [ ] **EXPO-01**: Export CSV des notes (colonnes: etudiant, question, note, total)
-- [ ] **EXPO-02**: Export PDF rapport avec details (notes, feedback, reponses)
-- [ ] **EXPO-03**: Filtrage export par classe/sous-groupe
-- [ ] **EXPO-04**: Rendu math coherent dans PDF (KaTeX)
+- [x] **EXPO-01**: Export CSV des notes (colonnes: etudiant, question, note, total)
+- [x] **EXPO-02**: Export PDF rapport avec details (notes, feedback, reponses)
+- [x] **EXPO-03**: Filtrage export par classe/sous-groupe
+- [x] **EXPO-04**: Rendu math coherent dans PDF (MathJax SVG)
 
 ### Gestion Organisation (ORG)
 
@@ -102,10 +102,10 @@ Defere apres pilote ESSEC.
 | CORR-03 | Phase 4 - AI Correction | Complete |
 | CORR-04 | Phase 4 - AI Correction | Complete |
 | CORR-05 | Phase 4 - AI Correction | Complete |
-| EXPO-01 | Phase 5 - Export | Pending |
-| EXPO-02 | Phase 5 - Export | Pending |
-| EXPO-03 | Phase 5 - Export | Pending |
-| EXPO-04 | Phase 5 - Export | Pending |
+| EXPO-01 | Phase 5 - Export | Complete |
+| EXPO-02 | Phase 5 - Export | Complete |
+| EXPO-03 | Phase 5 - Export | Complete |
+| EXPO-04 | Phase 5 - Export | Complete |
 
 **Coverage:**
 - v1 requirements: 24 total
@@ -114,4 +114,4 @@ Defere apres pilote ESSEC.
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-20 after Phase 4 completion*
+*Last updated: 2026-01-20 after Phase 5 completion - ALL v1 REQUIREMENTS COMPLETE*
