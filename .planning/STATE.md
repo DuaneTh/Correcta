@@ -21,19 +21,19 @@
 ## Current Position
 
 **Phase:** 3 of 5 (Organization)
-**Plan:** 2 of 3 complete
-**Status:** In progress
+**Plan:** 3 of 3 complete
+**Status:** Phase complete
 
 **Progress:**
 ```
 Phase 1: Math Foundation     [==========] 3/3 plans complete
 Phase 2: Exam Creation       [==========] 4/4 plans complete
-Phase 3: Organization        [======    ] 2/3 plans complete
+Phase 3: Organization        [==========] 3/3 plans complete
 Phase 4: AI Correction       [          ] Not started
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 9/14 plans complete
+**Overall:** 10/14 plans complete
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 9 | 01-01 through 03-02 |
-| Success rate | 100% | 9/9 plans succeeded |
-| Avg duration | 10 min | Consistent execution time |
+| Plans completed | 10 | 01-01 through 03-03 |
+| Success rate | 100% | 10/10 plans succeeded |
+| Avg duration | 9 min | Consistent execution time |
 
 ---
 
@@ -78,6 +78,8 @@ Phase 5: Export              [          ] Not started
 | $...$ math delimiters in textarea | Works with MathRenderer, familiar LaTeX syntax | 2 |
 | Papaparse for CSV parsing | Client-side parsing allows preview before submit | 3 |
 | Client-side CSV validation | Reduces server load, provides instant feedback | 3 |
+| Promotion only (no demotion) | Demotion requires platform admin intervention | 3 |
+| Teachers-only promotion target | Students should never be promoted to admin | 3 |
 
 ### Technical Patterns
 
@@ -98,6 +100,7 @@ Phase 5: Export              [          ] Not started
 - **Rich text editing:** RichTextEditor combines MathToolbar + ImageUpload + Preview
 - **Content rendering:** QuestionPreview parses markdown images + $...$ math
 - **CSV upload:** Papaparse for parsing, preview table with validation, bulk API
+- **Role promotion:** Server action with institution-scoped authorization, optimistic UI
 
 ### Known Issues
 
@@ -113,9 +116,9 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 02-02: Question Type Editors
 - [x] Complete 02-03: Image Upload Integration
 - [x] Complete 02-04: Student Exam Taking
+- [x] Complete 03-01: Class/Section Management
 - [x] Complete 03-02: CSV Upload UI
-- [ ] Complete 03-01: Class/Section Management (if planned)
-- [ ] Complete 03-03: Enrollment Management (if planned)
+- [x] Complete 03-03: Role Promotion
 - [ ] Plan Phase 4: AI Correction
 - [ ] Plan Phase 5: Export
 
@@ -133,10 +136,12 @@ Phase 5: Export              [          ] Not started
 Continuing Correcta project.
 Phase 1 (Math Foundation) COMPLETE.
 Phase 2 (Exam Creation) COMPLETE.
-Phase 3 (Organization) IN PROGRESS:
+Phase 3 (Organization) COMPLETE:
+- 03-01: COMPLETE - Class/Section Management with subgroup hierarchy
 - 03-02: COMPLETE - CSV Upload UI with papaparse and preview
+- 03-03: COMPLETE - Role Promotion with server action and UI
 
-Next action: Execute 03-01 or 03-03, or plan Phase 4/5
+Next action: Plan Phase 4 (AI Correction) or Phase 5 (Export)
 ```
 
 ### Context Files
@@ -153,8 +158,9 @@ Next action: Execute 03-01 or 03-03, or plan Phase 4/5
 - `.planning/phases/02-exam-creation/02-03-SUMMARY.md` - Image Upload Integration summary
 - `.planning/phases/02-exam-creation/02-04-SUMMARY.md` - Student Exam Taking summary
 - `.planning/phases/03-organization/03-02-SUMMARY.md` - CSV Upload UI summary
+- `.planning/phases/03-organization/03-03-SUMMARY.md` - Role Promotion summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-20 - Completed 03-02-PLAN.md (CSV Upload UI)*
+*Last execution: 2026-01-20 - Completed 03-03-PLAN.md (Role Promotion)*
