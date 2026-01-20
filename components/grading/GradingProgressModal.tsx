@@ -1,0 +1,208 @@
+'use client'
+
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { X, CheckCircle, Loader2 } from 'lucide-react'
+import { getCsrfToken } from '@/lib/csrfClient'
+
+interface GradingProgressModalProps {
+    examId: string
+    isOpen: boolean
+    onClose: () => void
+    onComplete: () => void
+}
+
+interface ProgressData {
+    completed: number
+    total: number
+    percentage: number
+    status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
+    canCancel: boolean
+}
+
+export function GradingProgressModal({
+    examId,
+    isOpen,
+    onClose,
+    onComplete
+}: GradingProgressModalProps) {
+    const [progress, setProgress] = useState<ProgressData | null>(null)
+    const [isCancelling, setIsCancelling] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+    const fetchProgress = useCallback(async () => {
+        try {
+            const res = await fetch(`/api/exams/${examId}/grading-progress`)
+            if (!res.ok) {
+                throw new Error('Failed to fetch progress')
+            }
+            const data: ProgressData = await res.json()
+            setProgress(data)
+
+            // Auto-close when complete
+            if (data.status === 'COMPLETED') {
+                if (pollIntervalRef.current) {
+                    clearInterval(pollIntervalRef.current)
+                    pollIntervalRef.current = null
+                }
+                // Small delay before closing to show completion state
+                setTimeout(() => {
+                    onComplete()
+                    onClose()
+                }, 1500)
+            }
+        } catch (err) {
+            console.error('Error fetching progress:', err)
+            setError('Erreur lors de la recuperation du statut')
+        }
+    }, [examId, onComplete, onClose])
+
+    // Start polling when modal opens
+    useEffect(() => {
+        if (isOpen) {
+            fetchProgress() // Initial fetch
+            pollIntervalRef.current = setInterval(fetchProgress, 2000)
+        }
+
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current)
+                pollIntervalRef.current = null
+            }
+        }
+    }, [isOpen, fetchProgress])
+
+    const handleCancel = async () => {
+        setIsCancelling(true)
+        try {
+            const csrfToken = await getCsrfToken()
+            const res = await fetch(`/api/exams/${examId}/grading-progress`, {
+                method: 'DELETE',
+                headers: { 'x-csrf-token': csrfToken }
+            })
+
+            if (!res.ok) {
+                throw new Error('Failed to cancel grading')
+            }
+
+            // Stop polling and close
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current)
+                pollIntervalRef.current = null
+            }
+            onComplete() // Refresh the list
+            onClose()
+        } catch (err) {
+            console.error('Error cancelling grading:', err)
+            setError('Erreur lors de l\'annulation')
+        } finally {
+            setIsCancelling(false)
+        }
+    }
+
+    const handleClose = () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current)
+            pollIntervalRef.current = null
+        }
+        onClose()
+    }
+
+    // Handle escape key
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape' && isOpen) {
+                handleClose()
+            }
+        }
+        document.addEventListener('keydown', handleKeyDown)
+        return () => document.removeEventListener('keydown', handleKeyDown)
+    }, [isOpen])
+
+    if (!isOpen) return null
+
+    const isComplete = progress?.status === 'COMPLETED'
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+            {/* Backdrop */}
+            <div
+                className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+                onClick={handleClose}
+            />
+
+            {/* Modal */}
+            <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+                {/* Close button */}
+                <button
+                    onClick={handleClose}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                {/* Header */}
+                <div className="flex items-center gap-3 mb-6">
+                    {isComplete ? (
+                        <CheckCircle className="w-8 h-8 text-green-500" />
+                    ) : (
+                        <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+                    )}
+                    <h2 className="text-xl font-semibold text-gray-900">
+                        {isComplete ? 'Correction terminee' : 'Correction en cours...'}
+                    </h2>
+                </div>
+
+                {/* Progress content */}
+                {error ? (
+                    <div className="text-red-600 text-sm mb-4">{error}</div>
+                ) : progress ? (
+                    <div className="space-y-4">
+                        {/* Progress bar */}
+                        <div className="w-full bg-gray-200 rounded-full h-3">
+                            <div
+                                className={`h-3 rounded-full transition-all duration-500 ${
+                                    isComplete ? 'bg-green-500' : 'bg-indigo-500'
+                                }`}
+                                style={{ width: `${progress.percentage}%` }}
+                            />
+                        </div>
+
+                        {/* Progress text */}
+                        <p className="text-center text-gray-700 font-medium">
+                            {progress.completed} / {progress.total} copies corrigees
+                        </p>
+
+                        {/* Percentage */}
+                        <p className="text-center text-2xl font-bold text-gray-900">
+                            {progress.percentage}%
+                        </p>
+                    </div>
+                ) : (
+                    <div className="flex justify-center py-4">
+                        <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
+                    </div>
+                )}
+
+                {/* Actions */}
+                <div className="mt-6 flex justify-end gap-3">
+                    {progress?.canCancel && !isComplete && (
+                        <button
+                            onClick={handleCancel}
+                            disabled={isCancelling}
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                        >
+                            {isCancelling ? 'Annulation...' : 'Annuler'}
+                        </button>
+                    )}
+                    <button
+                        onClick={handleClose}
+                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                    >
+                        {isComplete ? 'Fermer' : 'Laisser en arriere-plan'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}

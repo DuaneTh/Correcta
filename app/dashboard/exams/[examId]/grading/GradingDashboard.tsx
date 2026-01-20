@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
+import { GradeAllButton } from '@/components/grading/GradeAllButton'
 
 interface AttemptSummary {
     attemptId: string
@@ -189,13 +190,16 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                             <h1 className="text-3xl font-bold text-gray-900">Correction</h1>
                             <p className="text-gray-600 mt-1">{examTitle}</p>
                         </div>
-                        <button
-                            onClick={handleReleaseResults}
-                            disabled={isReleasing}
-                            className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-                        >
-                            {isReleasing ? 'Publication...' : 'Rendre les copies'}
-                        </button>
+                        <div className="flex items-center gap-3">
+                            <GradeAllButton examId={examId} onComplete={fetchAttempts} />
+                            <button
+                                onClick={handleReleaseResults}
+                                disabled={isReleasing}
+                                className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                            >
+                                {isReleasing ? 'Publication...' : 'Rendre les copies'}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
