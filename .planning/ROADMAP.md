@@ -113,6 +113,14 @@ Plans:
 - CORR-04: Review interface to validate/modify grades and feedback
 - CORR-05: Support for math answers (LaTeX) in AI prompt
 
+**Plans:** 4 plans
+
+Plans:
+- [ ] 04-01-PLAN.md — OpenAI integration, Zod schemas, rubric generation
+- [ ] 04-02-PLAN.md — Batch grading "Grade All" with progress tracking
+- [ ] 04-03-PLAN.md — Teacher review UI (edit modal, re-grade button)
+- [ ] 04-04-PLAN.md — Publication flow and student feedback view
+
 **Success Criteria:**
 1. Teacher clicks "Grade All" and sees progress indicator for 50 student submissions
 2. Each graded answer shows AI-generated feedback explaining the score
@@ -150,7 +158,7 @@ Plans:
 | 1 - Math Foundation | Math input and consistent web rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 (web) | Complete |
 | 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Complete |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Complete |
-| 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Pending |
+| 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Planned |
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Pending |
 
 ---
