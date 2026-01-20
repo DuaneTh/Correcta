@@ -147,7 +147,7 @@ export async function POST(
                 }
 
                 // Score the MCQ
-                const scoreResult = scoreMultipleChoiceAnswer(
+                const scoreResult = await scoreMultipleChoiceAnswer(
                     {
                         id: question.id,
                         maxPoints: question.maxPoints,

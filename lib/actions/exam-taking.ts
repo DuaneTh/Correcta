@@ -27,7 +27,7 @@ type McqScoreResult = {
  * - If requireAllCorrect is true: all or nothing (must match exactly)
  * - If requireAllCorrect is false: partial credit based on correct selections
  */
-export function scoreMultipleChoiceAnswer(
+export async function scoreMultipleChoiceAnswer(
   question: {
     id: string
     maxPoints: number | null
@@ -39,7 +39,7 @@ export function scoreMultipleChoiceAnswer(
     }>
   },
   studentAnswers: Map<string, string> // segmentId -> content ("true"/"1" for selected)
-): McqScoreResult {
+): Promise<McqScoreResult> {
   // Get correct option IDs
   const correctOptionIds = question.segments
     .filter(seg => seg.isCorrect === true)
@@ -377,7 +377,7 @@ export async function submitAttempt(attemptId: string) {
       }
 
       // Score the MCQ
-      const scoreResult = scoreMultipleChoiceAnswer(
+      const scoreResult = await scoreMultipleChoiceAnswer(
         {
           id: question.id,
           maxPoints: question.maxPoints,

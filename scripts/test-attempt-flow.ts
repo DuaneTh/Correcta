@@ -298,7 +298,7 @@ async function main() {
     studentAnswers.set(option.id, 'true')
   }
 
-  const scoreResult = scoreMultipleChoiceAnswer(
+  const scoreResult = await scoreMultipleChoiceAnswer(
     {
       id: mcqQuestion.id,
       maxPoints: mcqQuestion.maxPoints,
@@ -353,7 +353,7 @@ async function main() {
         answers.set(seg.segmentId, seg.content)
       }
 
-      const result = scoreMultipleChoiceAnswer(
+      const result = await scoreMultipleChoiceAnswer(
         {
           id: answer.question.id,
           maxPoints: answer.question.maxPoints,
