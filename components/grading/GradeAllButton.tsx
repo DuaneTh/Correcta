@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Wand2 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { GradingProgressModal } from './GradingProgressModal'
+import { RubricReviewModal } from './RubricReviewModal'
 
 interface GradeAllButtonProps {
     examId: string
@@ -12,10 +13,19 @@ interface GradeAllButtonProps {
 
 export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
     const [loading, setLoading] = useState(false)
+    const [showRubricReview, setShowRubricReview] = useState(false)
     const [showProgress, setShowProgress] = useState(false)
     const [error, setError] = useState<string | null>(null)
 
-    const handleClick = async () => {
+    // Step 1: Open rubric review modal
+    const handleClick = () => {
+        setError(null)
+        setShowRubricReview(true)
+    }
+
+    // Step 2: On confirm from rubric review, start grading
+    const handleRubricConfirm = async () => {
+        setShowRubricReview(false)
         setLoading(true)
         setError(null)
 
@@ -52,6 +62,10 @@ export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
         }
     }
 
+    const handleRubricClose = () => {
+        setShowRubricReview(false)
+    }
+
     const handleProgressComplete = () => {
         setShowProgress(false)
         onComplete?.()
@@ -80,6 +94,15 @@ export function GradeAllButton({ examId, onComplete }: GradeAllButtonProps) {
                 )}
             </div>
 
+            {/* Step 1: Rubric review modal */}
+            <RubricReviewModal
+                examId={examId}
+                isOpen={showRubricReview}
+                onClose={handleRubricClose}
+                onConfirm={handleRubricConfirm}
+            />
+
+            {/* Step 2: Progress modal */}
             <GradingProgressModal
                 examId={examId}
                 isOpen={showProgress}
