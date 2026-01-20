@@ -116,10 +116,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — OpenAI integration, Zod schemas, rubric generation
-- [ ] 04-02-PLAN.md — Batch grading "Grade All" with progress tracking
-- [ ] 04-03-PLAN.md — Teacher review UI (edit modal, re-grade button)
-- [ ] 04-04-PLAN.md — Publication flow and student feedback view
+- [x] 04-01-PLAN.md — OpenAI integration, Zod schemas, rubric generation
+- [x] 04-02-PLAN.md — Batch grading "Grade All" with progress tracking
+- [x] 04-03-PLAN.md — Teacher review UI (edit modal, re-grade button)
+- [x] 04-04-PLAN.md — Publication flow and student feedback view
 
 **Success Criteria:**
 1. Teacher clicks "Grade All" and sees progress indicator for 50 student submissions
@@ -142,6 +142,13 @@ Plans:
 - EXPO-03: Filter export by class/subgroup
 - EXPO-04: Consistent math rendering in PDF (KaTeX via renderLatexToString from Phase 1)
 
+**Plans:** 3 plans
+
+Plans:
+- [ ] 05-01-PLAN.md — CSV export with Papaparse (grades table download)
+- [ ] 05-02-PLAN.md — PDF infrastructure (@react-pdf/renderer + MathJax SVG)
+- [ ] 05-03-PLAN.md — Async PDF export with progress tracking
+
 **Success Criteria:**
 1. Teacher can download CSV with all grades for an exam in under 5 seconds
 2. Teacher can generate PDF report showing each student's answers, grades, and feedback
@@ -158,8 +165,8 @@ Plans:
 | 1 - Math Foundation | Math input and consistent web rendering | MATH-01, MATH-02, MATH-03, MATH-04, MATH-05 (web) | Complete |
 | 2 - Exam Creation | Intuitive exam authoring with multiple question types | EXAM-01, EXAM-02, EXAM-03, EXAM-04, EXAM-05 | Complete |
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Complete |
-| 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Planned |
-| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Pending |
+| 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Complete |
+| 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | In Progress |
 
 ---
 
@@ -178,6 +185,7 @@ Plans:
 - MATH-05 is split across phases: web surface parity in Phase 1, PDF parity in Phase 5 (EXPO-04)
 - Phase 1 creates `renderLatexToString` export for Phase 5 PDF generation
 - Phase 3: Research found 80% of infrastructure exists; 3 focused extension plans instead of 5
+- Phase 5: MathJax used for PDF (produces SVG), KaTeX used for web (produces HTML)
 
 ---
 
