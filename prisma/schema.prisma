@@ -241,7 +241,8 @@ model Question {
   customLabel     String?
   requireAllCorrect Boolean @default(false) // For MCQ: if true, all correct answers must be selected to get points
   maxPoints       Float?   // For MCQ with requireAllCorrect: total points for the question
-  
+  generatedRubric Json?    // AI-generated rubric for grading
+
   segments        QuestionSegment[]
   answers         Answer[]
 }
