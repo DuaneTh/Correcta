@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Bot } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import MathRenderer from '@/components/exams/MathRenderer'
 
@@ -25,9 +25,38 @@ interface ResultData {
             grade: {
                 score: number
                 feedback: string | null
+                isAiGrade?: boolean
             } | null
         }[]
     }[]
+}
+
+// Helper to determine score color based on percentage
+function getScoreColor(score: number, maxPoints: number): string {
+    if (maxPoints === 0) return 'text-gray-500'
+    const percentage = (score / maxPoints) * 100
+    if (percentage >= 70) return 'text-green-600'
+    if (percentage >= 40) return 'text-yellow-600'
+    return 'text-red-600'
+}
+
+// Helper to determine feedback border color
+function getFeedbackBorderColor(score: number, maxPoints: number): string {
+    if (maxPoints === 0) return 'border-l-gray-300'
+    const percentage = (score / maxPoints) * 100
+    if (percentage >= 70) return 'border-l-green-500'
+    if (percentage >= 40) return 'border-l-yellow-500'
+    return 'border-l-red-500'
+}
+
+// Get default feedback message when none is provided
+function getDefaultFeedback(score: number, maxPoints: number): string {
+    if (maxPoints === 0) return ''
+    const percentage = (score / maxPoints) * 100
+    if (percentage >= 70) return 'Bonne reponse !'
+    if (percentage >= 40) return 'Reponse partiellement correcte.'
+    if (score === 0) return 'Reponse incorrecte.'
+    return 'Reponse partiellement correcte.'
 }
 
 interface ResultsViewProps {
@@ -180,42 +209,50 @@ export default function ResultsView({ attemptId, dictionary }: ResultsViewProps)
                         )}
                         {section.questions.map((question, index) => (
                             <div key={question.id} className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-                                <div className="p-6">
-                                    <div className="flex justify-between items-start mb-4">
+                                <div className="p-4 sm:p-6">
+                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
                                         <div className="flex-1">
                                             <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded mb-2">
-                                                {dict.questionCard.questionLabel} {index + 1} • {question.maxPoints} {dict.questionCard.pointsSuffix}
+                                                {dict.questionCard.questionLabel} {index + 1} - {question.maxPoints} {dict.questionCard.pointsSuffix}
                                             </span>
-                                            <MathRenderer text={question.content} className="text-lg text-gray-900 font-medium mb-4" />
+                                            <MathRenderer text={question.content} className="text-lg text-gray-900 font-medium" />
+                                        </div>
+                                        {question.grade && (
+                                            <div className={`text-2xl font-bold ${getScoreColor(question.grade.score, question.maxPoints)} sm:text-right`}>
+                                                {question.grade.score} / {question.maxPoints}
+                                            </div>
+                                        )}
+                                    </div>
 
-                                            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
-                                                <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">{dict.questionCard.yourAnswerLabel}</h4>
-                                                {question.answer?.segments.length ? (
-                                                    <MathRenderer text={question.answer.segments.join('\n')} className="text-gray-800 whitespace-pre-wrap" />
-                                                ) : (
-                                                    <span className="italic text-gray-400">{dict.questionCard.noAnswerLabel}</span>
+                                    <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
+                                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">{dict.questionCard.yourAnswerLabel}</h4>
+                                        {question.answer?.segments.length ? (
+                                            <MathRenderer text={question.answer.segments.join('\n')} className="text-gray-800 whitespace-pre-wrap" />
+                                        ) : (
+                                            <span className="italic text-gray-400">{dict.questionCard.noAnswerLabel}</span>
+                                        )}
+                                    </div>
+
+                                    {question.grade && (
+                                        <div className={`p-4 rounded-md border-l-4 bg-gray-50 ${getFeedbackBorderColor(question.grade.score, question.maxPoints)}`}>
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                                                <h4 className="text-xs font-bold text-gray-700 uppercase">Commentaire du correcteur</h4>
+                                                {question.grade.isAiGrade && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
+                                                        <Bot className="w-3 h-3" />
+                                                        Correction automatique
+                                                    </span>
                                                 )}
                                             </div>
-
-                                            {question.grade && (
-                                                <div className="bg-indigo-50 p-4 rounded-md border border-indigo-100">
-                                                    <div className="flex justify-between items-start mb-2">
-                                                        <h4 className="text-xs font-bold text-indigo-800 uppercase">{dict.questionCard.correctionLabel}</h4>
-                                                        <span className="text-sm font-bold text-indigo-700">
-                                                            {question.grade.score} / {question.maxPoints}
-                                                        </span>
-                                                    </div>
-                                                    {question.grade.feedback ? (
-                                                        <MathRenderer text={question.grade.feedback} className="text-indigo-900 text-sm" />
-                                                    ) : (
-                                                        <div className="text-indigo-400 text-sm italic">
-                                                            {dict.questionCard.noFeedbackLabel}
-                                                        </div>
-                                                    )}
+                                            {question.grade.feedback ? (
+                                                <MathRenderer text={question.grade.feedback} className="text-gray-800 text-sm" />
+                                            ) : (
+                                                <div className="text-gray-600 text-sm">
+                                                    {getDefaultFeedback(question.grade.score, question.maxPoints)}
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
                         ))}

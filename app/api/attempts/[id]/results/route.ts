@@ -138,6 +138,9 @@ export async function GET(
                     totalMaxPoints += maxPoints
                     if (grade) totalScore += grade.score
 
+                    // Determine if this is an AI-generated grade
+                    const isAiGrade = grade ? (grade.gradedByUserId === null && !grade.isOverridden) : false
+
                     return {
                         id: question.id,
                         content: question.content,
@@ -147,7 +150,8 @@ export async function GET(
                         } : null,
                         grade: grade ? {
                             score: grade.score,
-                            feedback: grade.feedback
+                            feedback: grade.feedback,
+                            isAiGrade
                         } : null
                     }
                 })
