@@ -21,7 +21,7 @@
 ## Current Position
 
 **Phase:** 4 of 5 (AI Correction)
-**Plan:** 3 of 3 complete
+**Plan:** 4 of 4 complete
 **Status:** Phase complete
 
 **Progress:**
@@ -29,11 +29,11 @@
 Phase 1: Math Foundation     [==========] 3/3 plans complete
 Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [==========] 3/3 plans complete
-Phase 4: AI Correction       [==========] 3/3 plans complete
+Phase 4: AI Correction       [==========] 4/4 plans complete
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 13/14 plans complete
+**Overall:** 14/15 plans complete
 
 ---
 
@@ -41,8 +41,8 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 13 | 01-01 through 04-03 |
-| Success rate | 100% | 13/13 plans succeeded |
+| Plans completed | 14 | 01-01 through 04-04 |
+| Success rate | 100% | 14/14 plans succeeded |
 | Avg duration | 10 min | Consistent execution time |
 
 ---
@@ -89,6 +89,10 @@ Phase 5: Export              [          ] Not started
 | Collapsible context in edit modal | Reduces modal height, keeps focus on editing | 4 |
 | Score color coding in grading | Quick visual feedback on grade quality | 4 |
 | Clear override flags on re-grade | Ensures AI can update without human-protection | 4 |
+| Publish checkbox default unchecked | Review-first is safer, prevents accidental publish | 4 |
+| Confirmation modal for publish | Extra safeguard before students see grades | 4 |
+| Color-coded scores and borders | Quick visual feedback on grade quality in student view | 4 |
+| Default feedback messages | Better UX when AI doesn't provide explicit feedback | 4 |
 
 ### Technical Patterns
 
@@ -118,6 +122,10 @@ Phase 5: Export              [          ] Not started
 - **Grade source detection:** gradedByUserId === null && !isOverridden for AI grades
 - **Visual badges:** AI (blue), Human-modified (orange) badges in grading UI
 - **Re-grade flow:** Clear override flags, enqueue with forceRegrade flag
+- **Publication flow:** Confirmation modal, optional immediate publish after grading
+- **Grading statistics:** Copies corrigees sur Y, modifications manuelles, score moyen
+- **Grading filters:** Toutes les copies, Non corrigees, Corrigees, Modifiees
+- **Student results:** AI badge, color-coded scores, default feedback messages
 
 ### Known Issues
 
@@ -139,6 +147,7 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 04-01: GPT-4 Integration
 - [x] Complete 04-02: Grading UI
 - [x] Complete 04-03: Teacher Review Interface
+- [x] Complete 04-04: Publication Flow and Dashboard Polish
 - [ ] Plan Phase 5: Export
 
 ### Blockers
@@ -160,6 +169,7 @@ Phase 4 (AI Correction) COMPLETE:
 - 04-01: COMPLETE - GPT-4 Integration with structured outputs
 - 04-02: COMPLETE - Grading UI with batch grading and rubric review
 - 04-03: COMPLETE - Teacher Review Interface with edit modal and re-grade
+- 04-04: COMPLETE - Publication Flow and Dashboard Polish
 
 Next action: Plan Phase 5 (Export)
 ```
@@ -183,8 +193,9 @@ Next action: Plan Phase 5 (Export)
 - `.planning/phases/04-ai-correction/04-01-SUMMARY.md` - GPT-4 Integration summary
 - `.planning/phases/04-ai-correction/04-02-SUMMARY.md` - Grading UI summary
 - `.planning/phases/04-ai-correction/04-03-SUMMARY.md` - Teacher Review Interface summary
+- `.planning/phases/04-ai-correction/04-04-SUMMARY.md` - Publication Flow and Dashboard Polish summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-20 - Completed 04-03-PLAN.md (Teacher Review Interface)*
+*Last execution: 2026-01-20 - Completed 04-04-PLAN.md (Publication Flow and Dashboard Polish)*
