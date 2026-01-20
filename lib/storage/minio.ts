@@ -1,4 +1,6 @@
 import * as Minio from 'minio'
+import * as fs from 'fs'
+import * as path from 'path'
 
 /**
  * MinIO client configuration for exam asset storage
@@ -11,6 +13,8 @@ import * as Minio from 'minio'
  * - MINIO_SECRET_KEY: Secret key for authentication
  * - MINIO_BUCKET: Default bucket name for uploads
  * - MINIO_PUBLIC_URL: Public URL for accessing objects (optional, defaults to endpoint)
+ *
+ * If MinIO is not configured, files will be stored locally in /public/uploads (dev fallback)
  */
 
 const minioEndpoint = process.env.MINIO_ENDPOINT || 'localhost'
@@ -18,6 +22,13 @@ const minioPort = parseInt(process.env.MINIO_PORT || '9000', 10)
 const minioUseSSL = process.env.MINIO_USE_SSL === 'true'
 const minioAccessKey = process.env.MINIO_ACCESS_KEY || ''
 const minioSecretKey = process.env.MINIO_SECRET_KEY || ''
+
+/**
+ * Check if MinIO is configured
+ */
+export function isMinioConfigured(): boolean {
+  return !!(minioAccessKey && minioSecretKey)
+}
 
 /**
  * MinIO client singleton - lazily initialized
@@ -70,7 +81,34 @@ export async function ensureBucket(bucket: string = DEFAULT_BUCKET): Promise<voi
 }
 
 /**
- * Upload a file buffer to MinIO
+ * Local storage directory for development fallback
+ */
+const LOCAL_UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads')
+
+/**
+ * Upload a file buffer to local storage (dev fallback)
+ */
+async function uploadFileLocal(
+  key: string,
+  buffer: Buffer
+): Promise<string> {
+  // Ensure upload directory exists
+  const filePath = path.join(LOCAL_UPLOAD_DIR, key)
+  const fileDir = path.dirname(filePath)
+
+  if (!fs.existsSync(fileDir)) {
+    fs.mkdirSync(fileDir, { recursive: true })
+  }
+
+  // Write file
+  fs.writeFileSync(filePath, buffer)
+
+  // Return public URL (relative to /public)
+  return `/uploads/${key}`
+}
+
+/**
+ * Upload a file buffer to MinIO or local storage
  *
  * @param key - Object key (path within bucket)
  * @param buffer - File content as Buffer
@@ -84,6 +122,11 @@ export async function uploadFile(
   contentType: string,
   bucket: string = DEFAULT_BUCKET
 ): Promise<string> {
+  // Use local storage if MinIO is not configured
+  if (!isMinioConfigured()) {
+    return uploadFileLocal(key, buffer)
+  }
+
   const client = getMinioClient()
 
   // Ensure bucket exists
