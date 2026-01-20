@@ -76,6 +76,8 @@ Phase 5: Export              [          ] Not started
 | Proxy upload through Next.js API | Avoids CORS/presigned URL complexity with local MinIO | 2 |
 | Markdown image syntax ![alt](url) | Standard, portable between storage backends | 2 |
 | $...$ math delimiters in textarea | Works with MathRenderer, familiar LaTeX syntax | 2 |
+| Single-level subgroup hierarchy | Max 1 level (parent->children) covers typical use cases | 3 |
+| Nullable parentId for subgroups | Non-breaking change, existing sections remain valid | 3 |
 | Papaparse for CSV parsing | Client-side parsing allows preview before submit | 3 |
 | Client-side CSV validation | Reduces server load, provides instant feedback | 3 |
 | Promotion only (no demotion) | Demotion requires platform admin intervention | 3 |
@@ -101,6 +103,8 @@ Phase 5: Export              [          ] Not started
 - **Content rendering:** QuestionPreview parses markdown images + $...$ math
 - **CSV upload:** Papaparse for parsing, preview table with validation, bulk API
 - **Role promotion:** Server action with institution-scoped authorization, optimistic UI
+- **Section hierarchy:** Self-referencing parentId on Class, max 1 level deep
+- **Hierarchical display:** Group children under parents with indentation and badges
 
 ### Known Issues
 
@@ -157,6 +161,7 @@ Next action: Plan Phase 4 (AI Correction) or Phase 5 (Export)
 - `.planning/phases/02-exam-creation/02-02-SUMMARY.md` - Question Type Editors summary
 - `.planning/phases/02-exam-creation/02-03-SUMMARY.md` - Image Upload Integration summary
 - `.planning/phases/02-exam-creation/02-04-SUMMARY.md` - Student Exam Taking summary
+- `.planning/phases/03-organization/03-01-SUMMARY.md` - Hierarchical Subgroups summary
 - `.planning/phases/03-organization/03-02-SUMMARY.md` - CSV Upload UI summary
 - `.planning/phases/03-organization/03-03-SUMMARY.md` - Role Promotion summary
 
