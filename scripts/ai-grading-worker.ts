@@ -3,18 +3,27 @@ import { Worker, Job } from 'bullmq'
 import Redis from 'ioredis'
 import { prisma } from '@/lib/prisma'
 import { recomputeAttemptStatus } from '../lib/attemptStatus'
+import { gradeAnswer } from '../lib/grading/grader'
+import { segmentsToLatexString, parseContent } from '../lib/content'
+import { isOpenAIConfigured } from '../lib/grading/openai-client'
+import type { ContentSegment } from '@/types/exams'
+import type { Rubric } from '../lib/grading/schemas'
 
 /**
- * AI Grading Worker Stub
- * 
+ * AI Grading Worker
+ *
  * Consumes jobs from 'ai-grading' queue.
- * Fetches data, stubs a grade, and updates attempt status.
+ * Uses GPT-4 to grade student answers with personalized feedback.
  */
 
 const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
 
 console.log('[AI Worker] Starting worker...')
 console.log(`[AI Worker] Connecting to Redis at ${redisUrl}`)
+
+if (!isOpenAIConfigured()) {
+    console.warn('[AI Worker] WARNING: OPENAI_API_KEY is not configured. AI grading will fail.')
+}
 
 const connection = new Redis(redisUrl, {
     maxRetriesPerRequest: null,
@@ -36,17 +45,23 @@ const worker = new Worker('ai-grading', async (job: Job) => {
     try {
         if (job.name === 'grade-answer') {
             const { attemptId, answerId, questionId } = job.data
-            // console.log(`[AI Worker] Processing grading for attempt ${attemptId}, question ${questionId}, answer ${answerId}`)
+            console.log(`[AI Worker] Processing grading for attempt ${attemptId}, question ${questionId}, answer ${answerId}`)
 
-            // 1. Fetch Answer with Question Segments and Attempt
+            // 1. Fetch Answer with Question Segments, generatedRubric, and answer segments
             const answer = await prisma.answer.findUnique({
                 where: { id: answerId },
                 include: {
                     question: {
                         include: {
-                            segments: true
+                            segments: {
+                                include: {
+                                    rubric: true
+                                },
+                                orderBy: { order: 'asc' }
+                            }
                         }
                     },
+                    segments: true,
                     attempt: true
                 }
             })
@@ -67,13 +82,7 @@ const worker = new Worker('ai-grading', async (job: Job) => {
                 return
             }
 
-            // 3. Stub AI Score (70% of maxPoints)
-            const rawScore = maxPoints * 0.7
-            const clampedScore = Math.min(maxPoints, Math.max(0, rawScore))
-            const feedback = "Correction automatique (stub IA) – à vérifier."
-            const aiRationale = "Stub only – no real AI model was called."
-
-            // 4. Check for existing human grade (skip if present)
+            // 3. Check for existing human grade (skip if present)
             const existingGrade = await prisma.grade.findUnique({
                 where: { answerId: answerId }
             })
@@ -84,31 +93,85 @@ const worker = new Worker('ai-grading', async (job: Job) => {
                 return // Skip this answer, don't update the grade
             }
 
-            // 5. Upsert Grade (only if no human grade exists)
+            // 4. Convert question content to string
+            const questionContentSegments = parseContent(answer.question.content) as ContentSegment[]
+            const questionContent = segmentsToLatexString(questionContentSegments)
+
+            // 5. Convert student answer segments to string
+            const answerContentSegments = answer.segments.map(seg => {
+                const parsed = parseContent(seg.content) as ContentSegment[]
+                return parsed
+            }).flat()
+            const studentAnswer = segmentsToLatexString(answerContentSegments)
+
+            // 6. Get rubric - prefer generatedRubric, fallback to segment rubric criteria
+            let rubricString: string
+
+            // First try to fetch the question with generatedRubric directly
+            const questionWithRubric = await prisma.question.findUnique({
+                where: { id: answer.question.id },
+                select: { generatedRubric: true }
+            })
+
+            if (questionWithRubric?.generatedRubric) {
+                // Use generated rubric
+                rubricString = JSON.stringify(questionWithRubric.generatedRubric)
+                console.log(`[AI Worker] Using generated rubric for question ${answer.question.id}`)
+            } else {
+                // Fallback to segment rubric criteria
+                const correctionGuidelines = answer.question.segments
+                    .filter(s => s.rubric?.criteria)
+                    .map(s => s.rubric!.criteria)
+                    .filter(Boolean)
+                    .join('\n\n')
+
+                if (correctionGuidelines) {
+                    rubricString = correctionGuidelines
+                    console.log(`[AI Worker] Using segment correction guidelines for question ${answer.question.id}`)
+                } else {
+                    // No rubric available - create a simple default
+                    rubricString = `Points maximum: ${maxPoints}. Evaluer la justesse et la completude de la reponse.`
+                    console.log(`[AI Worker] No rubric found, using default guidelines for question ${answer.question.id}`)
+                }
+            }
+
+            // 7. Call GPT-4 for grading
+            console.log(`[AI Worker] Calling GPT-4 for grading answer ${answerId}...`)
+
+            const gradingResult = await gradeAnswer({
+                question: questionContent,
+                rubric: rubricString,
+                studentAnswer: studentAnswer || '(Aucune reponse)',
+                maxPoints: maxPoints
+            })
+
+            console.log(`[AI Worker] GPT-4 returned score ${gradingResult.score}/${maxPoints}`)
+
+            // 8. Upsert Grade with AI results
             await prisma.grade.upsert({
                 where: {
                     answerId: answerId
                 },
                 update: {
-                    score: clampedScore,
-                    feedback: feedback,
-                    aiRationale: aiRationale,
+                    score: gradingResult.score,
+                    feedback: gradingResult.feedback,
+                    aiRationale: gradingResult.aiRationale,
                     gradedByUserId: null,
                     isOverridden: false
                 },
                 create: {
                     answerId: answerId,
-                    score: clampedScore,
-                    feedback: feedback,
-                    aiRationale: aiRationale,
+                    score: gradingResult.score,
+                    feedback: gradingResult.feedback,
+                    aiRationale: gradingResult.aiRationale,
                     gradedByUserId: null,
                     isOverridden: false
                 }
             })
 
-            console.log(`[AI Worker] Stub-graded answer ${answerId} with score ${clampedScore}/${maxPoints} (attempt ${attemptId})`)
+            console.log(`[AI Worker] Graded answer ${answerId} with score ${gradingResult.score}/${maxPoints} (attempt ${attemptId})`)
 
-            // 5. Update attempt status using centralized logic
+            // 9. Update attempt status using centralized logic
             await recomputeAttemptStatus(answer.attemptId)
             console.log(`[AI Worker] Updated attempt ${attemptId} status via recomputeAttemptStatus`)
 
@@ -117,6 +180,7 @@ const worker = new Worker('ai-grading', async (job: Job) => {
         }
     } catch (error) {
         console.error(`[AI Worker] Job ${job.id} failed:`, error)
+        // Let BullMQ retry logic handle transient failures
         throw error
     }
 }, {
@@ -125,7 +189,7 @@ const worker = new Worker('ai-grading', async (job: Job) => {
 })
 
 worker.on('completed', (job) => {
-    // console.log(`[AI Worker] Job ${job.id} has completed!`)
+    console.log(`[AI Worker] Job ${job.id} completed successfully`)
 })
 
 worker.on('failed', (job, err) => {
