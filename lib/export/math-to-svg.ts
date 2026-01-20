@@ -241,7 +241,8 @@ export function svgToReactPdf(svgString: string): React.ReactElement | null {
     // Parse SVG string to AST
     const parsed = parseSvg(svgString) as RootNode
 
-    if (!parsed.children || parsed.children.length === 0) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!parsed.children || (parsed.children as any[]).length === 0) {
       return null
     }
 
