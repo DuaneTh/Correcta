@@ -39,6 +39,7 @@ export default async function SchoolClassesPage() {
                 courses={data.courses}
                 sections={data.sections}
                 exams={data.exams}
+                students={data.students}
             />
         </SchoolAdminLayout>
     )

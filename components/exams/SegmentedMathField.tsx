@@ -3,8 +3,9 @@
 
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown, ImagePlus } from 'lucide-react'
+import { Calculator, Check, X, Table, LineChart, Plus, ChevronDown, ImagePlus, Trash2 } from 'lucide-react'
 import { ContentSegment, GraphSegment, TableCell } from '@/types/exams'
+import { stringToSegments } from '@/lib/content'
 import { renderGraphInto } from './graph-utils'
 import MathToolbar from './MathToolbar'
 import { renderLatexToString } from './KaTeXRenderer'
@@ -41,8 +42,8 @@ const normalizeNumber = (value: unknown, fallback: number): number => {
     return Number.isFinite(num) ? num : fallback
 }
 
-const minTableColumnWidth = 60
-const minTableRowHeight = 36
+const minTableColumnWidth = 100  // Wider cells like Excel
+const minTableRowHeight = 28     // Shorter height for more square-ish cells
 const maxExamSheetWidth = 820
 const defaultGraphWidth = 480
 const defaultGraphHeight = 280
@@ -141,8 +142,15 @@ const consolidateSegments = (segments: ContentSegment[]): ContentSegment[] => {
 
 const createEmptyCellSegments = (): ContentSegment[] => [{ id: createId(), type: 'text', text: '' }]
 
+// Create a default 3x3 empty table
+const createDefault3x3Table = (): TableCell[][] => {
+    return Array.from({ length: 3 }, () =>
+        Array.from({ length: 3 }, () => createEmptyCellSegments())
+    )
+}
+
 const normalizeTableRows = (rows?: TableCell[][]): TableCell[][] => {
-    if (!rows || rows.length === 0) return [[createEmptyCellSegments()]]
+    if (!rows || rows.length === 0) return createDefault3x3Table()
 
     return rows.map((row) => {
         if (!row || row.length === 0) return [createEmptyCellSegments()]
@@ -656,27 +664,25 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
             if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
 
-                // Ctrl+Enter or Cmd+Enter: save
+                // Ctrl+Enter or Cmd+Enter: insert line break in formula
+
+                e.preventDefault()
+
+                e.stopImmediatePropagation()
+
+                const lineBreak = String.raw`\\`
+
+                mf.insert(lineBreak, { focus: true, feedback: false })
+
+            } else if (e.key === 'Enter') {
+
+                // Simple Enter: confirm and save
 
                 e.preventDefault()
 
                 e.stopImmediatePropagation()
 
                 onConfirmRef.current()
-
-            } else if (e.key === 'Enter') {
-
-                // Simple Enter: line break in formula
-
-                e.preventDefault()
-
-                e.stopImmediatePropagation()
-
-                // Insert a single LaTeX line break
-
-                const lineBreak = String.raw`\\`
-
-                mf.insert(lineBreak, { focus: true, feedback: false })
 
             } else if (e.key === 'Escape') {
 
@@ -758,71 +764,72 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
 
 
+    // Quick symbols with LaTeX display for proper rendering with KaTeX
     const quickSymbols = [
-        { label: 'a/b', latex: '\\frac{#@}{#0}' },
-        { label: 'âˆš', latex: '\\sqrt{#0}' },
-        { label: 'x^', latex: '^{#0}' },
-        { label: 'x_', latex: '_{#0}' },
-        { label: 'âˆ‘', latex: '\\sum_{#@}^{#0}' },
-        { label: 'âˆ«', latex: '\\int_{#@}^{#0}' },
-        { label: 'âˆ', latex: '\\prod_{#@}^{#0}' },
-        { label: 'lim', latex: '\\lim_{#0}' },
-        { label: 'e^', latex: 'e^{#0}' },
-        { label: 'ln', latex: '\\ln\\left(#0\\right)' },
-        { label: 'log', latex: '\\log_{#@}\\left(#0\\right)' },
-        { label: 'sin', latex: '\\sin\\left(#0\\right)' },
-        { label: 'cos', latex: '\\cos\\left(#0\\right)' },
-        { label: 'tan', latex: '\\tan\\left(#0\\right)' },
-        { label: 'Ï€', latex: '\\pi' },
-        { label: 'âˆž', latex: '\\infty' },
-        { label: 'â‰¤', latex: '\\leq' },
-        { label: 'â‰¥', latex: '\\geq' },
-        { label: 'â‰ ', latex: '\\neq' },
-        { label: 'Ã—', latex: '\\times' },
-        { label: 'âˆ€', latex: '\\forall' },
-        { label: 'âˆƒ', latex: '\\exists' },
-        { label: 'âˆˆ', latex: '\\in' },
-        { label: 'âˆ‰', latex: '\\notin' },
-        { label: 'âŠ‚', latex: '\\subset' },
-        { label: 'âŠ†', latex: '\\subseteq' },
-        { label: 'âŠƒ', latex: '\\supset' },
-        { label: 'âŠ‡', latex: '\\supseteq' },
-        { label: 'âˆª', latex: '\\cup' },
-        { label: 'âˆ©', latex: '\\cap' },
-        { label: 'âˆ…', latex: '\\emptyset' },
-        { label: 'â†’', latex: '\\to' },
-        { label: 'â†¦', latex: '\\mapsto' },
-        { label: 'â‡’', latex: '\\Rightarrow' },
-        { label: 'â‡”', latex: '\\Leftrightarrow' },
-        { label: 'â‰ˆ', latex: '\\approx' },
-        { label: 'â‰¡', latex: '\\equiv' },
-        { label: 'âˆ', latex: '\\propto' },
-        { label: 'Â±', latex: '\\pm' },
-        { label: 'âˆ‚', latex: '\\partial' },
-        { label: 'âˆ‡', latex: '\\nabla' },
-        { label: 'â„•', latex: '\\mathbb{N}' },
-        { label: 'â„¤', latex: '\\mathbb{Z}' },
-        { label: 'â„š', latex: '\\mathbb{Q}' },
-        { label: 'â„', latex: '\\mathbb{R}' },
-        { label: 'â„‚', latex: '\\mathbb{C}' },
-        { label: 'Î±', latex: '\\alpha' },
-        { label: 'Î²', latex: '\\beta' },
-        { label: 'Î³', latex: '\\gamma' },
-        { label: 'Î´', latex: '\\delta' },
-        { label: 'Îµ', latex: '\\epsilon' },
-        { label: 'Î¸', latex: '\\theta' },
-        { label: 'Î»', latex: '\\lambda' },
-        { label: 'Î¼', latex: '\\mu' },
-        { label: 'Ï€', latex: '\\pi' },
-        { label: 'Ï', latex: '\\rho' },
-        { label: 'Ïƒ', latex: '\\sigma' },
-        { label: 'Ï„', latex: '\\tau' },
-        { label: 'Ï†', latex: '\\phi' },
-        { label: 'Ï‰', latex: '\\omega' },
-        { label: 'Î”', latex: '\\Delta' },
-        { label: 'Î“', latex: '\\Gamma' },
-        { label: 'Î£', latex: '\\Sigma' },
-        { label: 'Î©', latex: '\\Omega' },
+        { display: '\\frac{a}{b}', latex: '\\frac{#@}{#0}' },
+        { display: '\\sqrt{x}', latex: '\\sqrt{#0}' },
+        { display: 'x^2', latex: '^{#0}' },
+        { display: 'x_n', latex: '_{#0}' },
+        { display: '\\sum', latex: '\\sum_{#@}^{#0}' },
+        { display: '\\int', latex: '\\int_{#@}^{#0}' },
+        { display: '\\prod', latex: '\\prod_{#@}^{#0}' },
+        { display: '\\lim', latex: '\\lim_{#0}' },
+        { display: 'e^x', latex: 'e^{#0}' },
+        { display: '\\ln', latex: '\\ln\\left(#0\\right)' },
+        { display: '\\log', latex: '\\log_{#@}\\left(#0\\right)' },
+        { display: '\\sin', latex: '\\sin\\left(#0\\right)' },
+        { display: '\\cos', latex: '\\cos\\left(#0\\right)' },
+        { display: '\\tan', latex: '\\tan\\left(#0\\right)' },
+        { display: '\\pi', latex: '\\pi' },
+        { display: '\\infty', latex: '\\infty' },
+        { display: '\\leq', latex: '\\leq' },
+        { display: '\\geq', latex: '\\geq' },
+        { display: '\\neq', latex: '\\neq' },
+        { display: '\\times', latex: '\\times' },
+        { display: '\\forall', latex: '\\forall' },
+        { display: '\\exists', latex: '\\exists' },
+        { display: '\\in', latex: '\\in' },
+        { display: '\\notin', latex: '\\notin' },
+        { display: '\\subset', latex: '\\subset' },
+        { display: '\\subseteq', latex: '\\subseteq' },
+        { display: '\\supset', latex: '\\supset' },
+        { display: '\\supseteq', latex: '\\supseteq' },
+        { display: '\\cup', latex: '\\cup' },
+        { display: '\\cap', latex: '\\cap' },
+        { display: '\\emptyset', latex: '\\emptyset' },
+        { display: '\\to', latex: '\\to' },
+        { display: '\\mapsto', latex: '\\mapsto' },
+        { display: '\\Rightarrow', latex: '\\Rightarrow' },
+        { display: '\\Leftrightarrow', latex: '\\Leftrightarrow' },
+        { display: '\\approx', latex: '\\approx' },
+        { display: '\\equiv', latex: '\\equiv' },
+        { display: '\\propto', latex: '\\propto' },
+        { display: '\\pm', latex: '\\pm' },
+        { display: '\\partial', latex: '\\partial' },
+        { display: '\\nabla', latex: '\\nabla' },
+        { display: '\\mathbb{N}', latex: '\\mathbb{N}' },
+        { display: '\\mathbb{Z}', latex: '\\mathbb{Z}' },
+        { display: '\\mathbb{Q}', latex: '\\mathbb{Q}' },
+        { display: '\\mathbb{R}', latex: '\\mathbb{R}' },
+        { display: '\\mathbb{C}', latex: '\\mathbb{C}' },
+        { display: '\\alpha', latex: '\\alpha' },
+        { display: '\\beta', latex: '\\beta' },
+        { display: '\\gamma', latex: '\\gamma' },
+        { display: '\\delta', latex: '\\delta' },
+        { display: '\\epsilon', latex: '\\epsilon' },
+        { display: '\\theta', latex: '\\theta' },
+        { display: '\\lambda', latex: '\\lambda' },
+        { display: '\\mu', latex: '\\mu' },
+        { display: '\\pi', latex: '\\pi' },
+        { display: '\\rho', latex: '\\rho' },
+        { display: '\\sigma', latex: '\\sigma' },
+        { display: '\\tau', latex: '\\tau' },
+        { display: '\\phi', latex: '\\phi' },
+        { display: '\\omega', latex: '\\omega' },
+        { display: '\\Delta', latex: '\\Delta' },
+        { display: '\\Gamma', latex: '\\Gamma' },
+        { display: '\\Sigma', latex: '\\Sigma' },
+        { display: '\\Omega', latex: '\\Omega' },
     ]
 
     return (
@@ -911,16 +918,13 @@ function InlineMathEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete,
 
                 {quickSymbols.map((sym, index) => (
                     <button
-                        key={`${sym.latex}-${sym.label}-${index}`}
+                        key={`${sym.latex}-${sym.display}-${index}`}
                         type="button"
                         onClick={() => handleInsertSymbol(sym.latex)}
-                        className="px-1.5 py-0.5 text-xs text-gray-900 border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300"
-                        style={{ fontFamily: 'Cambria Math, STIX Two Math, Latin Modern Math, serif' }}
-                    >
-                        {sym.label}
-
-                    </button>
-
+                        className="px-1.5 py-1 text-xs border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300 min-w-[32px] flex items-center justify-center bg-gray-50 [&_.katex]:text-black"
+                        title={sym.latex}
+                        dangerouslySetInnerHTML={{ __html: renderLatexToString(sym.display) }}
+                    />
                 ))}
 
             </div>
@@ -2528,11 +2532,21 @@ type HoverMathButtonProps = {
 function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip }: HoverMathButtonProps) {
     const [isOpen, setIsOpen] = useState(false)
     const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const buttonRef = useRef<HTMLButtonElement>(null)
+    const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
 
     const handleMouseEnter = () => {
         if (closeTimeoutRef.current) {
             clearTimeout(closeTimeoutRef.current)
             closeTimeoutRef.current = null
+        }
+        // Calculate position based on button location
+        if (buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect()
+            setMenuPosition({
+                top: rect.top - 8, // Position above the button with a small gap
+                left: rect.left,
+            })
         }
         setIsOpen(true)
     }
@@ -2559,6 +2573,7 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
             onMouseLeave={handleMouseLeave}
         >
             <button
+                ref={buttonRef}
                 type="button"
                 disabled={disabled}
                 onClick={onInsertMathChip}
@@ -2569,13 +2584,23 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
                 <ChevronDown className={`h-3 w-3 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
             </button>
             {isOpen && (
-                <div className="absolute left-0 top-full pt-1 z-20">
+                <div
+                    className="fixed z-[9999] pb-1"
+                    style={{
+                        top: menuPosition.top,
+                        left: menuPosition.left,
+                        transform: 'translateY(-100%)',
+                    }}
+                    onMouseEnter={handleMouseEnter}
+                    onMouseLeave={handleMouseLeave}
+                >
                     <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2 min-w-[300px]">
                         <div className="flex flex-wrap gap-1">
                             {defaultQuickSymbols.map((sym, idx) => (
                                 <button
                                     key={idx}
                                     type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => onInsertSymbol(sym.latex)}
                                     className="px-2 py-1.5 hover:bg-brand-100 rounded border border-gray-200 hover:border-brand-400 transition-colors min-w-[42px] flex items-center justify-center bg-gray-50 [&_.katex]:text-black"
                                     title={sym.latex}
@@ -2586,10 +2611,11 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
                         <div className="mt-2 pt-2 border-t border-gray-100">
                             <button
                                 type="button"
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={onInsertMathChip}
                                 className="w-full text-left px-2 py-1.5 text-xs text-brand-600 hover:bg-brand-50 rounded transition-colors"
                             >
-                                {isFrench ? '+ Editeur de formule avance' : '+ Advanced formula editor'}
+                                {isFrench ? '+ Editeur de formule avancé' : '+ Advanced formula editor'}
                             </button>
                         </div>
                     </div>
@@ -2679,8 +2705,35 @@ export default function SegmentedMathField({
     const editingGraphRef = useRef<HTMLDivElement | null>(null)
     const [editingGraphId, setEditingGraphId] = useState<string | null>(null)
     const handleInputRef = useRef<() => void>(() => {})
+    const tableActionRef = useRef<(wrapper: HTMLDivElement, action: string) => void>(() => {})
     const isTableResizingRef = useRef(false)
+    const lastTableActionTimeRef = useRef(0)
     const [tableFocusCell, setTableFocusCell] = useState<{ row: number; col: number } | null>(null)
+    // Track last focused table cell for math symbol insertion
+    const lastFocusedCellRef = useRef<{
+        cell: HTMLTableCellElement
+        wrapper: HTMLDivElement
+        row: number
+        col: number
+    } | null>(null)
+    // State for advanced math editor in table cells
+    const [cellMathEditor, setCellMathEditor] = useState<{
+        wrapper: HTMLDivElement
+        cell: HTMLTableCellElement
+        row: number
+        col: number
+        latex: string
+    } | null>(null)
+    const cellMathFieldRef = useRef<MathfieldElement | null>(null)
+    const [cellMathLiveLoaded, setCellMathLiveLoaded] = useState(false)
+    const [tableContextMenu, setTableContextMenu] = useState<{
+        visible: boolean
+        x: number
+        y: number
+        wrapper: HTMLDivElement | null
+        type: 'row' | 'column'
+        index: number
+    } | null>(null)
     // Draft mechanism: store draft latex while editing, keyed by segment id
     const [draftLatexById, setDraftLatexById] = useState<Record<string, string>>({})
     const [draftTableById, setDraftTableById] = useState<Record<string, TablePayload>>({})
@@ -3018,6 +3071,12 @@ export default function SegmentedMathField({
             table.prepend(colgroup)
         }
         colgroup.innerHTML = ''
+        // Add column for row headers (hidden by default, but needed for proper sizing when shown)
+        const rowHeaderCol = document.createElement('col')
+        rowHeaderCol.className = 'table-row-header-col'
+        rowHeaderCol.style.width = '0px' // Hidden by default
+        colgroup.appendChild(rowHeaderCol)
+        // Then data columns
         for (let i = 0; i < cols; i++) {
             const col = document.createElement('col')
             if (colWidths[i]) {
@@ -3026,24 +3085,32 @@ export default function SegmentedMathField({
             colgroup.appendChild(col)
         }
 
-        const rows = Array.from(table.querySelectorAll('tr'))
-        rows.forEach((tr, index) => {
-            if (rowHeights[index]) {
-                tr.style.height = `${Math.max(minTableRowHeight, rowHeights[index])}px`
-            } else {
-                tr.style.height = ''
-            }
-        })
+        // Apply row heights only to tbody rows (skip thead)
+        const tbody = table.tBodies[0]
+        if (tbody) {
+            const rows = Array.from(tbody.rows)
+            rows.forEach((tr, index) => {
+                if (rowHeights[index]) {
+                    tr.style.height = `${Math.max(minTableRowHeight, rowHeights[index])}px`
+                } else {
+                    tr.style.height = ''
+                }
+            })
+        }
     }
 
     const positionTableResizeHandles = (wrapper: HTMLDivElement, table: HTMLTableElement, payload: TablePayload) => {
         const handles = wrapper.querySelectorAll('.table-resize-handle')
         if (handles.length === 0) return
 
-        const rowElements = Array.from(table.rows)
+        // Use tbody rows only (skip thead with column headers)
+        const tbody = table.tBodies[0]
+        if (!tbody) return
+        const rowElements = Array.from(tbody.rows)
         if (rowElements.length === 0) return
         const firstRow = rowElements[0]
-        const colCount = firstRow.cells.length
+        // Skip the row header cell (first cell) when counting columns
+        const colCount = Math.max(0, firstRow.cells.length - 1)
         const rowCount = rowElements.length
 
         const wrapperRect = wrapper.getBoundingClientRect()
@@ -3052,7 +3119,10 @@ export default function SegmentedMathField({
         let handleIndex = 0
         for (let col = 0; col < colCount - 1; col++) {
             const handle = handles[handleIndex++] as HTMLDivElement
-            const cellRect = firstRow.cells[col].getBoundingClientRect()
+            if (!handle) continue
+            // Skip row header cell (index 0), so data cells start at index 1
+            const cellRect = firstRow.cells[col + 1]?.getBoundingClientRect()
+            if (!cellRect) continue
             const left = cellRect.right - wrapperRect.left
             handle.style.left = `${left}px`
             handle.style.top = `${tableRect.top - wrapperRect.top}px`
@@ -3061,7 +3131,9 @@ export default function SegmentedMathField({
 
         for (let row = 0; row < rowCount - 1; row++) {
             const handle = handles[handleIndex++] as HTMLDivElement
-            const rowRect = rowElements[row].getBoundingClientRect()
+            if (!handle) continue
+            const rowRect = rowElements[row]?.getBoundingClientRect()
+            if (!rowRect) continue
             const top = rowRect.bottom - wrapperRect.top
             handle.style.left = `${tableRect.left - wrapperRect.left}px`
             handle.style.top = `${top}px`
@@ -3095,7 +3167,11 @@ export default function SegmentedMathField({
 
                 let colWidths = payload.colWidths
                 if (!colWidths || colWidths.length !== cols) {
-                    const measured = Array.from(table.rows[0]?.cells ?? []).map((cell) =>
+                    // Get tbody first row and skip row header cell (index 0)
+                    const tbody = table.tBodies[0]
+                    const firstDataRow = tbody?.rows[0]
+                    const dataCells = firstDataRow ? Array.from(firstDataRow.cells).slice(1) : []
+                    const measured = dataCells.map((cell) =>
                         Math.max(minTableColumnWidth, cell.getBoundingClientRect().width)
                     )
                     colWidths = capColWidthsToMax(measured, maxExamSheetWidth)
@@ -3103,7 +3179,10 @@ export default function SegmentedMathField({
 
                 let rowHeights = payload.rowHeights
                 if (!rowHeights || rowHeights.length !== rows) {
-                    rowHeights = Array.from(table.rows).map((row) =>
+                    // Use tbody rows only (skip thead)
+                    const tbody = table.tBodies[0]
+                    const tbodyRows = tbody ? Array.from(tbody.rows) : []
+                    rowHeights = tbodyRows.map((row) =>
                         Math.max(minTableRowHeight, row.getBoundingClientRect().height)
                     )
                 }
@@ -3175,9 +3254,79 @@ export default function SegmentedMathField({
         table.style.maxWidth = '100%'
         table.style.tableLayout = 'fixed'
 
+        const cols = payload.rows[0]?.length ?? 1
+        const rowCount = payload.rows.length
+
+        // Add column headers row (hidden by default, shown on hover)
+        const thead = document.createElement('thead')
+        thead.className = 'table-header-row'
+        thead.style.cssText = 'display: none;'
+        const headerRow = document.createElement('tr')
+
+        // Empty corner cell
+        const cornerCell = document.createElement('th')
+        cornerCell.className = 'table-corner-cell'
+        cornerCell.style.cssText = 'width: 24px; min-width: 24px; padding: 2px; background: #f3f4f6; border: 1px solid #e5e7eb;'
+        headerRow.appendChild(cornerCell)
+
+        // Column headers (A, B, C, ...)
+        for (let colIndex = 0; colIndex < cols; colIndex++) {
+            const th = document.createElement('th')
+            th.style.cssText = `
+                padding: 4px 8px;
+                background: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                font-size: 11px;
+                font-weight: 500;
+                color: #6b7280;
+                cursor: pointer;
+                user-select: none;
+                position: relative;
+            `
+            th.textContent = String.fromCharCode(65 + colIndex) // A, B, C...
+            th.setAttribute('data-col-header', String(colIndex))
+            th.title = 'Cliquer pour les options de colonne'
+
+            // Hover effect
+            th.onmouseenter = () => { th.style.background = '#e5e7eb' }
+            th.onmouseleave = () => { th.style.background = '#f3f4f6' }
+
+            headerRow.appendChild(th)
+        }
+        thead.appendChild(headerRow)
+        table.appendChild(thead)
+
         const tbody = document.createElement('tbody')
         payload.rows.forEach((row, rowIndex) => {
             const tr = document.createElement('tr')
+
+            // Row header cell (1, 2, 3, ...) - hidden by default, shown on hover
+            const rowHeader = document.createElement('td')
+            rowHeader.className = 'table-row-header'
+            rowHeader.style.cssText = `
+                width: 24px;
+                min-width: 24px;
+                padding: 4px;
+                background: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                font-size: 11px;
+                font-weight: 500;
+                color: #6b7280;
+                text-align: center;
+                cursor: pointer;
+                user-select: none;
+                display: none;
+            `
+            rowHeader.textContent = String(rowIndex + 1)
+            rowHeader.setAttribute('data-row-header', String(rowIndex))
+            rowHeader.title = 'Cliquer pour les options de ligne'
+
+            // Hover effect
+            rowHeader.onmouseenter = () => { rowHeader.style.background = '#e5e7eb' }
+            rowHeader.onmouseleave = () => { rowHeader.style.background = '#f3f4f6' }
+
+            tr.appendChild(rowHeader)
+
             row.forEach((cell, colIndex) => {
                 const td = document.createElement('td')
                 td.style.border = '1px solid #e5e7eb'
@@ -3186,10 +3335,196 @@ export default function SegmentedMathField({
                 td.style.minWidth = `${minTableColumnWidth}px`
                 td.setAttribute('data-table-cell-row', String(rowIndex))
                 td.setAttribute('data-table-cell-col', String(colIndex))
+                td.contentEditable = 'true'
+                td.style.outline = 'none'
+                td.style.cursor = 'text'
                 if (payload.rowHeights?.[rowIndex]) {
                     td.style.height = `${Math.max(minTableRowHeight, payload.rowHeights[rowIndex])}px`
                 }
-                renderSegmentsPreview(cell, td)
+
+                // Helper to get raw text from cell segments
+                const getCellRawText = () => cell.map(seg => {
+                    if (seg.type === 'text') return seg.text
+                    if (seg.type === 'math') return `$${seg.latex}$`
+                    return ''
+                }).join('')
+
+                // Helper to render cell with KaTeX preview
+                const renderCellPreview = () => {
+                    td.innerHTML = cell.map(seg => {
+                        if (seg.type === 'text') {
+                            // Escape HTML to prevent XSS
+                            const escaped = seg.text
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                            return escaped
+                        }
+                        if (seg.type === 'math') {
+                            return `<span class="math-inline" style="display:inline-block;vertical-align:middle;">${renderLatexToString(seg.latex, false)}</span>`
+                        }
+                        return ''
+                    }).join('')
+                }
+
+                // Initially render with KaTeX preview
+                renderCellPreview()
+
+                // Handle cell input to update table data
+                td.oninput = () => {
+                    const currentPayload = parseTablePayload(wrapper.getAttribute('data-table'))
+                    const newText = td.textContent || ''
+                    const newSegments = stringToSegments(newText)
+                    const newRows = currentPayload.rows.map((r, ri) =>
+                        ri === rowIndex
+                            ? r.map((c, ci) => ci === colIndex ? newSegments : c)
+                            : r
+                    )
+                    const newPayload = { ...currentPayload, rows: newRows }
+                    wrapper.setAttribute('data-table', JSON.stringify(newPayload))
+                    // Mark that we've made a table action to prevent hydration reverting
+                    lastTableActionTimeRef.current = Date.now()
+                    handleInputRef.current()
+                    // Reposition resize handles after content change
+                    const tableEl = wrapper.querySelector('table') as HTMLTableElement | null
+                    if (tableEl) {
+                        requestAnimationFrame(() => {
+                            positionTableResizeHandles(wrapper, tableEl, newPayload)
+                        })
+                    }
+                }
+
+                // Focus: switch to raw text for editing
+                td.onfocus = () => {
+                    td.style.boxShadow = 'inset 0 0 0 2px rgba(99, 102, 241, 0.5)'
+                    // Store this cell as the last focused cell
+                    lastFocusedCellRef.current = {
+                        cell: td,
+                        wrapper,
+                        row: rowIndex,
+                        col: colIndex,
+                    }
+                    // Get current segments from table data and convert to raw text
+                    const currentPayload = parseTablePayload(wrapper.getAttribute('data-table'))
+                    const currentCell = currentPayload.rows[rowIndex]?.[colIndex] || []
+                    const rawText = currentCell.map(seg => {
+                        if (seg.type === 'text') return seg.text
+                        if (seg.type === 'math') return `$${seg.latex}$`
+                        return ''
+                    }).join('')
+                    td.textContent = rawText
+                    // Move cursor to end
+                    const range = document.createRange()
+                    const sel = window.getSelection()
+                    if (td.firstChild) {
+                        range.selectNodeContents(td)
+                        range.collapse(false)
+                        sel?.removeAllRanges()
+                        sel?.addRange(range)
+                    }
+                }
+
+                // Blur: switch back to KaTeX preview
+                td.onblur = () => {
+                    td.style.boxShadow = 'none'
+                    // Get current segments from table data and render preview
+                    const currentPayload = parseTablePayload(wrapper.getAttribute('data-table'))
+                    const currentCell = currentPayload.rows[rowIndex]?.[colIndex] || []
+                    td.innerHTML = currentCell.map(seg => {
+                        if (seg.type === 'text') {
+                            const escaped = seg.text
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                            return escaped
+                        }
+                        if (seg.type === 'math') {
+                            return `<span class="math-inline" style="display:inline-block;vertical-align:middle;">${renderLatexToString(seg.latex, false)}</span>`
+                        }
+                        return ''
+                    }).join('')
+                }
+
+                // Arrow key navigation between cells
+                td.onkeydown = (e: KeyboardEvent) => {
+                    const currentRow = rowIndex
+                    const currentCol = colIndex
+                    const totalRows = payload.rows.length
+                    const totalCols = payload.rows[0]?.length ?? 1
+                    let targetRow = currentRow
+                    let targetCol = currentCol
+                    let shouldNavigate = false
+
+                    if (e.key === 'ArrowUp') {
+                        if (currentRow > 0) {
+                            targetRow = currentRow - 1
+                            shouldNavigate = true
+                        }
+                    } else if (e.key === 'ArrowDown') {
+                        if (currentRow < totalRows - 1) {
+                            targetRow = currentRow + 1
+                            shouldNavigate = true
+                        }
+                    } else if (e.key === 'ArrowLeft') {
+                        // Only navigate if cursor is at the start of the cell
+                        const selection = window.getSelection()
+                        if (selection && selection.anchorOffset === 0 && currentCol > 0) {
+                            targetCol = currentCol - 1
+                            shouldNavigate = true
+                        }
+                    } else if (e.key === 'ArrowRight') {
+                        // Only navigate if cursor is at the end of the cell
+                        const selection = window.getSelection()
+                        const textLength = td.textContent?.length ?? 0
+                        if (selection && selection.anchorOffset >= textLength && currentCol < totalCols - 1) {
+                            targetCol = currentCol + 1
+                            shouldNavigate = true
+                        }
+                    } else if (e.key === 'Tab') {
+                        e.preventDefault()
+                        if (e.shiftKey) {
+                            // Move to previous cell
+                            if (currentCol > 0) {
+                                targetCol = currentCol - 1
+                            } else if (currentRow > 0) {
+                                targetRow = currentRow - 1
+                                targetCol = totalCols - 1
+                            }
+                        } else {
+                            // Move to next cell
+                            if (currentCol < totalCols - 1) {
+                                targetCol = currentCol + 1
+                            } else if (currentRow < totalRows - 1) {
+                                targetRow = currentRow + 1
+                                targetCol = 0
+                            }
+                        }
+                        shouldNavigate = true
+                    }
+
+                    if (shouldNavigate && (targetRow !== currentRow || targetCol !== currentCol)) {
+                        e.preventDefault()
+                        const targetCell = wrapper.querySelector(
+                            `td[data-table-cell-row="${targetRow}"][data-table-cell-col="${targetCol}"]`
+                        ) as HTMLElement | null
+                        if (targetCell) {
+                            targetCell.focus()
+                            // Place cursor at end of cell content
+                            const range = document.createRange()
+                            const selection = window.getSelection()
+                            if (targetCell.childNodes.length > 0) {
+                                range.selectNodeContents(targetCell)
+                                range.collapse(false)
+                            } else {
+                                range.setStart(targetCell, 0)
+                                range.collapse(true)
+                            }
+                            selection?.removeAllRanges()
+                            selection?.addRange(range)
+                        }
+                    }
+                }
+
                 tr.appendChild(td)
             })
             tbody.appendChild(tr)
@@ -3203,17 +3538,15 @@ export default function SegmentedMathField({
         const existingHandles = wrapper.querySelectorAll('.table-resize-handle')
         existingHandles.forEach((handle) => handle.remove())
 
-        const cols = payload.rows[0]?.length ?? 1
-        const rows = payload.rows.length
-        const handleCount = Math.max(0, cols - 1) + Math.max(0, rows - 1)
+        // Use cols and rowCount from above for resize handles
+        const handleCount = Math.max(0, cols - 1) + Math.max(0, rowCount - 1)
 
         for (let i = 0; i < handleCount; i++) {
             const handle = document.createElement('div')
             handle.className = 'table-resize-handle'
             handle.style.position = 'absolute'
             handle.style.zIndex = '1'
-            handle.style.background = 'rgba(99, 102, 241, 0.18)'
-            handle.style.opacity = '0.35'
+            handle.style.background = 'transparent'
             handle.style.userSelect = 'none'
             handle.style.pointerEvents = 'auto'
             if (i < cols - 1) {
@@ -3228,6 +3561,239 @@ export default function SegmentedMathField({
 
         positionTableResizeHandles(wrapper, table, payload)
         attachTableResizeHandlers(wrapper, table)
+
+        // Remove existing hover controls
+        const existingControls = wrapper.querySelectorAll('.table-hover-controls')
+        existingControls.forEach((ctrl) => ctrl.remove())
+
+        // Add hover controls for adding/removing rows and columns
+        const controlsContainer = document.createElement('div')
+        controlsContainer.className = 'table-hover-controls'
+        controlsContainer.style.cssText = `
+            position: absolute;
+            top: 0;
+            right: -32px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+        `
+
+        // Add column button
+        const addColBtn = document.createElement('button')
+        addColBtn.type = 'button'
+        addColBtn.innerHTML = '+'
+        addColBtn.title = 'Ajouter une colonne'
+        addColBtn.style.cssText = `
+            width: 24px;
+            height: 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: #f9fafb;
+            color: #059669;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `
+        addColBtn.setAttribute('data-table-action', 'add-col')
+        addColBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            tableActionRef.current(wrapper, 'add-col')
+        }
+
+        // Remove column button
+        const removeColBtn = document.createElement('button')
+        removeColBtn.type = 'button'
+        removeColBtn.innerHTML = '−'
+        removeColBtn.title = 'Supprimer une colonne'
+        removeColBtn.style.cssText = `
+            width: 24px;
+            height: 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: #f9fafb;
+            color: #dc2626;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `
+        removeColBtn.setAttribute('data-table-action', 'remove-col')
+        removeColBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (cols > 1) tableActionRef.current(wrapper, 'remove-col')
+        }
+        if (cols <= 1) {
+            removeColBtn.style.opacity = '0.3'
+            removeColBtn.style.cursor = 'not-allowed'
+        }
+
+        controlsContainer.appendChild(addColBtn)
+        controlsContainer.appendChild(removeColBtn)
+        wrapper.appendChild(controlsContainer)
+
+        // Add row controls at bottom
+        const rowControlsContainer = document.createElement('div')
+        rowControlsContainer.className = 'table-hover-controls'
+        rowControlsContainer.style.cssText = `
+            position: absolute;
+            bottom: -32px;
+            left: 0;
+            display: flex;
+            gap: 2px;
+            opacity: 0;
+            transition: opacity 0.15s;
+            pointer-events: none;
+        `
+
+        // Add row button
+        const addRowBtn = document.createElement('button')
+        addRowBtn.type = 'button'
+        addRowBtn.innerHTML = '+'
+        addRowBtn.title = 'Ajouter une ligne'
+        addRowBtn.style.cssText = `
+            width: 24px;
+            height: 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: #f9fafb;
+            color: #059669;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `
+        addRowBtn.setAttribute('data-table-action', 'add-row')
+        addRowBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            tableActionRef.current(wrapper, 'add-row')
+        }
+
+        // Remove row button
+        const removeRowBtn = document.createElement('button')
+        removeRowBtn.type = 'button'
+        removeRowBtn.innerHTML = '−'
+        removeRowBtn.title = 'Supprimer une ligne'
+        removeRowBtn.style.cssText = `
+            width: 24px;
+            height: 24px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: #f9fafb;
+            color: #dc2626;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        `
+        removeRowBtn.setAttribute('data-table-action', 'remove-row')
+        removeRowBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (rowCount > 1) tableActionRef.current(wrapper, 'remove-row')
+        }
+        if (rowCount <= 1) {
+            removeRowBtn.style.opacity = '0.3'
+            removeRowBtn.style.cursor = 'not-allowed'
+        }
+
+        rowControlsContainer.appendChild(addRowBtn)
+        rowControlsContainer.appendChild(removeRowBtn)
+        wrapper.appendChild(rowControlsContainer)
+
+        // Show controls on hover with delay to allow moving mouse to buttons
+        let hideTimeout: ReturnType<typeof setTimeout> | null = null
+
+        const showControls = () => {
+            if (hideTimeout) {
+                clearTimeout(hideTimeout)
+                hideTimeout = null
+            }
+            const controls = wrapper.querySelectorAll('.table-hover-controls')
+            controls.forEach((ctrl) => {
+                ;(ctrl as HTMLElement).style.opacity = '1'
+                ;(ctrl as HTMLElement).style.pointerEvents = 'auto'
+            })
+            // Show table headers
+            const headerRow = wrapper.querySelector('.table-header-row') as HTMLElement | null
+            if (headerRow) headerRow.style.display = 'table-header-group'
+            const rowHeaders = wrapper.querySelectorAll('.table-row-header')
+            rowHeaders.forEach((rh) => {
+                ;(rh as HTMLElement).style.display = 'table-cell'
+            })
+            // Adjust colgroup for row header column
+            const rowHeaderCol = wrapper.querySelector('.table-row-header-col') as HTMLElement | null
+            if (rowHeaderCol) rowHeaderCol.style.width = '24px'
+            // Shift row controls to align with table content (account for row header width)
+            rowControlsContainer.style.left = '24px'
+            // Reposition resize handles after layout change
+            const tableEl = wrapper.querySelector('table') as HTMLTableElement | null
+            if (tableEl) {
+                const payloadStr = wrapper.getAttribute('data-table')
+                if (payloadStr) {
+                    try {
+                        const currentPayload = JSON.parse(payloadStr) as TablePayload
+                        positionTableResizeHandles(wrapper, tableEl, currentPayload)
+                    } catch { /* ignore parse errors */ }
+                }
+            }
+        }
+
+        const hideControls = () => {
+            hideTimeout = setTimeout(() => {
+                const controls = wrapper.querySelectorAll('.table-hover-controls')
+                controls.forEach((ctrl) => {
+                    ;(ctrl as HTMLElement).style.opacity = '0'
+                    ;(ctrl as HTMLElement).style.pointerEvents = 'none'
+                })
+                // Hide table headers
+                const headerRow = wrapper.querySelector('.table-header-row') as HTMLElement | null
+                if (headerRow) headerRow.style.display = 'none'
+                const rowHeaders = wrapper.querySelectorAll('.table-row-header')
+                rowHeaders.forEach((rh) => {
+                    ;(rh as HTMLElement).style.display = 'none'
+                })
+                // Adjust colgroup for row header column
+                const rowHeaderCol = wrapper.querySelector('.table-row-header-col') as HTMLElement | null
+                if (rowHeaderCol) rowHeaderCol.style.width = '0px'
+                // Reset row controls position
+                rowControlsContainer.style.left = '0px'
+                // Reposition resize handles after layout change
+                const tableEl = wrapper.querySelector('table') as HTMLTableElement | null
+                if (tableEl) {
+                    const payloadStr = wrapper.getAttribute('data-table')
+                    if (payloadStr) {
+                        try {
+                            const currentPayload = JSON.parse(payloadStr) as TablePayload
+                            positionTableResizeHandles(wrapper, tableEl, currentPayload)
+                        } catch { /* ignore parse errors */ }
+                    }
+                }
+            }, 300) // 300ms delay to allow mouse to reach buttons
+        }
+
+        wrapper.addEventListener('mouseenter', showControls)
+        wrapper.addEventListener('mouseleave', hideControls)
+
+        // Also keep controls visible when hovering over them
+        controlsContainer.addEventListener('mouseenter', showControls)
+        controlsContainer.addEventListener('mouseleave', hideControls)
+        rowControlsContainer.addEventListener('mouseenter', showControls)
+        rowControlsContainer.addEventListener('mouseleave', hideControls)
     }, [renderSegmentsPreview, typesetMathElements, attachTableResizeHandlers, applyTableSizing, positionTableResizeHandles])
 
     const createTableElement = useCallback((id: string, payload: TablePayload, isPendingDeletion: boolean = false): HTMLDivElement => {
@@ -3302,13 +3868,18 @@ export default function SegmentedMathField({
 
         if (!editor) return
 
-
+        // Skip if a table action is in progress
+        if (Date.now() - lastTableActionTimeRef.current < 1000) return
 
         // Don't rehydrate if editor has focus - it would disrupt user's cursor position
 
         const hadFocus = document.activeElement === editor
 
         if (hadFocus) return
+
+        // Don't rehydrate if mouse is over a table (user might be interacting with controls)
+        const hoveredTable = editor.querySelector('.table-chip:hover')
+        if (hoveredTable) return
 
 
 
@@ -3411,6 +3982,13 @@ export default function SegmentedMathField({
 
         if (!isHydrated) return
 
+        // Skip hydration if we just did a table action (to prevent reverting changes)
+        if (Date.now() - lastTableActionTimeRef.current < 1000) {
+            lastExternalValue.current = JSON.stringify(value)
+            segmentsRef.current = normalizeSegments(value)
+            return
+        }
+
         const newValStr = JSON.stringify(value)
 
         if (newValStr !== lastExternalValue.current) {
@@ -3419,7 +3997,7 @@ export default function SegmentedMathField({
 
             segmentsRef.current = normalizeSegments(value)
 
-            
+
 
             // Update isEmpty state when value changes externally
 
@@ -3429,7 +4007,7 @@ export default function SegmentedMathField({
             const empty = isSegmentsEmpty(segs)
             setIsEmpty(empty)
 
-            
+
 
             // If empty, clear the DOM completely for CSS :empty to work
 
@@ -3491,6 +4069,50 @@ export default function SegmentedMathField({
         handleInputRef.current = handleInput
     }, [handleInput])
 
+    // Populate tableActionRef with the full action handler
+    useEffect(() => {
+        tableActionRef.current = (wrapper: HTMLDivElement, action: string) => {
+            const payload = parseTablePayload(wrapper.getAttribute('data-table'))
+            const rows = payload.rows
+            const cols = rows[0]?.length ?? 1
+
+            let newPayload = payload
+
+            if (action === 'add-row') {
+                const newRow = Array.from({ length: cols }, () => createEmptyCellSegments())
+                newPayload = { ...payload, rows: [...rows, newRow] }
+            } else if (action === 'remove-row' && rows.length > 1) {
+                newPayload = { ...payload, rows: rows.slice(0, -1) }
+            } else if (action === 'add-col') {
+                const newRows = rows.map((row) => [...row, createEmptyCellSegments()])
+                newPayload = { ...payload, rows: newRows }
+            } else if (action === 'remove-col' && cols > 1) {
+                const newRows = rows.map((row) => row.slice(0, -1))
+                newPayload = { ...payload, rows: newRows }
+            }
+
+            if (newPayload === payload) return
+
+            // Skip next hydration to prevent reverting our changes
+            lastTableActionTimeRef.current = Date.now()
+
+            wrapper.setAttribute('data-table', JSON.stringify(newPayload))
+            renderTablePreview(wrapper, newPayload)
+            scheduleTableLayoutRefresh(wrapper)
+
+            // Show the hover controls after re-render
+            requestAnimationFrame(() => {
+                const controls = wrapper.querySelectorAll('.table-hover-controls')
+                controls.forEach((ctrl) => {
+                    ;(ctrl as HTMLElement).style.opacity = '1'
+                    ;(ctrl as HTMLElement).style.pointerEvents = 'auto'
+                })
+            })
+
+            handleInput()
+        }
+    }, [renderTablePreview, scheduleTableLayoutRefresh, handleInput])
+
 
     // ------------------------------------------------------------------
 
@@ -3504,9 +4126,17 @@ export default function SegmentedMathField({
 
         (e: React.FocusEvent) => {
 
+            // Don't process blur if a table action is in progress
+            if (Date.now() - lastTableActionTimeRef.current < 1000) return
+
             // Don't close math editor if clicking into it
 
             const relatedTarget = e.relatedTarget as HTMLElement
+
+            // Also skip if clicking on table controls
+            if (relatedTarget?.closest('.table-hover-controls') || relatedTarget?.closest('[data-table-action]')) {
+                return
+            }
 
             if (
                 relatedTarget?.closest('.inline-math-editor-popup') ||
@@ -3539,6 +4169,130 @@ export default function SegmentedMathField({
 
     // ------------------------------------------------------------------
 
+    // Show context menu for row/column operations
+
+    // ------------------------------------------------------------------
+
+    const showTableContextMenu = useCallback((
+        e: React.MouseEvent,
+        wrapper: HTMLDivElement,
+        type: 'row' | 'column',
+        index: number
+    ) => {
+        e.preventDefault()
+        e.stopPropagation()
+        setTableContextMenu({
+            visible: true,
+            x: e.clientX,
+            y: e.clientY,
+            wrapper,
+            type,
+            index,
+        })
+    }, [])
+
+    const closeTableContextMenu = useCallback(() => {
+        setTableContextMenu(null)
+    }, [])
+
+    const handleTableContextMenuAction = useCallback((action: string) => {
+        if (!tableContextMenu || !tableContextMenu.wrapper) return
+        const { wrapper, type, index } = tableContextMenu
+        const payload = parseTablePayload(wrapper.getAttribute('data-table'))
+        const rows = payload.rows
+        const cols = rows[0]?.length ?? 1
+
+        let newPayload = payload
+
+        if (type === 'row') {
+            if (action === 'insert-above') {
+                const newRow = Array.from({ length: cols }, () => createEmptyCellSegments())
+                const newRows = [...rows.slice(0, index), newRow, ...rows.slice(index)]
+                newPayload = { ...payload, rows: newRows }
+            } else if (action === 'insert-below') {
+                const newRow = Array.from({ length: cols }, () => createEmptyCellSegments())
+                const newRows = [...rows.slice(0, index + 1), newRow, ...rows.slice(index + 1)]
+                newPayload = { ...payload, rows: newRows }
+            } else if (action === 'delete' && rows.length > 1) {
+                const newRows = rows.filter((_, i) => i !== index)
+                newPayload = { ...payload, rows: newRows }
+            }
+        } else if (type === 'column') {
+            if (action === 'insert-left') {
+                const newRows = rows.map((row) => [
+                    ...row.slice(0, index),
+                    createEmptyCellSegments(),
+                    ...row.slice(index),
+                ])
+                newPayload = { ...payload, rows: newRows }
+            } else if (action === 'insert-right') {
+                const newRows = rows.map((row) => [
+                    ...row.slice(0, index + 1),
+                    createEmptyCellSegments(),
+                    ...row.slice(index + 1),
+                ])
+                newPayload = { ...payload, rows: newRows }
+            } else if (action === 'delete' && cols > 1) {
+                const newRows = rows.map((row) => row.filter((_, i) => i !== index))
+                newPayload = { ...payload, rows: newRows }
+            }
+        }
+
+        if (newPayload === payload) {
+            closeTableContextMenu()
+            return
+        }
+
+        // Skip next hydration to prevent reverting our changes
+        lastTableActionTimeRef.current = Date.now()
+
+        wrapper.setAttribute('data-table', JSON.stringify(newPayload))
+        renderTablePreview(wrapper, newPayload)
+        scheduleTableLayoutRefresh(wrapper)
+
+        handleInput()
+        closeTableContextMenu()
+    }, [tableContextMenu, renderTablePreview, scheduleTableLayoutRefresh, handleInput, closeTableContextMenu])
+
+    // Close context menu when clicking outside
+    useEffect(() => {
+        if (!tableContextMenu) return
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (!target.closest('.table-context-menu')) {
+                closeTableContextMenu()
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [tableContextMenu, closeTableContextMenu])
+
+    // Close cell math editor when clicking outside
+    useEffect(() => {
+        if (!cellMathEditor) return
+        const handleClickOutside = (e: MouseEvent) => {
+            const target = e.target as HTMLElement
+            if (!target.closest('.cell-math-editor')) {
+                setCellMathEditor(null)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+    }, [cellMathEditor])
+
+    // Load MathLive when cell math editor opens
+    useEffect(() => {
+        if (!cellMathEditor || cellMathLiveLoaded) return
+        import('mathlive').then((module) => {
+            if (module.MathfieldElement) {
+                module.MathfieldElement.fontsDirectory = 'https://unpkg.com/mathlive/fonts/'
+                setCellMathLiveLoaded(true)
+            }
+        }).catch(console.error)
+    }, [cellMathEditor, cellMathLiveLoaded])
+
+    // ------------------------------------------------------------------
+
     // Handle click on math chips
 
     // ------------------------------------------------------------------
@@ -3553,6 +4307,20 @@ export default function SegmentedMathField({
         if (target.closest('.table-resize-handle')) {
             return
         }
+
+        // Handle table hover control buttons (fallback - onclick handlers are primary)
+        const tableActionBtn = target.closest('[data-table-action]') as HTMLElement | null
+        if (tableActionBtn) {
+            e.preventDefault()
+            e.stopPropagation()
+            const action = tableActionBtn.getAttribute('data-table-action')
+            const tableWrapper = tableActionBtn.closest('[data-table-id]') as HTMLDivElement | null
+            if (tableWrapper && action) {
+                tableActionRef.current(tableWrapper, action)
+            }
+            return
+        }
+
         const table = target.closest('[data-table-id]') as HTMLElement | null
         const graph = target.closest('[data-graph-id]') as HTMLElement | null
         const chip = target.closest('[data-math-id]') as HTMLElement | null
@@ -3569,22 +4337,29 @@ export default function SegmentedMathField({
                     return
                 }
 
-                const payload = parseTablePayload(table.getAttribute('data-table'))
+                // Clear any pending deletion
                 if (pendingDeletionId) {
                     setPendingDeletionId(null)
                 }
-                editingTableRef.current = table as HTMLDivElement
-                setEditingTableId(tableId)
-                setEditingMathId(null)
-                setTableFocusCell(() => {
-                    const cell = target.closest('td[data-table-cell-row]') as HTMLElement | null
-                    if (!cell) return null
-                    const row = Number(cell.getAttribute('data-table-cell-row') || 0)
-                    const col = Number(cell.getAttribute('data-table-cell-col') || 0)
-                    return { row, col }
-                })
-                setDraftTableById((prev) => ({ ...prev, [tableId]: payload }))
-                originalTableRef.current = payload
+
+                // Handle column header click
+                const colHeader = target.closest('[data-col-header]') as HTMLElement | null
+                if (colHeader) {
+                    const colIndex = Number(colHeader.getAttribute('data-col-header'))
+                    showTableContextMenu(e, table as HTMLDivElement, 'column', colIndex)
+                    return
+                }
+
+                // Handle row header click
+                const rowHeader = target.closest('[data-row-header]') as HTMLElement | null
+                if (rowHeader) {
+                    const rowIndex = Number(rowHeader.getAttribute('data-row-header'))
+                    showTableContextMenu(e, table as HTMLDivElement, 'row', rowIndex)
+                    return
+                }
+
+                // Cells are directly editable via contentEditable - no popup needed
+                // Just let the browser handle focus naturally
             }
             return
         }
@@ -3689,6 +4464,18 @@ export default function SegmentedMathField({
     const insertMathChip = useCallback(() => {
         if (disabled) return
 
+        // Check if we have a last focused cell - open cell math editor
+        const lastCell = lastFocusedCellRef.current
+        if (lastCell && document.body.contains(lastCell.cell)) {
+            setCellMathEditor({
+                wrapper: lastCell.wrapper,
+                cell: lastCell.cell,
+                row: lastCell.row,
+                col: lastCell.col,
+                latex: '',
+            })
+            return
+        }
 
         const editor = editorRef.current
 
@@ -3700,7 +4487,7 @@ export default function SegmentedMathField({
 
         let range: Range | null = null
 
-        
+
 
         // Check if we have a valid selection inside the editor
 
@@ -3844,6 +4631,26 @@ export default function SegmentedMathField({
         // If we're currently editing a math segment, insert into the active math field
         if (editingMathId && activeMathFieldRef.current) {
             activeMathFieldRef.current.insert(latex, { focus: true, feedback: false })
+            return
+        }
+
+        // Check if we recently had a table cell focused (use ref since click on button loses focus)
+        const lastCell = lastFocusedCellRef.current
+        if (lastCell && document.body.contains(lastCell.cell)) {
+            const { cell: tableCell, wrapper: tableWrapper, row, col } = lastCell
+
+            // Open the cell math editor with the inserted latex
+            // This allows the user to edit complex formulas (limits, integrals, etc.)
+            setCellMathEditor({
+                wrapper: tableWrapper,
+                cell: tableCell,
+                row,
+                col,
+                latex: latex,
+            })
+
+            // Clear the ref so next insertion goes to main editor unless user clicks cell again
+            lastFocusedCellRef.current = null
             return
         }
 
@@ -4085,10 +4892,7 @@ export default function SegmentedMathField({
             selection.addRange(newRange)
         }
 
-        editingTableRef.current = table
-        setEditingTableId(newId)
-        setDraftTableById((prev) => ({ ...prev, [newId]: payload }))
-        originalTableRef.current = payload
+        // Don't open popup - just insert the table and refresh layout
         scheduleTableLayoutRefresh(table)
 
         handleInput()
@@ -5486,7 +6290,7 @@ export default function SegmentedMathField({
             )}
 
             {/* Toolbar buttons row */}
-            {(showMathButton || showImageButton) && !shouldShowMathToolbar && (
+            {(showMathButton || showImageButton || showTableButton || showGraphButton) && !shouldShowMathToolbar && (
                 <div className="flex items-center gap-1">
                     {/* Hover Math Button - shows symbols on hover */}
                     {showMathButton && (
@@ -5504,6 +6308,32 @@ export default function SegmentedMathField({
                             disabled={disabled}
                             onImageUploaded={insertImage}
                         />
+                    )}
+                    {/* Table Button */}
+                    {showTableButton && (
+                        <button
+                            type="button"
+                            onClick={insertTable}
+                            disabled={disabled}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 hover:border-emerald-300 disabled:opacity-50"
+                            title={isFrench ? 'Insérer un tableau' : 'Insert table'}
+                        >
+                            <Table className="w-3.5 h-3.5" />
+                            {isFrench ? 'Tableau' : 'Table'}
+                        </button>
+                    )}
+                    {/* Graph Button */}
+                    {showGraphButton && (
+                        <button
+                            type="button"
+                            onClick={insertGraph}
+                            disabled={disabled}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 hover:border-amber-300 disabled:opacity-50"
+                            title={isFrench ? 'Insérer un graphique' : 'Insert graph'}
+                        >
+                            <LineChart className="w-3.5 h-3.5" />
+                            {isFrench ? 'Graphique' : 'Graph'}
+                        </button>
                     )}
                 </div>
             )}
@@ -5535,21 +6365,11 @@ export default function SegmentedMathField({
 
             {/* Editor container */}
             <div className="relative">
-                <div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover/insert:opacity-100 group-hover/insert:pointer-events-auto group-focus-within/insert:opacity-100 group-focus-within/insert:pointer-events-auto">
-                    {toolbarRightSlot}
-                    <InsertMenu
-                        isFrench={isFrench}
-                        disabled={disabled}
-                        compactToolbar={compactToolbar}
-                        toolbarSize={toolbarSize}
-                        showMathButton={false}
-                        showTableButton={showTableButton}
-                        showGraphButton={showGraphButton}
-                        onInsertMath={insertMathChip}
-                        onInsertTable={insertTable}
-                        onInsertGraph={insertGraph}
-                    />
-                </div>
+                {toolbarRightSlot && (
+                    <div className="absolute right-2 top-2 z-10 flex items-center gap-1 opacity-0 pointer-events-none transition-opacity group-hover/insert:opacity-100 group-hover/insert:pointer-events-auto group-focus-within/insert:opacity-100 group-focus-within/insert:pointer-events-auto">
+                        {toolbarRightSlot}
+                    </div>
+                )}
                 <div
                     className="relative rounded-md border border-gray-300 bg-white focus-within:ring-2 focus-within:ring-brand-900 focus-within:border-brand-900 overflow-x-auto"
                     style={{ minHeight: minRows === 1 ? '2.5rem' : `${minRows * 1.5}rem` }}
@@ -5584,6 +6404,14 @@ export default function SegmentedMathField({
 
                     onClick={handleEditorClick}
 
+                    onFocus={(e) => {
+                        // Clear table cell ref if focus is directly on the editor (not a table cell)
+                        const target = e.target as HTMLElement
+                        if (!target.closest('td[data-table-cell-row]')) {
+                            lastFocusedCellRef.current = null
+                        }
+                    }}
+
                     onPaste={handlePaste}
 
                     onKeyDown={handleKeyDown}
@@ -5616,20 +6444,6 @@ export default function SegmentedMathField({
                 />
             )}
 
-            {/* Inline Table Editor Popup */}
-            {editingTableId && (
-                <InlineTableEditor
-                    value={draftTableById[editingTableId] ?? normalizeTablePayload()}
-                    onChangeDraft={handleChangeTableDraft}
-                    onConfirm={handleSaveTable}
-                    onCancel={handleCancelTable}
-                    onDelete={handleDeleteTable}
-                    anchorRef={editingTableRef}
-                    initialFocusCell={tableFocusCell}
-                    locale={locale}
-                />
-            )}
-
             {editingGraphId && (
                 <InlineGraphEditor
                     value={draftGraphById[editingGraphId] ?? createDefaultGraphPayload()}
@@ -5641,6 +6455,275 @@ export default function SegmentedMathField({
                     locale={locale}
                 />
             )}
+
+            {/* Table Context Menu */}
+            {tableContextMenu && (
+                <div
+                    className="table-context-menu fixed z-50 bg-white border border-gray-200 rounded-lg shadow-lg py-1 min-w-[160px]"
+                    style={{ left: tableContextMenu.x, top: tableContextMenu.y }}
+                >
+                    {tableContextMenu.type === 'row' ? (
+                        <>
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('insert-above')}
+                            >
+                                <Plus className="w-4 h-4 text-gray-500" />
+                                {isFrench ? 'Insérer une ligne au-dessus' : 'Insert row above'}
+                            </button>
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('insert-below')}
+                            >
+                                <Plus className="w-4 h-4 text-gray-500" />
+                                {isFrench ? 'Insérer une ligne en-dessous' : 'Insert row below'}
+                            </button>
+                            <div className="border-t border-gray-200 my-1" />
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('delete')}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                {isFrench ? 'Supprimer la ligne' : 'Delete row'}
+                            </button>
+                        </>
+                    ) : (
+                        <>
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('insert-left')}
+                            >
+                                <Plus className="w-4 h-4 text-gray-500" />
+                                {isFrench ? 'Insérer une colonne à gauche' : 'Insert column left'}
+                            </button>
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('insert-right')}
+                            >
+                                <Plus className="w-4 h-4 text-gray-500" />
+                                {isFrench ? 'Insérer une colonne à droite' : 'Insert column right'}
+                            </button>
+                            <div className="border-t border-gray-200 my-1" />
+                            <button
+                                type="button"
+                                className="w-full px-3 py-2 text-left text-sm hover:bg-red-50 text-red-600 flex items-center gap-2"
+                                onClick={() => handleTableContextMenuAction('delete')}
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                {isFrench ? 'Supprimer la colonne' : 'Delete column'}
+                            </button>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {/* Cell Math Editor Popup - Same style as InlineMathEditor */}
+            {cellMathEditor && (() => {
+                // Quick symbols - same as InlineMathEditor
+                const quickSymbols = [
+                    { display: '\\frac{a}{b}', latex: '\\frac{#@}{#0}' },
+                    { display: '\\sqrt{x}', latex: '\\sqrt{#0}' },
+                    { display: 'x^2', latex: '^{#0}' },
+                    { display: 'x_n', latex: '_{#0}' },
+                    { display: '\\sum', latex: '\\sum_{#@}^{#0}' },
+                    { display: '\\int', latex: '\\int_{#@}^{#0}' },
+                    { display: '\\prod', latex: '\\prod_{#@}^{#0}' },
+                    { display: '\\lim', latex: '\\lim_{#0}' },
+                    { display: 'e^x', latex: 'e^{#0}' },
+                    { display: '\\ln', latex: '\\ln\\left(#0\\right)' },
+                    { display: '\\log', latex: '\\log_{#@}\\left(#0\\right)' },
+                    { display: '\\sin', latex: '\\sin\\left(#0\\right)' },
+                    { display: '\\cos', latex: '\\cos\\left(#0\\right)' },
+                    { display: '\\tan', latex: '\\tan\\left(#0\\right)' },
+                    { display: '\\pi', latex: '\\pi' },
+                    { display: '\\infty', latex: '\\infty' },
+                    { display: '\\leq', latex: '\\leq' },
+                    { display: '\\geq', latex: '\\geq' },
+                    { display: '\\neq', latex: '\\neq' },
+                    { display: '\\times', latex: '\\times' },
+                    { display: '\\forall', latex: '\\forall' },
+                    { display: '\\exists', latex: '\\exists' },
+                    { display: '\\in', latex: '\\in' },
+                    { display: '\\notin', latex: '\\notin' },
+                    { display: '\\subset', latex: '\\subset' },
+                    { display: '\\cup', latex: '\\cup' },
+                    { display: '\\cap', latex: '\\cap' },
+                    { display: '\\emptyset', latex: '\\emptyset' },
+                    { display: '\\to', latex: '\\to' },
+                    { display: '\\Rightarrow', latex: '\\Rightarrow' },
+                    { display: '\\Leftrightarrow', latex: '\\Leftrightarrow' },
+                    { display: '\\approx', latex: '\\approx' },
+                    { display: '\\equiv', latex: '\\equiv' },
+                    { display: '\\pm', latex: '\\pm' },
+                    { display: '\\partial', latex: '\\partial' },
+                    { display: '\\nabla', latex: '\\nabla' },
+                    { display: '\\mathbb{R}', latex: '\\mathbb{R}' },
+                    { display: '\\alpha', latex: '\\alpha' },
+                    { display: '\\beta', latex: '\\beta' },
+                    { display: '\\gamma', latex: '\\gamma' },
+                    { display: '\\delta', latex: '\\delta' },
+                    { display: '\\theta', latex: '\\theta' },
+                    { display: '\\lambda', latex: '\\lambda' },
+                    { display: '\\sigma', latex: '\\sigma' },
+                    { display: '\\phi', latex: '\\phi' },
+                    { display: '\\omega', latex: '\\omega' },
+                ]
+
+                const handleCellMathConfirm = () => {
+                    const latex = cellMathFieldRef.current?.getValue('latex') || cellMathEditor.latex
+                    const { wrapper, row, col } = cellMathEditor
+                    if (latex.trim()) {
+                        const tableId = wrapper.getAttribute('data-table-id')
+                        const editor = editorRef.current
+                        const freshWrapper = tableId && editor
+                            ? editor.querySelector(`[data-table-id="${tableId}"]`) as HTMLDivElement | null
+                            : wrapper
+                        const actualWrapper = freshWrapper && document.body.contains(freshWrapper) ? freshWrapper : wrapper
+
+                        const currentPayload = parseTablePayload(actualWrapper.getAttribute('data-table'))
+                        const currentCell = currentPayload.rows[row]?.[col] || []
+                        const currentText = currentCell.map(seg => {
+                            if (seg.type === 'text') return seg.text
+                            if (seg.type === 'math') return `$${seg.latex}$`
+                            return ''
+                        }).join('')
+                        const newText = currentText + `$${latex}$`
+                        const newSegments = stringToSegments(newText)
+                        const newRows = currentPayload.rows.map((r, ri) =>
+                            ri === row ? r.map((c, ci) => ci === col ? newSegments : c) : r
+                        )
+                        const newPayload = { ...currentPayload, rows: newRows }
+                        actualWrapper.setAttribute('data-table', JSON.stringify(newPayload))
+                        lastTableActionTimeRef.current = Date.now()
+                        const renderedHtml = newSegments.map(seg => {
+                            if (seg.type === 'text') {
+                                return seg.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                            }
+                            if (seg.type === 'math') {
+                                const rendered = renderLatexToString(seg.latex, false)
+                                return `<span class="math-inline" style="display:inline-block;vertical-align:middle;">${rendered || seg.latex}</span>`
+                            }
+                            return ''
+                        }).join('') || `$${latex}$`
+                        const freshCell = actualWrapper.querySelector(`td[data-table-cell-row="${row}"][data-table-cell-col="${col}"]`) as HTMLTableCellElement | null
+                        if (freshCell) {
+                            freshCell.innerHTML = renderedHtml
+                        }
+                    }
+                    setCellMathEditor(null)
+                    setTimeout(() => { handleInputRef.current() }, 10)
+                }
+
+                const handleInsertSymbol = (symbol: string) => {
+                    if (cellMathFieldRef.current) {
+                        cellMathFieldRef.current.insert(symbol, { focus: true, feedback: false })
+                        const newLatex = cellMathFieldRef.current.getValue('latex')
+                        setCellMathEditor({ ...cellMathEditor, latex: newLatex })
+                    }
+                }
+
+                return (
+                    <div
+                        className="cell-math-editor fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 w-80"
+                        style={{
+                            left: Math.min(cellMathEditor.cell.getBoundingClientRect().left, window.innerWidth - 340),
+                            top: cellMathEditor.cell.getBoundingClientRect().bottom + 4,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        onMouseDown={(e) => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-gray-600">{isFrench ? 'Ajouter une formule' : 'Add Formula'}</span>
+                            <div className="flex gap-1">
+                                <button
+                                    type="button"
+                                    onClick={handleCellMathConfirm}
+                                    className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                    title={isFrench ? 'Enregistrer (Entrée)' : 'Save (Enter)'}
+                                >
+                                    <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCellMathEditor(null)}
+                                    className="p-1 text-gray-400 hover:bg-gray-100 rounded"
+                                    title={isFrench ? 'Annuler (Echap)' : 'Cancel (Escape)'}
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* MathLive Field */}
+                        <div className="mb-2">
+                            {cellMathLiveLoaded ? (
+                                <div
+                                    className="w-full min-h-[2.5rem] p-2 border border-gray-300 rounded-md bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500"
+                                    ref={(container) => {
+                                        if (!container) return
+                                        let mf = container.querySelector('math-field') as MathfieldElement | null
+                                        if (!mf) {
+                                            mf = document.createElement('math-field') as MathfieldElement
+                                            mf.style.cssText = 'display: block; width: 100%; outline: none; font-size: 18px;'
+                                            mf.setAttribute('virtual-keyboard-mode', 'off')
+                                            container.appendChild(mf)
+                                            setTimeout(() => {
+                                                if (mf && cellMathEditor) {
+                                                    mf.setValue(cellMathEditor.latex, { suppressChangeNotifications: true })
+                                                    mf.focus()
+                                                }
+                                            }, 50)
+                                        }
+                                        cellMathFieldRef.current = mf
+                                        mf.oninput = () => {
+                                            if (cellMathEditor && mf) {
+                                                setCellMathEditor({ ...cellMathEditor, latex: mf.getValue('latex') })
+                                            }
+                                        }
+                                        mf.onkeydown = (e: KeyboardEvent) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault()
+                                                handleCellMathConfirm()
+                                            } else if (e.key === 'Escape') {
+                                                setCellMathEditor(null)
+                                            }
+                                        }
+                                    }}
+                                />
+                            ) : (
+                                <div className="w-full min-h-[2.5rem] p-2 border border-gray-300 rounded-md bg-gray-50 flex items-center justify-center">
+                                    <span className="text-sm text-gray-400">{isFrench ? 'Chargement...' : 'Loading...'}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Quick symbols */}
+                        <div className="flex flex-wrap gap-1">
+                            {quickSymbols.map((sym, index) => (
+                                <button
+                                    key={`${sym.latex}-${index}`}
+                                    type="button"
+                                    onClick={() => handleInsertSymbol(sym.latex)}
+                                    className="px-1.5 py-1 text-xs border border-gray-200 rounded hover:bg-gray-100 hover:border-gray-300 min-w-[32px] flex items-center justify-center bg-gray-50 [&_.katex]:text-black"
+                                    title={sym.latex}
+                                    dangerouslySetInnerHTML={{ __html: renderLatexToString(sym.display) }}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Hint */}
+                        <div className="mt-2 pt-2 border-t border-gray-200">
+                            <span className="text-[10px] text-gray-400">{isFrench ? 'Entrée pour enregistrer - Échap pour annuler' : 'Enter to save - Escape to cancel'}</span>
+                        </div>
+                    </div>
+                )
+            })()}
 
             {/* Math Toolbar - positioned below editor if toolbarPosition is 'bottom' */}
             {shouldShowMathToolbar && toolbarPosition === 'bottom' && (

@@ -100,7 +100,7 @@ function TableSegment({
     }
 
     return (
-        <div style={{ display: 'inline-block' }}>
+        <div className="table-preview" style={{ display: 'inline-block' }}>
             <table
                 className="my-2"
                 style={{

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { PersonRow, CourseRow, SectionRow } from '@/lib/school-admin-data'
@@ -35,8 +35,8 @@ type EnrollmentView = {
 
 export default function SchoolEnrollmentsClient({
     dictionary,
-    teachers,
-    students,
+    teachers: initialTeachers,
+    students: initialStudents,
     courses,
     sections: initialSections,
 }: SchoolEnrollmentsClientProps) {
@@ -46,6 +46,8 @@ export default function SchoolEnrollmentsClient({
     const searchParams = useSearchParams()
 
     const [sections, setSections] = useState(initialSections)
+    const [teachers, setTeachers] = useState(initialTeachers)
+    const [students, setStudents] = useState(initialStudents)
     const [search, setSearch] = useState('')
     const [roleFilter, setRoleFilter] = useState<'all' | 'teacher' | 'student'>('all')
 
@@ -120,14 +122,37 @@ export default function SchoolEnrollmentsClient({
         [pathname, searchParams]
     )
 
+    const refreshUsers = useCallback(async () => {
+        try {
+            const [teachersRes, studentsRes] = await Promise.all([
+                fetch('/api/admin/school/users?role=TEACHER&includeArchived=false'),
+                fetch('/api/admin/school/users?role=STUDENT&includeArchived=false'),
+            ])
+            const [teachersData, studentsData] = await Promise.all([teachersRes.json(), studentsRes.json()])
+            if (!teachersRes.ok || !studentsRes.ok) {
+                throw new Error('Failed to load users')
+            }
+            setTeachers(teachersData.users ?? [])
+            setStudents(studentsData.users ?? [])
+        } catch (err) {
+            console.error('[Enrollments] Load users failed', err)
+            setError(dict.loadError)
+        }
+    }, [dict.loadError])
+
+    useEffect(() => {
+        void refreshUsers()
+    }, [refreshUsers])
+
     const openAssignDrawer = useCallback((trigger?: HTMLElement | null) => {
+        void refreshUsers()
         setAssignForm({ role: 'STUDENT', userId: '', sectionId: '' })
         setError('')
         setDrawerOpen(true)
         if (trigger) drawerReturnFocusRef.current = trigger
         const url = buildUrl((params) => params.set('action', 'assign'))
         router.replace(url)
-    }, [buildUrl, router])
+    }, [buildUrl, refreshUsers, router])
 
     const closeDrawer = useCallback(() => {
         setDrawerOpen(false)

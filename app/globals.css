@@ -88,9 +88,9 @@ math-field {
   --contains-highlight-color: inherit;
   /* Remove blue background on plain text */
   --text-background-color: transparent;
-  font-size: 0.875rem;
+  font-size: 1.1rem;
   line-height: 1.5;
-  min-height: 36px;
+  min-height: 40px;
   padding: 0.375rem 0.75rem;
   border: 1px solid #d1d5db;
   border-radius: 0.375rem;
@@ -170,6 +170,7 @@ math-field::placeholder {
   max-width: 100%;
   word-break: break-all;
   overflow-wrap: anywhere;
+  font-size: 1.2em !important;
 }
 
 /* Keep inline wrapping only for inline math chips */
@@ -177,19 +178,24 @@ math-field::placeholder {
   display: inline !important;
   max-width: 100%;
   white-space: normal !important;
-  font-size: 1em !important;
 }
 
 .math-inline:not(.math-inline-display) .katex {
-  font-size: 1.15em !important;
+  font-size: 1.35em !important;
 }
 
 .math-inline {
-  font-size: 1.15em !important;
+  font-size: 1.35em !important;
 }
 
 .math-inline .katex {
   font-size: inherit;
+}
+
+/* Smaller math in table cells */
+.table-chip .math-inline,
+.table-preview .math-inline {
+  font-size: 1em !important;
 }
 
 /* Keep display math inline when used for large operators */
