@@ -3,6 +3,8 @@ import { getSecurityHeaders } from "./lib/securityHeaders";
 
 // Force restart
 const nextConfig: NextConfig = {
+  // Required for @react-pdf/renderer and mathjax-full in API routes
+  serverExternalPackages: ['@react-pdf/renderer', 'mathjax-full'],
   async headers() {
     const isProduction = process.env.NODE_ENV === 'production'
     const enforceCsp = process.env.CSP_ENFORCE === 'true'
