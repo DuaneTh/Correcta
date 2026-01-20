@@ -2705,6 +2705,9 @@ export default function SegmentedMathField({
     })
     const isFrench = locale === 'fr'
 
+    // Extract image segments from value for rendering above editor
+    const imageSegments = (value || []).filter((seg): seg is { id: string; type: 'image'; url: string; alt?: string } => seg.type === 'image')
+
     // Compute whether to show the math toolbar (default: false - use Insert menu instead)
     const shouldShowMathToolbar = showMathToolbar ?? false
 
@@ -3360,8 +3363,7 @@ export default function SegmentedMathField({
                 const graph = createGraphElement(seg.id, payload, pendingDeletionId === seg.id)
                 editor.appendChild(graph)
             } else if (seg.type === 'image') {
-                const imageEl = createImageElement(seg.id, seg.url, seg.alt)
-                editor.appendChild(imageEl)
+                // Images are rendered separately above the editor, skip here
             }
         }
 
@@ -3912,43 +3914,29 @@ export default function SegmentedMathField({
     }, [disabled, editingMathId, createMathChipElement, handleInput])
 
     // ------------------------------------------------------------------
-    // Insert an image at current caret position
+    // Insert an image (adds to segments, rendered above editor)
     // ------------------------------------------------------------------
 
     const insertImage = useCallback((imageUrl: string) => {
         if (disabled) return
 
-        const editor = editorRef.current
-        if (!editor) return
-
         const newId = createId()
-        const imageEl = createImageElement(newId, imageUrl, '')
+        const newImageSegment = { id: newId, type: 'image' as const, url: imageUrl, alt: '' }
 
-        const selection = window.getSelection()
-        let range: Range | null = null
+        // Add image at the beginning of segments (images appear above text)
+        const currentSegments = segmentsRef.current
+        const newSegments = [newImageSegment, ...currentSegments]
+        segmentsRef.current = newSegments
+        onChange(consolidateSegments(newSegments))
+    }, [disabled, onChange])
 
-        if (selection && selection.rangeCount > 0) {
-            const testRange = selection.getRangeAt(0)
-            if (editor.contains(testRange.commonAncestorContainer)) {
-                range = testRange
-            }
-        }
-
-        if (range) {
-            range.deleteContents()
-            range.insertNode(imageEl)
-            // Move cursor after the image
-            range.setStartAfter(imageEl)
-            range.setEndAfter(imageEl)
-            selection?.removeAllRanges()
-            selection?.addRange(range)
-        } else {
-            // Insert at end if no selection
-            editor.appendChild(imageEl)
-        }
-
-        handleInput()
-    }, [disabled, createImageElement, handleInput])
+    // Remove an image by id
+    const removeImage = useCallback((imageId: string) => {
+        const currentSegments = segmentsRef.current
+        const newSegments = currentSegments.filter(seg => seg.id !== imageId)
+        segmentsRef.current = newSegments
+        onChange(consolidateSegments(newSegments))
+    }, [onChange])
 
     // ------------------------------------------------------------------
     // Insert a new table at current caret position (always on next line)
@@ -5517,6 +5505,31 @@ export default function SegmentedMathField({
                             onImageUploaded={insertImage}
                         />
                     )}
+                </div>
+            )}
+
+            {/* Images section - rendered above the text editor */}
+            {imageSegments.length > 0 && (
+                <div className="space-y-2">
+                    {imageSegments.map((img) => (
+                        <div key={img.id} className="relative group inline-block">
+                            <img
+                                src={img.url}
+                                alt={img.alt || 'Image'}
+                                className="max-w-full h-auto max-h-64 object-contain rounded-lg border border-gray-200"
+                            />
+                            {!disabled && (
+                                <button
+                                    type="button"
+                                    onClick={() => removeImage(img.id)}
+                                    className="absolute top-2 right-2 p-1.5 bg-white/90 hover:bg-red-50 rounded-full shadow-sm border border-gray-200 text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title={isFrench ? 'Supprimer' : 'Remove'}
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            )}
+                        </div>
+                    ))}
                 </div>
             )}
 
