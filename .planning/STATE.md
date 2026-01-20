@@ -20,20 +20,20 @@
 
 ## Current Position
 
-**Phase:** 3 of 5 (Organization)
-**Plan:** 3 of 3 complete
-**Status:** Phase complete
+**Phase:** 4 of 5 (AI Correction)
+**Plan:** 1 of 3 complete
+**Status:** In progress
 
 **Progress:**
 ```
 Phase 1: Math Foundation     [==========] 3/3 plans complete
 Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [==========] 3/3 plans complete
-Phase 4: AI Correction       [          ] Not started
+Phase 4: AI Correction       [===       ] 1/3 plans complete
 Phase 5: Export              [          ] Not started
 ```
 
-**Overall:** 10/14 plans complete
+**Overall:** 11/14 plans complete
 
 ---
 
@@ -41,9 +41,9 @@ Phase 5: Export              [          ] Not started
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 10 | 01-01 through 03-03 |
-| Success rate | 100% | 10/10 plans succeeded |
-| Avg duration | 9 min | Consistent execution time |
+| Plans completed | 11 | 01-01 through 04-01 |
+| Success rate | 100% | 11/11 plans succeeded |
+| Avg duration | 10 min | Consistent execution time |
 
 ---
 
@@ -82,6 +82,10 @@ Phase 5: Export              [          ] Not started
 | Client-side CSV validation | Reduces server load, provides instant feedback | 3 |
 | Promotion only (no demotion) | Demotion requires platform admin intervention | 3 |
 | Teachers-only promotion target | Students should never be promoted to admin | 3 |
+| Temperature 0.3 for rubric generation | Allows some creativity while maintaining consistency | 4 |
+| Temperature 0 for grading | Deterministic grading for fairness | 4 |
+| Fallback to segment rubric criteria | Backwards compatibility with existing correction guidelines | 4 |
+| OpenAI SDK v6 with chat.completions.parse | Structured outputs with Zod validation | 4 |
 
 ### Technical Patterns
 
@@ -105,6 +109,9 @@ Phase 5: Export              [          ] Not started
 - **Role promotion:** Server action with institution-scoped authorization, optimistic UI
 - **Section hierarchy:** Self-referencing parentId on Class, max 1 level deep
 - **Hierarchical display:** Group children under parents with indentation and badges
+- **AI grading:** OpenAI SDK with zodResponseFormat for structured outputs
+- **Rubric storage:** generatedRubric JSON field on Question model
+- **Content to string:** segmentsToLatexString converts segments to AI-readable format
 
 ### Known Issues
 
@@ -123,7 +130,9 @@ Phase 5: Export              [          ] Not started
 - [x] Complete 03-01: Class/Section Management
 - [x] Complete 03-02: CSV Upload UI
 - [x] Complete 03-03: Role Promotion
-- [ ] Plan Phase 4: AI Correction
+- [x] Complete 04-01: GPT-4 Integration
+- [ ] Complete 04-02: Grading UI
+- [ ] Complete 04-03: Student Results View
 - [ ] Plan Phase 5: Export
 
 ### Blockers
@@ -140,12 +149,13 @@ Phase 5: Export              [          ] Not started
 Continuing Correcta project.
 Phase 1 (Math Foundation) COMPLETE.
 Phase 2 (Exam Creation) COMPLETE.
-Phase 3 (Organization) COMPLETE:
-- 03-01: COMPLETE - Class/Section Management with subgroup hierarchy
-- 03-02: COMPLETE - CSV Upload UI with papaparse and preview
-- 03-03: COMPLETE - Role Promotion with server action and UI
+Phase 3 (Organization) COMPLETE.
+Phase 4 (AI Correction) IN PROGRESS:
+- 04-01: COMPLETE - GPT-4 Integration with structured outputs
+- 04-02: PENDING - Grading UI
+- 04-03: PENDING - Student Results View
 
-Next action: Plan Phase 4 (AI Correction) or Phase 5 (Export)
+Next action: Execute 04-02-PLAN.md (Grading UI)
 ```
 
 ### Context Files
@@ -164,8 +174,9 @@ Next action: Plan Phase 4 (AI Correction) or Phase 5 (Export)
 - `.planning/phases/03-organization/03-01-SUMMARY.md` - Hierarchical Subgroups summary
 - `.planning/phases/03-organization/03-02-SUMMARY.md` - CSV Upload UI summary
 - `.planning/phases/03-organization/03-03-SUMMARY.md` - Role Promotion summary
+- `.planning/phases/04-ai-correction/04-01-SUMMARY.md` - GPT-4 Integration summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-20 - Completed 03-03-PLAN.md (Role Promotion)*
+*Last execution: 2026-01-20 - Completed 04-01-PLAN.md (GPT-4 Integration)*
