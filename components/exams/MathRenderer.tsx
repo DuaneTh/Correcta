@@ -29,7 +29,7 @@ function trimTrailingEmptyTextAfterTable(value: ContentSegment[]): ContentSegmen
         end -= 1
     }
 
-    if (end < value.length && end > 0 && (value[end - 1].type === 'table' || value[end - 1].type === 'graph')) {
+    if (end < value.length && end > 0 && (value[end - 1].type === 'table' || value[end - 1].type === 'graph' || value[end - 1].type === 'image')) {
         return value.slice(0, end)
     }
 
@@ -49,7 +49,7 @@ function trimLeadingEmptyTextBeforeTable(value: ContentSegment[]): ContentSegmen
         start += 1
     }
 
-    if (start > 0 && start < value.length && (value[start].type === 'table' || value[start].type === 'graph')) {
+    if (start > 0 && start < value.length && (value[start].type === 'table' || value[start].type === 'graph' || value[start].type === 'image')) {
         return value.slice(start)
     }
 
@@ -221,6 +221,17 @@ function SegmentList({
                             segment={segment}
                             scale={scale}
                             availableWidth={availableWidth}
+                        />
+                    )
+                }
+                if (segment.type === 'image') {
+                    return (
+                        <img
+                            key={segment.id || index}
+                            src={segment.url}
+                            alt={segment.alt || ''}
+                            className="max-w-full h-auto my-2 rounded"
+                            style={{ display: 'block' }}
                         />
                     )
                 }

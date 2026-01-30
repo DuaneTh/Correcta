@@ -120,18 +120,26 @@ export async function loadSchoolAdminData(institutionId: string): Promise<School
             orderBy: { name: 'asc' }
         }),
         prisma.course.findMany({
-            where: { institutionId, archivedAt: null },
+            where: { institutionId },
             select: {
                 id: true,
                 code: true,
                 name: true,
                 archivedAt: true,
-                _count: { select: { classes: true, exams: true } },
+                // Get all sections (excluding __DEFAULT__) with archived status for conditional counting
+                classes: {
+                    where: { name: { not: '__DEFAULT__' } },
+                    select: { id: true, archivedAt: true }
+                },
+                // Get all exams with archived status for conditional counting
+                exams: {
+                    select: { id: true, archivedAt: true }
+                },
             },
             orderBy: { name: 'asc' }
         }),
         prisma.class.findMany({
-            where: { course: { institutionId }, archivedAt: null },
+            where: { course: { institutionId } },
             select: {
                 id: true,
                 name: true,
@@ -151,7 +159,7 @@ export async function loadSchoolAdminData(institutionId: string): Promise<School
             orderBy: { name: 'asc' }
         }),
         prisma.exam.findMany({
-            where: { course: { institutionId }, archivedAt: null },
+            where: { course: { institutionId } },
             select: {
                 id: true,
                 title: true,
@@ -175,7 +183,28 @@ export async function loadSchoolAdminData(institutionId: string): Promise<School
         } : null,
         teachers: teachers.map(t => ({ ...t, archivedAt: t.archivedAt?.toISOString() ?? null })),
         students: students.map(s => ({ ...s, archivedAt: s.archivedAt?.toISOString() ?? null })),
-        courses: courses.map(c => ({ ...c, archivedAt: c.archivedAt?.toISOString() ?? null })),
+        courses: courses.map(c => {
+            // For archived courses: count all sections/exams (they were archived with the course)
+            // For active courses: count only active sections/exams
+            const isArchivedCourse = c.archivedAt !== null
+            const classCount = isArchivedCourse
+                ? c.classes.length
+                : c.classes.filter(cls => cls.archivedAt === null).length
+            const examCount = isArchivedCourse
+                ? c.exams.length
+                : c.exams.filter(ex => ex.archivedAt === null).length
+
+            return {
+                id: c.id,
+                code: c.code,
+                name: c.name,
+                archivedAt: c.archivedAt?.toISOString() ?? null,
+                _count: {
+                    classes: classCount,
+                    exams: examCount,
+                }
+            }
+        }),
         sections: sections.map(sec => ({
             ...sec,
             archivedAt: sec.archivedAt?.toISOString() ?? null,

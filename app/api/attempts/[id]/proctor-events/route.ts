@@ -5,7 +5,7 @@ import { ProctorEventType } from "@prisma/client"
 import { canAccessAttemptAction } from "@/lib/attemptPermissions"
 import { getAttemptAuthContext } from "@/lib/attempt-access"
 import { buildRateLimitResponse, rateLimit } from "@/lib/rateLimit"
-import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
 
 // POST /api/attempts/[id]/proctor-events - Log anti-cheat event
@@ -23,7 +23,7 @@ export async function POST(
 
         const csrfResult = verifyCsrf({
             req,
-            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            cookieToken: getCsrfCookieToken(req),
             headerToken: req.headers.get('x-csrf-token'),
             allowedOrigins: getAllowedOrigins()
         })

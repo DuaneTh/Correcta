@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, ChevronDown, ChevronUp, Edit2, Save, Loader2 } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, Edit2, Loader2 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
+import { RubricEditor } from './RubricEditor'
 
 interface Criterion {
     name: string
@@ -29,20 +30,23 @@ interface RubricReviewModalProps {
     isOpen: boolean
     onClose: () => void
     onConfirm: () => void
+    /** If true, only generating rubrics without starting grading */
+    rubricOnly?: boolean
 }
 
 export function RubricReviewModal({
     examId,
     isOpen,
     onClose,
-    onConfirm
+    onConfirm,
+    rubricOnly = false
 }: RubricReviewModalProps) {
     const [questions, setQuestions] = useState<QuestionWithRubric[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [expandedQuestions, setExpandedQuestions] = useState<Set<string>>(new Set())
     const [editingQuestion, setEditingQuestion] = useState<string | null>(null)
-    const [editedRubric, setEditedRubric] = useState<string>('')
+    const [editedRubric, setEditedRubric] = useState<Rubric | null>(null)
     const [saving, setSaving] = useState(false)
     const [confirmLoading, setConfirmLoading] = useState(false)
 
@@ -89,30 +93,22 @@ export function RubricReviewModal({
 
     const startEditing = (question: QuestionWithRubric) => {
         setEditingQuestion(question.id)
-        setEditedRubric(
-            question.generatedRubric
-                ? JSON.stringify(question.generatedRubric, null, 2)
-                : ''
-        )
+        setEditedRubric(question.generatedRubric || {
+            criteria: [{ name: 'Reponse correcte', points: question.maxPoints, description: '' }],
+            totalPoints: question.maxPoints
+        })
     }
 
     const cancelEditing = () => {
         setEditingQuestion(null)
-        setEditedRubric('')
+        setEditedRubric(null)
     }
 
     const saveRubric = async (questionId: string) => {
+        if (!editedRubric) return
+
         setSaving(true)
         try {
-            let parsedRubric: Rubric
-            try {
-                parsedRubric = JSON.parse(editedRubric)
-            } catch {
-                setError('JSON invalide')
-                setSaving(false)
-                return
-            }
-
             const csrfToken = await getCsrfToken()
             const res = await fetch(`/api/questions/${questionId}/rubric`, {
                 method: 'PUT',
@@ -120,7 +116,7 @@ export function RubricReviewModal({
                     'Content-Type': 'application/json',
                     'x-csrf-token': csrfToken
                 },
-                body: JSON.stringify({ rubric: parsedRubric })
+                body: JSON.stringify({ rubric: editedRubric })
             })
 
             if (!res.ok) {
@@ -131,13 +127,13 @@ export function RubricReviewModal({
             setQuestions(prev =>
                 prev.map(q =>
                     q.id === questionId
-                        ? { ...q, generatedRubric: parsedRubric }
+                        ? { ...q, generatedRubric: editedRubric }
                         : q
                 )
             )
 
             setEditingQuestion(null)
-            setEditedRubric('')
+            setEditedRubric(null)
             setError(null)
         } catch (err) {
             console.error('Error saving rubric:', err)
@@ -201,7 +197,7 @@ export function RubricReviewModal({
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b">
                     <h2 className="text-xl font-semibold text-gray-900">
-                        Verifier les baremes avant correction
+                        {rubricOnly ? 'Générer les barèmes' : 'Vérifier les barèmes avant correction'}
                     </h2>
                     <button
                         onClick={onClose}
@@ -266,31 +262,15 @@ export function RubricReviewModal({
                                     {expandedQuestions.has(question.id) && (
                                         <div className="p-4 border-t">
                                             {editingQuestion === question.id ? (
-                                                /* Edit mode */
-                                                <div className="space-y-3">
-                                                    <textarea
-                                                        value={editedRubric}
-                                                        onChange={(e) => setEditedRubric(e.target.value)}
-                                                        className="w-full h-48 p-3 text-sm font-mono border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                                        placeholder="JSON du bareme..."
-                                                    />
-                                                    <div className="flex justify-end gap-2">
-                                                        <button
-                                                            onClick={cancelEditing}
-                                                            className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
-                                                        >
-                                                            Annuler
-                                                        </button>
-                                                        <button
-                                                            onClick={() => saveRubric(question.id)}
-                                                            disabled={saving}
-                                                            className="flex items-center gap-1 px-3 py-1.5 text-sm bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
-                                                        >
-                                                            <Save className="w-4 h-4" />
-                                                            {saving ? 'Sauvegarde...' : 'Sauvegarder'}
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                                /* Edit mode - using RubricEditor */
+                                                <RubricEditor
+                                                    rubric={editedRubric}
+                                                    maxPoints={question.maxPoints}
+                                                    onChange={setEditedRubric}
+                                                    onCancel={cancelEditing}
+                                                    onSave={() => saveRubric(question.id)}
+                                                    saving={saving}
+                                                />
                                             ) : question.generatedRubric ? (
                                                 /* Display rubric */
                                                 <div>
@@ -361,9 +341,16 @@ export function RubricReviewModal({
                     <button
                         onClick={handleConfirm}
                         disabled={loading || questions.length === 0 || confirmLoading}
-                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+                            rubricOnly
+                                ? 'bg-indigo-600 hover:bg-indigo-700'
+                                : 'bg-green-600 hover:bg-green-700'
+                        }`}
                     >
-                        {confirmLoading ? 'Lancement...' : 'Lancer la correction'}
+                        {confirmLoading
+                            ? (rubricOnly ? 'Validation...' : 'Lancement...')
+                            : (rubricOnly ? 'Valider le barème' : 'Lancer la correction')
+                        }
                     </button>
                 </div>
             </div>

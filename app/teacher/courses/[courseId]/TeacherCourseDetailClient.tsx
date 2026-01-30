@@ -107,7 +107,9 @@ export default function TeacherCourseDetailClient({
                 setExamsList(prev => prev.filter(e => e.id !== id))
                 setExamIdPendingDelete(null)
             } else {
-                console.error('Failed to delete exam')
+                const data = await res.json().catch(() => ({}))
+                console.error('Failed to delete exam:', data.error || res.status)
+                alert(`Erreur lors de la suppression: ${data.error || 'Erreur inconnue'}`)
             }
         } catch (error) {
             console.error('Failed to delete:', error)

@@ -12,6 +12,7 @@ type CourseWithExams = {
     id: string
     code: string
     name: string
+    archivedAt?: string | null
     exams: {
         id: string
         title: string
@@ -20,6 +21,7 @@ type CourseWithExams = {
         status: 'DRAFT' | 'PUBLISHED'
         createdAt: string
         updatedAt: string
+        archivedAt?: string | null
         durationMinutes: number | null
         gradingConfig?: Record<string, unknown> | null
         classId?: string | null
@@ -42,8 +44,10 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
     const [debouncedQuery, setDebouncedQuery] = useState('')
     const [sortKey, setSortKey] = useState<'nextExam' | 'lastActivity' | 'name'>('nextExam')
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+    const [showArchived, setShowArchived] = useState(false)
     const [courseData, setCourseData] = useState(courses)
     const dict = dictionary.teacher.coursesPage
+    const examsDict = dictionary.teacher.examsPage
     const dateTimeFormatter = new Intl.DateTimeFormat('fr-FR', {
         day: '2-digit',
         month: '2-digit',
@@ -77,6 +81,15 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
     useEffect(() => {
         localStorage.setItem('teacherCourses.viewMode', viewMode)
     }, [viewMode])
+
+    // Auto-refresh every 30 seconds to catch exam status changes
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh()
+        }, 30000)
+
+        return () => clearInterval(interval)
+    }, [router])
 
     const normalizeString = (value: string) =>
         value
@@ -149,14 +162,31 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
     }
 
     const filteredCourses = useMemo(() => {
+        let filtered = courseData
+
+        // Filter by archived status
+        if (!showArchived) {
+            filtered = filtered.filter((course) => !course.archivedAt)
+        }
+
+        // Also filter exams within courses if not showing archived
+        filtered = filtered.map((course) => ({
+            ...course,
+            exams: showArchived ? course.exams : course.exams.filter((exam) => !exam.archivedAt),
+            _count: {
+                ...course._count,
+                exams: showArchived ? course.exams.length : course.exams.filter((exam) => !exam.archivedAt).length,
+            },
+        }))
+
         const query = normalizeString(debouncedQuery.trim())
-        if (!query) return courseData
-        return courseData.filter((course) => {
+        if (!query) return filtered
+        return filtered.filter((course) => {
             const courseText = normalizeString(`${course.code} ${course.name}`)
             if (courseText.includes(query)) return true
             return course.exams.some((exam) => normalizeString(exam.title).includes(query))
         })
-    }, [courseData, debouncedQuery])
+    }, [courseData, debouncedQuery, showArchived])
 
     const sortedCourses = useMemo(() => {
         const items = [...filteredCourses]
@@ -212,6 +242,15 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
                         />
                     </div>
                     <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+                            <input
+                                type="checkbox"
+                                checked={showArchived}
+                                onChange={(e) => setShowArchived(e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
+                            />
+                            {examsDict.showArchived}
+                        </label>
                         <select
                             value={sortKey}
                             onChange={(event) => setSortKey(event.target.value as typeof sortKey)}
@@ -287,13 +326,14 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
                     {sortedCourses.map((course) => {
                         const sectionCount = (course._count as { classes?: number }).classes
                         const summary = buildCourseSummary(course)
+                        const isArchived = Boolean(course.archivedAt)
                         return (
                             <div
                                 key={course.id}
                                 role="link"
                                 aria-label={`${dict.openCourseButton} ${course.name}`}
                                 tabIndex={0}
-                                className="group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow transition-shadow hover:border-brand-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2"
+                                className={`group relative flex cursor-pointer flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow transition-shadow hover:border-brand-300 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2 ${isArchived ? 'opacity-60' : ''}`}
                                 onClick={() => router.push(`/teacher/courses/${course.id}`)}
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter' || event.key === ' ') {
@@ -305,7 +345,14 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
                             <div className="absolute left-0 top-0 h-0.5 w-full bg-brand-900/10 opacity-60" aria-hidden="true" />
                             <div className="flex flex-col px-4 py-4 sm:p-5">
                                 <div className="flex items-start justify-between gap-3">
-                                    <CourseCodeBadge code={course.code} />
+                                    <div className="flex items-center gap-2">
+                                        <CourseCodeBadge code={course.code} />
+                                        {isArchived && (
+                                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                                {examsDict.archivedBadge}
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex flex-wrap items-center justify-end gap-2">
                                         <button
                                             onClick={(e) => {
@@ -418,13 +465,14 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
                 <div className="space-y-3">
                     {sortedCourses.map((course) => {
                         const summary = buildCourseSummary(course)
+                        const isArchived = Boolean(course.archivedAt)
                         return (
                             <div
                                 key={course.id}
                                 role="link"
                                 aria-label={`${dict.openCourseButton} ${course.name}`}
                                 tabIndex={0}
-                                className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow transition-shadow hover:border-brand-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2"
+                                className={`flex flex-col gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow transition-shadow hover:border-brand-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-900 focus-visible:ring-offset-2 ${isArchived ? 'opacity-60' : ''}`}
                                 onClick={() => router.push(`/teacher/courses/${course.id}`)}
                                 onKeyDown={(event) => {
                                     if (event.key === 'Enter' || event.key === ' ') {
@@ -436,6 +484,11 @@ export default function TeacherCoursesClient({ courses, dictionary }: TeacherCou
                                 <div className="flex flex-wrap items-center justify-between gap-3">
                                     <div className="flex items-center gap-3 min-w-0">
                                         <CourseCodeBadge code={course.code} />
+                                        {isArchived && (
+                                            <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 border border-gray-300">
+                                                {examsDict.archivedBadge}
+                                            </span>
+                                        )}
                                         <div className="min-w-0">
                                             <div className="truncate text-sm font-semibold text-gray-900">{course.name}</div>
                                             <div className="text-xs text-gray-500">

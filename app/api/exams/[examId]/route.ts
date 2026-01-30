@@ -508,8 +508,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<ExamPar
             include: { course: true }
         })
 
-        if (!existingExam || existingExam.archivedAt || existingExam.course.archivedAt || existingExam.course.institutionId !== session.user.institutionId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+        if (!existingExam) {
+            return NextResponse.json({ error: "Examen introuvable" }, { status: 404 })
+        }
+
+        if (existingExam.archivedAt) {
+            return NextResponse.json({ error: "Cet examen a deja ete supprime" }, { status: 400 })
+        }
+
+        if (existingExam.course.archivedAt) {
+            return NextResponse.json({ error: "Le cours associe a ete archive" }, { status: 400 })
+        }
+
+        if (existingExam.course.institutionId !== session.user.institutionId) {
+            return NextResponse.json({ error: "Vous n'avez pas acces a cet examen" }, { status: 403 })
         }
 
         const { canEdit } = await getExamPermissions(examId, {
@@ -518,7 +530,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<ExamPar
             role: session.user.role,
         })
         if (!canEdit) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+            return NextResponse.json({
+                error: "Vous n'etes pas autorise a supprimer cet examen. Seul l'auteur ou un administrateur peut le faire."
+            }, { status: 403 })
         }
 
         const examIdsToArchive = [examId]
@@ -538,6 +552,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<ExamPar
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error("[API] Delete Exam Error:", error)
-        return NextResponse.json({ error: "Internal Server Error" }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
+        return NextResponse.json({ error: `Erreur lors de la suppression: ${errorMessage}` }, { status: 500 })
     }
 }

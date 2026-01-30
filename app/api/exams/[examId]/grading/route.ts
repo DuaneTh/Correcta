@@ -18,14 +18,16 @@ export async function GET(
         // Fetch exam to verify access
         const exam = await prisma.exam.findUnique({
             where: { id: examId },
-            include: {
+            select: {
+                id: true,
+                gradingConfig: true,
                 course: {
                     select: { institutionId: true, archivedAt: true }
                 }
             }
         })
 
-        if (!exam || exam.archivedAt || exam.course.archivedAt) {
+        if (!exam) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 
@@ -55,7 +57,7 @@ export async function GET(
             }
         })
 
-        // Get exam max points
+        // Get exam max points and rubric status
         const examWithQuestions = await prisma.exam.findUnique({
             where: { id: examId },
             include: {
@@ -70,12 +72,22 @@ export async function GET(
         })
 
         let examMaxPoints = 0
+        let textQuestionsTotal = 0
+        let textQuestionsWithRubric = 0
+
         if (examWithQuestions) {
             examWithQuestions.sections.forEach(section => {
                 section.questions.forEach(question => {
                     question.segments.forEach(segment => {
                         examMaxPoints += segment.maxPoints || 0
                     })
+                    // Count TEXT questions and their rubric status
+                    if (question.type === 'TEXT') {
+                        textQuestionsTotal++
+                        if (question.generatedRubric !== null) {
+                            textQuestionsWithRubric++
+                        }
+                    }
                 })
             })
         }
@@ -85,6 +97,7 @@ export async function GET(
             let totalScore = 0
             let gradedQuestionsCount = 0
             let humanModifiedCount = 0
+            let latestGradedAt: Date | null = null
 
             // Sum up scores from question-level grades
             attempt.answers.forEach(answer => {
@@ -93,6 +106,11 @@ export async function GET(
                     const grade = answer.grades[0]
                     totalScore += grade.score
                     gradedQuestionsCount++
+
+                    // Track the latest grading date
+                    if (grade.createdAt && (!latestGradedAt || grade.createdAt > latestGradedAt)) {
+                        latestGradedAt = grade.createdAt
+                    }
 
                     // Count human-modified grades
                     if (grade.isOverridden || grade.gradedByUserId !== null) {
@@ -110,6 +128,7 @@ export async function GET(
                 student: attempt.student,
                 status: attempt.status,
                 submittedAt: attempt.submittedAt,
+                gradedAt: latestGradedAt,
                 totalScore: hasGrades ? totalScore : null,
                 maxPoints: examMaxPoints || null,
                 gradedQuestionsCount,
@@ -118,7 +137,33 @@ export async function GET(
             }
         })
 
-        return NextResponse.json({ attempts: gradingList })
+        const gradingConfig = exam.gradingConfig as Record<string, unknown> | null
+        const gradesReleased = gradingConfig?.gradesReleased === true
+
+        // Calculate grading status
+        const submittedAttempts = gradingList.filter(a =>
+            a.status === 'SUBMITTED' || a.status === 'GRADING_IN_PROGRESS' || a.status === 'GRADED'
+        )
+        const gradedAttempts = gradingList.filter(a => a.status === 'GRADED')
+
+        const rubricStatus = {
+            total: textQuestionsTotal,
+            generated: textQuestionsWithRubric,
+            allGenerated: textQuestionsTotal > 0 && textQuestionsWithRubric === textQuestionsTotal
+        }
+
+        const gradingStatus = {
+            total: submittedAttempts.length,
+            graded: gradedAttempts.length,
+            allGraded: submittedAttempts.length > 0 && gradedAttempts.length === submittedAttempts.length
+        }
+
+        return NextResponse.json({
+            attempts: gradingList,
+            gradesReleased,
+            rubricStatus,
+            gradingStatus
+        })
 
     } catch (error) {
         console.error("[API] Get Grading List Error:", error)

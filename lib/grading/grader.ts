@@ -1,13 +1,19 @@
 import { zodResponseFormat } from 'openai/helpers/zod'
-import { openai, GRADING_MODEL, isOpenAIConfigured } from './openai-client'
+import { getOpenAIClient, GRADING_MODEL } from './openai-client'
 import { GradingResponseSchema, type GradingResponse } from './schemas'
-import { GRADING_SYSTEM_PROMPT, buildGradingUserPrompt } from './prompts'
+import { buildGradingUserPrompt } from './prompts'
+import { logAIInteraction, getPrompt } from './ai-logger'
 
 export type GradeAnswerParams = {
     question: string
     rubric: string
     studentAnswer: string
     maxPoints: number
+    // Optional metadata for logging
+    attemptId?: string
+    answerId?: string
+    questionId?: string
+    userId?: string
 }
 
 /**
@@ -18,9 +24,11 @@ export type GradeAnswerParams = {
  * @throws Error if OpenAI is not configured or API call fails
  */
 export async function gradeAnswer(params: GradeAnswerParams): Promise<GradingResponse> {
-    if (!isOpenAIConfigured()) {
-        throw new Error('OpenAI API key is not configured')
-    }
+    const startTime = Date.now()
+    const openai = await getOpenAIClient()
+
+    // Get system prompt (custom or default)
+    const systemPrompt = await getPrompt('GRADING_SYSTEM')
 
     const userPrompt = buildGradingUserPrompt({
         question: params.question,
@@ -29,27 +37,81 @@ export async function gradeAnswer(params: GradeAnswerParams): Promise<GradingRes
         maxPoints: params.maxPoints
     })
 
-    const completion = await openai.chat.completions.parse({
-        model: GRADING_MODEL,
-        messages: [
-            { role: 'system', content: GRADING_SYSTEM_PROMPT },
-            { role: 'user', content: userPrompt }
-        ],
-        response_format: zodResponseFormat(GradingResponseSchema, 'grading'),
-        temperature: 0, // Deterministic grading
-        max_tokens: 1000
-    })
+    let rawResponse: string | undefined
+    let tokensInput: number | undefined
+    let tokensOutput: number | undefined
 
-    const parsed = completion.choices[0]?.message?.parsed
-    if (!parsed) {
-        throw new Error('Failed to parse grading response from OpenAI')
-    }
+    try {
+        const completion = await openai.chat.completions.parse({
+            model: GRADING_MODEL,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt }
+            ],
+            response_format: zodResponseFormat(GradingResponseSchema, 'grading'),
+            temperature: 0, // Deterministic grading
+            max_tokens: 1000
+        })
 
-    // Clamp score to valid range [0, maxPoints]
-    const clampedScore = Math.min(params.maxPoints, Math.max(0, parsed.score))
+        rawResponse = JSON.stringify(completion.choices[0]?.message)
+        tokensInput = completion.usage?.prompt_tokens
+        tokensOutput = completion.usage?.completion_tokens
 
-    return {
-        ...parsed,
-        score: clampedScore
+        const parsed = completion.choices[0]?.message?.parsed
+        if (!parsed) {
+            throw new Error('Failed to parse grading response from OpenAI')
+        }
+
+        // Clamp score to valid range [0, maxPoints]
+        const clampedScore = Math.min(params.maxPoints, Math.max(0, parsed.score))
+
+        const result: GradingResponse = {
+            ...parsed,
+            score: clampedScore
+        }
+
+        // Log successful interaction
+        const durationMs = Date.now() - startTime
+        await logAIInteraction({
+            attemptId: params.attemptId,
+            answerId: params.answerId,
+            questionId: params.questionId,
+            operation: 'GRADING',
+            model: GRADING_MODEL,
+            systemPrompt,
+            userPrompt,
+            rawResponse,
+            score: result.score,
+            feedback: result.feedback,
+            aiRationale: result.aiRationale,
+            tokensInput,
+            tokensOutput,
+            durationMs,
+            success: true,
+            createdBy: params.userId
+        })
+
+        return result
+    } catch (error) {
+        // Log failed interaction
+        const durationMs = Date.now() - startTime
+        await logAIInteraction({
+            attemptId: params.attemptId,
+            answerId: params.answerId,
+            questionId: params.questionId,
+            operation: 'GRADING',
+            model: GRADING_MODEL,
+            systemPrompt,
+            userPrompt,
+            rawResponse,
+            tokensInput,
+            tokensOutput,
+            durationMs,
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            createdBy: params.userId
+        })
+
+        throw error
     }
 }

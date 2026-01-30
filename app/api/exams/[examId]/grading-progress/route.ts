@@ -36,64 +36,43 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Count attempts and their statuses
+        // Count attempts (copies) and their grading status
         const attempts = await prisma.attempt.findMany({
             where: {
                 examId,
                 status: { in: ['SUBMITTED', 'GRADING_IN_PROGRESS', 'GRADED'] }
             },
-            include: {
-                answers: {
-                    where: {
-                        question: { type: 'TEXT' }
-                    },
-                    include: {
-                        grades: {
-                            select: { id: true }
-                        }
-                    }
-                }
+            select: {
+                id: true,
+                status: true
             }
         })
 
-        // Calculate progress based on TEXT answers that have grades
-        let totalAnswers = 0
-        let gradedAnswers = 0
+        // Count copies by status
+        const totalCopies = attempts.length
+        const gradedCopies = attempts.filter(a => a.status === 'GRADED').length
+        const inProgressCopies = attempts.filter(a => a.status === 'GRADING_IN_PROGRESS').length
 
-        for (const attempt of attempts) {
-            for (const answer of attempt.answers) {
-                totalAnswers++
-                if (answer.grades.length > 0) {
-                    gradedAnswers++
-                }
-            }
-        }
-
-        // Determine status
-        const attemptStatuses = attempts.map(a => a.status)
+        // Determine overall status
         let status: 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED'
 
-        if (attemptStatuses.every(s => s === 'GRADED')) {
+        if (totalCopies === 0) {
+            status = 'COMPLETED' // No copies to grade
+        } else if (gradedCopies === totalCopies) {
             status = 'COMPLETED'
-        } else if (attemptStatuses.some(s => s === 'GRADING_IN_PROGRESS')) {
+        } else if (inProgressCopies > 0 || gradedCopies > 0) {
             status = 'IN_PROGRESS'
-        } else if (totalAnswers > 0 && gradedAnswers === 0) {
-            status = 'NOT_STARTED'
-        } else if (gradedAnswers > 0 && gradedAnswers < totalAnswers) {
-            status = 'IN_PROGRESS'
-        } else if (totalAnswers === 0) {
-            status = 'COMPLETED' // No TEXT answers to grade
         } else {
             status = 'NOT_STARTED'
         }
 
-        const percentage = totalAnswers > 0
-            ? Math.round((gradedAnswers / totalAnswers) * 100)
+        const percentage = totalCopies > 0
+            ? Math.round((gradedCopies / totalCopies) * 100)
             : 100
 
         return NextResponse.json({
-            completed: gradedAnswers,
-            total: totalAnswers,
+            completed: gradedCopies,
+            total: totalCopies,
             percentage,
             status,
             canCancel: status === 'IN_PROGRESS'

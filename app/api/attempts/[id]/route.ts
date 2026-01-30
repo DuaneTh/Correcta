@@ -5,7 +5,7 @@ import { assertAttemptContentEditable, AttemptNotEditableError, canReadAttempt }
 import { getExamEndAt } from "@/lib/exam-time"
 import { getExamPermissions } from "@/lib/exam-permissions"
 import { buildRateLimitResponse, rateLimit } from "@/lib/rateLimit"
-import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
 
 // GET /api/attempts/[id] - Get attempt details
@@ -138,7 +138,7 @@ export async function PUT(
 
         const csrfResult = verifyCsrf({
             req,
-            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            cookieToken: getCsrfCookieToken(req),
             headerToken: req.headers.get('x-csrf-token'),
             allowedOrigins: getAllowedOrigins()
         })

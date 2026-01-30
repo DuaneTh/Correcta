@@ -68,6 +68,10 @@ export default function SchoolUsersClient({
     const [pendingPromoteUser, setPendingPromoteUser] = useState<{ id: string; name: string | null } | null>(null)
     const [promoting, setPromoting] = useState(false)
 
+    // User profile drawer state
+    const [profileDrawerOpen, setProfileDrawerOpen] = useState(false)
+    const [selectedUser, setSelectedUser] = useState<PersonRow | null>(null)
+
     // CSV Import state
     const [csvDrawerOpen, setCsvDrawerOpen] = useState(false)
     const [csvData, setCsvData] = useState<CsvUser[]>([])
@@ -346,6 +350,16 @@ export default function SchoolUsersClient({
         setCsvResult(null)
     }, [])
 
+    const openProfileDrawer = useCallback((user: PersonRow) => {
+        setSelectedUser(user)
+        setProfileDrawerOpen(true)
+    }, [])
+
+    const closeProfileDrawer = useCallback(() => {
+        setProfileDrawerOpen(false)
+        setSelectedUser(null)
+    }, [])
+
     return (
         <div className="flex flex-col gap-6">
             {/* Header */}
@@ -440,14 +454,14 @@ export default function SchoolUsersClient({
                             <tbody className="divide-y divide-gray-200">
                                 {filteredUsers.map((user) => {
                                     const archived = isArchived(user.archivedAt)
-                                    const sectionsList = user.enrollments
-                                        .map((e) => `${e.class.course.code} - ${e.class.name}`)
-                                        .slice(0, 3)
-                                        .join(', ')
-                                    const moreCount = Math.max(0, user.enrollments.length - 3)
+                                    const enrollmentCount = user.enrollments.length
 
                                     return (
-                                        <tr key={user.id} className={archived ? 'bg-gray-50 opacity-60' : ''}>
+                                        <tr
+                                            key={user.id}
+                                            className={`${archived ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'} cursor-pointer transition-colors`}
+                                            onClick={() => openProfileDrawer(user)}
+                                        >
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-medium text-gray-900">
@@ -464,16 +478,22 @@ export default function SchoolUsersClient({
                                                 {user.email || dict.unknownEmail}
                                             </td>
                                             <td className="px-4 py-3 text-gray-600">
-                                                {sectionsList || dict.none}
-                                                {moreCount > 0 && (
-                                                    <span className="text-gray-400"> +{moreCount}</span>
+                                                {enrollmentCount > 0 ? (
+                                                    <span className="text-brand-700 underline underline-offset-2">
+                                                        {enrollmentCount} {enrollmentCount > 1 ? 'cours' : 'cours'}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">{dict.none}</span>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
                                                         type="button"
-                                                        onClick={(e) => openEditDrawer(user.id, e.currentTarget)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            openEditDrawer(user.id, e.currentTarget)
+                                                        }}
                                                         className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                                                     >
                                                         {dict.users.edit}
@@ -481,7 +501,8 @@ export default function SchoolUsersClient({
                                                     {activeRole === 'teacher' && !archived && (
                                                         <button
                                                             type="button"
-                                                            onClick={() => {
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
                                                                 setPendingPromoteUser({ id: user.id, name: user.name })
                                                                 setPromoteConfirmOpen(true)
                                                             }}
@@ -492,7 +513,10 @@ export default function SchoolUsersClient({
                                                     )}
                                                     <button
                                                         type="button"
-                                                        onClick={() => requestArchive(user.id)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            requestArchive(user.id)
+                                                        }}
                                                         className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
                                                     >
                                                         {archived ? dict.restoreLabel : dict.archiveLabel}
@@ -604,6 +628,84 @@ export default function SchoolUsersClient({
                     setPendingPromoteUser(null)
                 }}
             />
+
+            {/* User Profile Drawer */}
+            <Drawer
+                open={profileDrawerOpen}
+                onClose={closeProfileDrawer}
+                title={selectedUser?.name || dict.unknownName}
+            >
+                {selectedUser && (
+                    <div className="flex flex-col gap-6">
+                        {/* User Info */}
+                        <div className="flex flex-col gap-2">
+                            <div className="text-sm text-gray-500">{dict.emailPlaceholder}</div>
+                            <div className="text-gray-900">{selectedUser.email || dict.unknownEmail}</div>
+                        </div>
+
+                        {/* Enrollments */}
+                        <div className="flex flex-col gap-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-medium text-gray-900">
+                                    {dict.profile.coursesTitle || 'Cours'}
+                                </h3>
+                                <span className="text-sm text-gray-500">
+                                    {selectedUser.enrollments.length} {selectedUser.enrollments.length > 1 ? 'inscriptions' : 'inscription'}
+                                </span>
+                            </div>
+
+                            {selectedUser.enrollments.length === 0 ? (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-6 text-center text-sm text-gray-500">
+                                    {dict.profile.noEnrollments || 'Aucune inscription'}
+                                </div>
+                            ) : (
+                                <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+                                    {selectedUser.enrollments.map((enrollment, index) => (
+                                        <div key={index} className="px-4 py-3">
+                                            <div className="flex items-start justify-between gap-2">
+                                                <div>
+                                                    <div className="font-medium text-gray-900">
+                                                        {enrollment.class.course.code}
+                                                    </div>
+                                                    <div className="text-sm text-gray-600">
+                                                        {enrollment.class.course.name}
+                                                    </div>
+                                                </div>
+                                                {enrollment.class.name !== '__DEFAULT__' && (
+                                                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                                                        {enrollment.class.name}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    closeProfileDrawer()
+                                    openEditDrawer(selectedUser.id)
+                                }}
+                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                {dict.users.edit}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeProfileDrawer}
+                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                            >
+                                {dict.profile.closeButton || 'Fermer'}
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </Drawer>
 
             {/* CSV Import Drawer */}
             <Drawer

@@ -7,6 +7,7 @@ import type { CourseRow, SectionRow, ExamRow, PersonRow } from '@/lib/school-adm
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Drawer from '@/components/ui/Drawer'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import CourseFormModal from '@/components/admin/school/CourseFormModal'
 
 type SchoolClassesClientProps = {
     dictionary: Dictionary
@@ -15,6 +16,7 @@ type SchoolClassesClientProps = {
     sections: SectionRow[]
     exams: ExamRow[]
     students: PersonRow[]
+    teachers: PersonRow[]
 }
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
@@ -31,6 +33,7 @@ export default function SchoolClassesClient({
     sections: initialSections,
     exams: initialExams,
     students: initialStudents,
+    teachers,
 }: SchoolClassesClientProps) {
     const dict = dictionary.admin.school
     const router = useRouter()
@@ -43,21 +46,29 @@ export default function SchoolClassesClient({
 
     const [courses, setCourses] = useState(initialCourses)
     const [sections, setSections] = useState(initialSections)
-    const [exams] = useState(initialExams)
+    const [exams, setExams] = useState(initialExams)
     const [students] = useState(initialStudents)
     const [search, setSearch] = useState('')
     const [showArchived, setShowArchived] = useState(false)
 
+    // Sync local state with server data when props change (after router.refresh())
+    useEffect(() => {
+        setCourses(initialCourses)
+        setSections(initialSections)
+        setExams(initialExams)
+    }, [initialCourses, initialSections, initialExams])
+
     const [drawerOpen, setDrawerOpen] = useState(false)
-    const [drawerType, setDrawerType] = useState<'course' | 'section'>('course')
-    const [courseForm, setCourseForm] = useState({ code: '', name: '' })
+    // Course modal state
+    const [courseModalOpen, setCourseModalOpen] = useState(false)
+    const [editCourse, setEditCourse] = useState<CourseRow | null>(null)
     const [sectionForm, setSectionForm] = useState({ courseId: '', name: '', parentId: '' })
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState('')
     const [editTarget, setEditTarget] = useState<{ type: 'course' | 'section'; id: string } | null>(null)
 
     const [confirmOpen, setConfirmOpen] = useState(false)
-    const [pendingArchive, setPendingArchive] = useState<{ type: 'course' | 'section'; id: string } | null>(null)
+    const [pendingArchive, setPendingArchive] = useState<{ type: 'course' | 'section' | 'exam'; id: string } | null>(null)
 
     // Roster management state
     const [rosterDrawerOpen, setRosterDrawerOpen] = useState(false)
@@ -69,6 +80,10 @@ export default function SchoolClassesClient({
     const [rosterSaving, setRosterSaving] = useState(false)
     const [confirmRemoveOpen, setConfirmRemoveOpen] = useState(false)
     const [pendingRemoveEnrollmentId, setPendingRemoveEnrollmentId] = useState('')
+
+    // Course details drawer state
+    const [courseDetailsOpen, setCourseDetailsOpen] = useState(false)
+    const [selectedCourse, setSelectedCourse] = useState<CourseRow | null>(null)
 
     const drawerReturnFocusRef = useRef<HTMLElement | null>(null)
     const rosterReturnFocusRef = useRef<HTMLElement | null>(null)
@@ -151,6 +166,62 @@ export default function SchoolClassesClient({
         })
     }, [exams, search, showArchived])
 
+    // Course details computed values
+    const courseSections = useMemo(() => {
+        if (!selectedCourse) return []
+        return sections.filter(s =>
+            s.course.id === selectedCourse.id &&
+            !isDefaultSection(s) &&
+            !isArchived(s.archivedAt)
+        )
+    }, [selectedCourse, sections])
+
+    const courseTeachers = useMemo(() => {
+        if (!selectedCourse) return []
+        const teacherIds = new Set<string>()
+        const result: Array<{ id: string; name: string | null; email: string | null }> = []
+        sections
+            .filter(s => s.course.id === selectedCourse.id)
+            .forEach(s => {
+                s.enrollments
+                    .filter(e => e.role === 'TEACHER')
+                    .forEach(e => {
+                        if (!teacherIds.has(e.user.id)) {
+                            teacherIds.add(e.user.id)
+                            result.push(e.user)
+                        }
+                    })
+            })
+        return result
+    }, [selectedCourse, sections])
+
+    const courseStudents = useMemo(() => {
+        if (!selectedCourse) return []
+        const studentIds = new Set<string>()
+        const result: Array<{ id: string; name: string | null; email: string | null }> = []
+        sections
+            .filter(s => s.course.id === selectedCourse.id)
+            .forEach(s => {
+                s.enrollments
+                    .filter(e => e.role === 'STUDENT')
+                    .forEach(e => {
+                        if (!studentIds.has(e.user.id)) {
+                            studentIds.add(e.user.id)
+                            result.push(e.user)
+                        }
+                    })
+            })
+        return result
+    }, [selectedCourse, sections])
+
+    const courseExams = useMemo(() => {
+        if (!selectedCourse) return []
+        return exams.filter(e =>
+            e.course.code === selectedCourse.code &&
+            !isArchived(e.archivedAt)
+        )
+    }, [selectedCourse, exams])
+
     const buildUrl = useCallback(
         (update: (params: URLSearchParams) => void) => {
             const params = new URLSearchParams(searchParams.toString())
@@ -173,19 +244,27 @@ export default function SchoolClassesClient({
         router.replace(url)
     }, [buildUrl, router])
 
-    const openCourseDrawer = useCallback((trigger?: HTMLElement | null) => {
-        setDrawerType('course')
-        setCourseForm({ code: '', name: '' })
-        setEditTarget(null)
-        setError('')
-        setDrawerOpen(true)
-        if (trigger) drawerReturnFocusRef.current = trigger
-        const url = buildUrl((params) => params.set('action', 'add-course'))
-        router.replace(url)
-    }, [buildUrl, router])
+    const openCourseModal = useCallback((course?: CourseRow | null) => {
+        setEditCourse(course || null)
+        setCourseModalOpen(true)
+    }, [])
+
+    const closeCourseModal = useCallback(() => {
+        setCourseModalOpen(false)
+        setEditCourse(null)
+    }, [])
+
+    const openCourseDetails = useCallback((course: CourseRow) => {
+        setSelectedCourse(course)
+        setCourseDetailsOpen(true)
+    }, [])
+
+    const closeCourseDetails = useCallback(() => {
+        setCourseDetailsOpen(false)
+        setSelectedCourse(null)
+    }, [])
 
     const openSectionDrawer = useCallback((trigger?: HTMLElement | null) => {
-        setDrawerType('section')
         setSectionForm({ courseId: '', name: '', parentId: '' })
         setEditTarget(null)
         setError('')
@@ -208,65 +287,21 @@ export default function SchoolClassesClient({
             closingRef.current = false
             return
         }
-        if (actionParam === 'add-course' && !drawerOpen) {
-            openCourseDrawer()
-        } else if (actionParam === 'add-section' && !drawerOpen) {
+        if (actionParam === 'add-section' && !drawerOpen) {
             openSectionDrawer()
         }
-    }, [actionParam, drawerOpen, openCourseDrawer, openSectionDrawer])
+    }, [actionParam, drawerOpen, openSectionDrawer])
 
-    const handleSaveCourse = async () => {
-        if (!courseForm.code.trim() || !courseForm.name.trim()) {
-            setError(dict.bulk.missingCourseFields)
-            return
+    const handleCourseSaved = useCallback((course: CourseRow) => {
+        if (editCourse) {
+            setCourses((prev) =>
+                prev.map((c) => c.id === course.id ? course : c)
+            )
+        } else {
+            setCourses((prev) => [...prev, course])
         }
-
-        setSaving(true)
-        setError('')
-
-        try {
-            if (editTarget?.type === 'course') {
-                const result = await fetchJsonWithCsrf<{ course?: CourseRow }>(
-                    `/api/admin/school/courses?courseId=${editTarget.id}`,
-                    {
-                        method: 'PATCH',
-                        body: {
-                            code: courseForm.code.trim(),
-                            name: courseForm.name.trim(),
-                        }
-                    }
-                )
-                if (result?.course) {
-                    setCourses((prev) =>
-                        prev.map((course) =>
-                            course.id === editTarget.id ? result.course! : course
-                        )
-                    )
-                }
-            } else {
-                const result = await fetchJsonWithCsrf<{ course?: CourseRow }>(
-                    '/api/admin/school/courses',
-                    {
-                        method: 'POST',
-                        body: {
-                            institutionId,
-                            code: courseForm.code.trim(),
-                            name: courseForm.name.trim(),
-                        }
-                    }
-                )
-                if (result?.course) {
-                    setCourses((prev) => [...prev, result.course!])
-                }
-            }
-            closeDrawer()
-        } catch (err) {
-            console.error('[Classes] Save course failed', err)
-            setError(dict.saveError)
-        } finally {
-            setSaving(false)
-        }
-    }
+        router.refresh()
+    }, [editCourse, router])
 
     const handleSaveSection = async () => {
         if (!sectionForm.courseId || !sectionForm.name.trim()) {
@@ -280,7 +315,7 @@ export default function SchoolClassesClient({
         try {
             if (editTarget?.type === 'section') {
                 const result = await fetchJsonWithCsrf<{ section?: SectionRow }>(
-                    `/api/admin/school/sections?sectionId=${editTarget.id}`,
+                    '/api/admin/school/sections',
                     {
                         method: 'PATCH',
                         body: {
@@ -332,8 +367,8 @@ export default function SchoolClassesClient({
                 const course = courses.find((c) => c.id === id)
                 const isCurrentlyArchived = isArchived(course?.archivedAt)
                 await fetchJsonWithCsrf(
-                    `/api/admin/school/courses?courseId=${id}`,
-                    { method: 'PATCH', body: { archived: !isCurrentlyArchived } }
+                    '/api/admin/school/courses',
+                    { method: 'PATCH', body: { courseId: id, archived: !isCurrentlyArchived } }
                 )
                 setCourses((prev) =>
                     prev.map((c) =>
@@ -342,18 +377,32 @@ export default function SchoolClassesClient({
                             : c
                     )
                 )
-            } else {
+            } else if (type === 'section') {
                 const section = sections.find((s) => s.id === id)
                 const isCurrentlyArchived = isArchived(section?.archivedAt)
                 await fetchJsonWithCsrf(
-                    `/api/admin/school/sections?sectionId=${id}`,
-                    { method: 'PATCH', body: { archived: !isCurrentlyArchived } }
+                    '/api/admin/school/sections',
+                    { method: 'PATCH', body: { sectionId: id, archived: !isCurrentlyArchived } }
                 )
                 setSections((prev) =>
                     prev.map((s) =>
                         s.id === id
                             ? { ...s, archivedAt: isCurrentlyArchived ? null : new Date().toISOString() }
                             : s
+                    )
+                )
+            } else if (type === 'exam') {
+                const exam = exams.find((e) => e.id === id)
+                const isCurrentlyArchived = isArchived(exam?.archivedAt)
+                await fetchJsonWithCsrf(
+                    '/api/admin/school/exams',
+                    { method: 'PATCH', body: { examId: id, archived: !isCurrentlyArchived } }
+                )
+                setExams((prev) =>
+                    prev.map((e) =>
+                        e.id === id
+                            ? { ...e, archivedAt: isCurrentlyArchived ? null : new Date().toISOString() }
+                            : e
                     )
                 )
             }
@@ -366,26 +415,20 @@ export default function SchoolClassesClient({
         }
     }
 
-    const requestArchive = (type: 'course' | 'section', id: string) => {
+    const requestArchive = (type: 'course' | 'section' | 'exam', id: string) => {
         setPendingArchive({ type, id })
         setConfirmOpen(true)
     }
 
-    const openEditCourse = (courseId: string, trigger?: HTMLElement | null) => {
+    const openEditCourse = (courseId: string) => {
         const course = courses.find((entry) => entry.id === courseId)
         if (!course) return
-        setDrawerType('course')
-        setCourseForm({ code: course.code, name: course.name })
-        setEditTarget({ type: 'course', id: courseId })
-        setError('')
-        setDrawerOpen(true)
-        if (trigger) drawerReturnFocusRef.current = trigger
+        openCourseModal(course)
     }
 
     const openEditSection = (sectionId: string, trigger?: HTMLElement | null) => {
         const section = sections.find((entry) => entry.id === sectionId)
         if (!section) return
-        setDrawerType('section')
         setSectionForm({ courseId: section.course.id, name: section.name, parentId: section.parentId || '' })
         setEditTarget({ type: 'section', id: sectionId })
         setError('')
@@ -575,7 +618,7 @@ export default function SchoolClassesClient({
                 <div className="flex gap-2">
                     <button
                         type="button"
-                        onClick={(e) => openCourseDrawer(e.currentTarget)}
+                        onClick={() => openCourseModal()}
                         className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                     >
                         {dict.createCourseButton}
@@ -667,7 +710,11 @@ export default function SchoolClassesClient({
                                     {filteredCourses.map((course) => {
                                         const archived = isArchived(course.archivedAt)
                                         return (
-                                            <tr key={course.id} className={archived ? 'bg-gray-50 opacity-60' : ''}>
+                                            <tr
+                                                key={course.id}
+                                                className={`${archived ? 'bg-gray-50 opacity-60' : 'hover:bg-gray-50'} cursor-pointer transition-colors`}
+                                                onClick={() => openCourseDetails(course)}
+                                            >
                                                 <td className="px-4 py-3 font-medium text-gray-900">{course.code}</td>
                                                 <td className="px-4 py-3 text-gray-700">{course.name}</td>
                                                 <td className="px-4 py-3 text-gray-600">{course._count.classes}</td>
@@ -676,14 +723,20 @@ export default function SchoolClassesClient({
                                                     <div className="flex items-center justify-end gap-2">
                                                         <button
                                                             type="button"
-                                                            onClick={(event) => openEditCourse(course.id, event.currentTarget)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                openEditCourse(course.id)
+                                                            }}
                                                             className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
                                                         >
                                                             {dict.users.edit}
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            onClick={() => requestArchive('course', course.id)}
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                requestArchive('course', course.id)
+                                                            }}
                                                             className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
                                                         >
                                                             {archived ? dict.restoreLabel : dict.archiveLabel}
@@ -786,6 +839,7 @@ export default function SchoolClassesClient({
                                         <th className="px-4 py-3">{dict.tabs.courses}</th>
                                         <th className="px-4 py-3">{dict.examMeta.sectionLabel}</th>
                                         <th className="px-4 py-3">{dict.examMeta.statusLabel}</th>
+                                        <th className="px-4 py-3 text-right">{dict.users.actions}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-200">
@@ -804,6 +858,15 @@ export default function SchoolClassesClient({
                                                         {exam.status === 'DRAFT' ? dict.examStatusDraft : dict.examStatusPublished}
                                                     </span>
                                                 </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => requestArchive('exam', exam.id)}
+                                                        className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                                                    >
+                                                        {archived ? dict.restoreLabel : dict.archiveLabel}
+                                                    </button>
+                                                </td>
                                             </tr>
                                         )
                                     })}
@@ -814,50 +877,156 @@ export default function SchoolClassesClient({
                 )}
             </div>
 
-            {/* Drawers */}
+            {/* Course Modal */}
+            <CourseFormModal
+                open={courseModalOpen}
+                onClose={closeCourseModal}
+                onSave={handleCourseSaved}
+                institutionId={institutionId}
+                teachers={teachers}
+                existingStudents={students}
+                existingSections={sections}
+                editCourse={editCourse}
+                dict={{
+                    createCourseTitle: dict.createCourseTitle,
+                    editCourseTitle: dict.classes.editCourseTitle,
+                    courseCodePlaceholder: dict.courseCodePlaceholder,
+                    courseNamePlaceholder: dict.courseNamePlaceholder,
+                    cancelArchiveButton: dict.cancelArchiveButton,
+                    createCourseButton: dict.createCourseButton,
+                    saveButton: dict.users.saveButton,
+                    saveError: dict.saveError,
+                }}
+            />
+
+            {/* Course Details Drawer */}
             <Drawer
-                open={drawerOpen && drawerType === 'course'}
-                onClose={closeDrawer}
-                title={editTarget?.type === 'course' ? dict.classes.editCourseTitle : dict.createCourseTitle}
-                returnFocusRef={drawerReturnFocusRef}
+                open={courseDetailsOpen}
+                onClose={closeCourseDetails}
+                title={selectedCourse ? `${selectedCourse.code} - ${selectedCourse.name}` : ''}
             >
-                <div className="grid grid-cols-1 gap-4">
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.courseCodePlaceholder} *</span>
-                        <input
-                            type="text"
-                            value={courseForm.code}
-                            onChange={(e) => setCourseForm({ ...courseForm, code: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.courseNamePlaceholder} *</span>
-                        <input
-                            type="text"
-                            value={courseForm.name}
-                            onChange={(e) => setCourseForm({ ...courseForm, name: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                        />
-                    </label>
-                </div>
-                {error && (
-                    <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {error}
+                {selectedCourse && (
+                    <div className="flex flex-col gap-6">
+                        {/* Sections */}
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-900 mb-2">
+                                {dict.tabs.sections} ({courseSections.length})
+                            </h3>
+                            {courseSections.length === 0 ? (
+                                <p className="text-sm text-gray-500">{dict.emptySections}</p>
+                            ) : (
+                                <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+                                    {courseSections.map(section => {
+                                        const teacherCount = section.enrollments.filter(e => e.role === 'TEACHER').length
+                                        const studentCount = section.enrollments.filter(e => e.role === 'STUDENT').length
+                                        return (
+                                            <div key={section.id} className="px-3 py-2 flex items-center justify-between">
+                                                <span className="font-medium text-gray-900">{section.name}</span>
+                                                <span className="text-xs text-gray-500">
+                                                    {teacherCount} prof · {studentCount} etud.
+                                                </span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Teachers */}
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-900 mb-2">
+                                {dict.tabs.teachers} ({courseTeachers.length})
+                            </h3>
+                            {courseTeachers.length === 0 ? (
+                                <p className="text-sm text-gray-500">{dict.emptyTeachers}</p>
+                            ) : (
+                                <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+                                    {courseTeachers.map(teacher => (
+                                        <div key={teacher.id} className="px-3 py-2">
+                                            <div className="font-medium text-gray-900">{teacher.name || dict.unknownName}</div>
+                                            <div className="text-xs text-gray-500">{teacher.email}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Students */}
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-900 mb-2">
+                                {dict.tabs.students} ({courseStudents.length})
+                            </h3>
+                            {courseStudents.length === 0 ? (
+                                <p className="text-sm text-gray-500">{dict.emptyStudents}</p>
+                            ) : (
+                                <div className="divide-y divide-gray-200 rounded-lg border border-gray-200 max-h-40 overflow-y-auto">
+                                    {courseStudents.slice(0, 20).map(student => (
+                                        <div key={student.id} className="px-3 py-2">
+                                            <div className="font-medium text-gray-900">{student.name || dict.unknownName}</div>
+                                            <div className="text-xs text-gray-500">{student.email}</div>
+                                        </div>
+                                    ))}
+                                    {courseStudents.length > 20 && (
+                                        <div className="px-3 py-2 text-xs text-gray-400">
+                                            +{courseStudents.length - 20} autres...
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Exams */}
+                        <div>
+                            <h3 className="text-sm font-medium text-gray-900 mb-2">
+                                {dict.tabs.exams} ({courseExams.length})
+                            </h3>
+                            {courseExams.length === 0 ? (
+                                <p className="text-sm text-gray-500">{dict.emptyExams}</p>
+                            ) : (
+                                <div className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+                                    {courseExams.map(exam => (
+                                        <div key={exam.id} className="px-3 py-2 flex items-center justify-between">
+                                            <span className="font-medium text-gray-900">{exam.title || dict.unknownName}</span>
+                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                                                exam.status === 'DRAFT'
+                                                    ? 'bg-gray-100 text-gray-600'
+                                                    : 'bg-green-100 text-green-700'
+                                            }`}>
+                                                {exam.status === 'DRAFT' ? dict.examStatusDraft : dict.examStatusPublished}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    closeCourseDetails()
+                                    openEditCourse(selectedCourse.id)
+                                }}
+                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                                {dict.users.edit}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeCourseDetails}
+                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                            >
+                                {dict.profile.closeButton}
+                            </button>
+                        </div>
                     </div>
                 )}
-                <div className="mt-6 flex justify-end gap-2">
-                    <button type="button" onClick={closeDrawer} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                        {dict.cancelArchiveButton}
-                    </button>
-                    <button type="button" onClick={handleSaveCourse} disabled={saving} className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">
-                        {editTarget?.type === 'course' ? dict.users.saveButton : dict.createCourseButton}
-                    </button>
-                </div>
             </Drawer>
 
+            {/* Section Drawer */}
             <Drawer
-                open={drawerOpen && drawerType === 'section'}
+                open={drawerOpen}
                 onClose={closeDrawer}
                 title={editTarget?.type === 'section' ? dict.classes.editSectionTitle : dict.createSectionTitle}
                 returnFocusRef={drawerReturnFocusRef}

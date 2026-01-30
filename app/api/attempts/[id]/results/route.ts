@@ -101,7 +101,9 @@ export async function GET(
         }
 
         // Additional gate: check exam-level release rules for students
-        if (isOwner && !isTeacherUser) {
+        // Skip this check if the exam is archived (always allow viewing results for archived exams)
+        const isExamArchived = attempt.exam.archivedAt !== null
+        if (isOwner && !isTeacherUser && !isExamArchived) {
             const gradingConfig = (attempt.exam.gradingConfig as Record<string, unknown>) || {}
             const releaseInfo = getCorrectionReleaseInfo({
                 gradingConfig,

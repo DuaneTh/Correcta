@@ -6,6 +6,7 @@ import { prisma } from '@/lib/prisma'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import { getExamEndAt } from '@/lib/exam-time'
+import { recomputeAttemptStatus } from '@/lib/attemptStatus'
 
 // Types for MCQ scoring
 type McqScoreResult = {
@@ -453,6 +454,9 @@ export async function submitAttempt(attemptId: string) {
 
     return updatedAttempt
   })
+
+  // Recompute status after transaction (MCQ-only exams should be marked GRADED immediately)
+  await recomputeAttemptStatus(attemptId)
 
   revalidatePath('/student/exams')
   revalidatePath(`/student/attempts/${attemptId}`)

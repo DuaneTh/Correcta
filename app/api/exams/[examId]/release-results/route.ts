@@ -39,7 +39,7 @@ export async function POST(
             }
         })
 
-        if (!exam || exam.archivedAt || exam.course.archivedAt) {
+        if (!exam) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 

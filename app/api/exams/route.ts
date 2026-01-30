@@ -85,8 +85,13 @@ const cloneExamContent = async (tx: Prisma.TransactionClient, sourceExamId: stri
 
 export async function GET(req: Request) {
     try {
+        // Parse query parameters
+        const url = new URL(req.url)
+        const withGradingStatus = url.searchParams.get('withGradingStatus') === 'true'
+        const includeArchived = url.searchParams.get('includeArchived') === 'true'
+
         // 1. Get Session
-        // Note: We need to handle the institutionId cookie if we want to be strict, 
+        // Note: We need to handle the institutionId cookie if we want to be strict,
         // but for now we can rely on the session if it's already established.
         // However, buildAuthOptions needs institutionId to verify signature if using custom providers.
         // Let's try to get it from cookie or header if possible, or just use default.
@@ -107,17 +112,21 @@ export async function GET(req: Request) {
         // 2. Fetch Exams
         // Filter by institution and author if teacher
         const whereClause: {
-            archivedAt?: null
+            archivedAt?: null | { not: null }
             parentExamId?: null
-            course: { institutionId: string; archivedAt?: null }
+            course: { institutionId: string; archivedAt?: null | { not: null } }
             authorId?: string
         } = {
-            archivedAt: null,
             parentExamId: null,
             course: {
                 institutionId: session.user.institutionId,
-                archivedAt: null
             }
+        }
+
+        // Only filter out archived if not including archived
+        if (!includeArchived) {
+            whereClause.archivedAt = null
+            whereClause.course.archivedAt = null
         }
 
         if (session.user.role === 'TEACHER') {
@@ -168,6 +177,41 @@ export async function GET(req: Request) {
             classesWithCounts.map(c => [c.id, c._count.enrollments])
         )
 
+        // If withGradingStatus is requested, fetch grading counts for each exam
+        let gradingStatusMap = new Map<string, { submittedCount: number; gradedCount: number }>()
+        if (withGradingStatus) {
+            const examIds = exams.map(e => e.id)
+
+            // Get submitted attempts count per exam
+            const submittedCounts = await prisma.attempt.groupBy({
+                by: ['examId'],
+                where: {
+                    examId: { in: examIds },
+                    submittedAt: { not: null }
+                },
+                _count: { id: true }
+            })
+
+            // Get graded attempts count per exam (attempts with GRADED status)
+            const gradedCounts = await prisma.attempt.groupBy({
+                by: ['examId'],
+                where: {
+                    examId: { in: examIds },
+                    status: 'GRADED'
+                },
+                _count: { id: true }
+            })
+
+            for (const exam of exams) {
+                const submittedEntry = submittedCounts.find(s => s.examId === exam.id)
+                const gradedEntry = gradedCounts.find(g => g.examId === exam.id)
+                gradingStatusMap.set(exam.id, {
+                    submittedCount: submittedEntry?._count.id ?? 0,
+                    gradedCount: gradedEntry?._count.id ?? 0
+                })
+            }
+        }
+
         const examsWithCounts = exams.map(exam => {
             const hasVariantClass = Boolean(exam.classId)
             const hasTargetClasses = Array.isArray(exam.classIds) && exam.classIds.length > 0
@@ -177,11 +221,19 @@ export async function GET(req: Request) {
                     ? exam.classIds.reduce((sum, classId) => sum + (classStudentCounts.get(classId) || 0), 0)
                     : exam._count?.attempts ?? 0
 
-            return {
+            const result: Record<string, unknown> = {
                 ...exam,
                 studentCount,
                 sectionCount: exam._count?.sections ?? 0
             }
+
+            if (withGradingStatus) {
+                const status = gradingStatusMap.get(exam.id)
+                result.submittedCount = status?.submittedCount ?? 0
+                result.gradedCount = status?.gradedCount ?? 0
+            }
+
+            return result
         })
 
         return NextResponse.json(examsWithCounts)

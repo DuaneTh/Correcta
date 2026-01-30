@@ -203,6 +203,9 @@ const dictionaries = {
                     emptyCourses: 'Aucun cours trouvé.',
                     emptyExams: 'Aucun examen trouvé.',
                     startLabel: 'Début',
+                    coursesTitle: 'Cours',
+                    noEnrollments: 'Aucune inscription',
+                    closeButton: 'Fermer',
                 },
                 bulk: {
                     title: 'Import en masse',
@@ -507,6 +510,7 @@ const dictionaries = {
             header: {
                 myCourses: 'Mes cours',
                 exams: 'Tous mes examens',
+                corrections: 'Corrections',
             },
             coursesPage: {
                 title: 'Mes cours',
@@ -584,6 +588,8 @@ const dictionaries = {
                 title: 'Examens',
                 newExamButton: 'Nouvel examen',
                 emptyStateText: 'Aucun examen trouvé.',
+                showArchived: 'Afficher les archives',
+                archivedBadge: 'Archivé',
                 table: {
                     columnTitle: 'Titre',
                     columnCourse: 'Cours',
@@ -610,6 +616,24 @@ const dictionaries = {
                 sections: 'sections',
                 section: 'section',
                 noStudents: 'Aucun étudiant',
+            },
+            correctionsPage: {
+                title: 'Corrections',
+                emptyStateText: 'Aucun examen à corriger.',
+                showArchived: 'Afficher les archives',
+                table: {
+                    columnExam: 'Examen',
+                    columnCourse: 'Cours',
+                    columnSubmissions: 'Copies',
+                    columnGraded: 'Corrigées',
+                    columnStatus: 'Statut',
+                    columnActions: 'Actions',
+                },
+                statusNotStarted: 'Non corrigé',
+                statusInProgress: 'En cours de correction',
+                statusCompleted: 'Corrigé',
+                gradeButton: 'Corriger',
+                viewButton: 'Voir',
             },
             courseDetailPage: {
                 backToCourses: 'Retour à mes cours',
@@ -912,6 +936,9 @@ const dictionaries = {
                     emptyCourses: 'No courses found.',
                     emptyExams: 'No exams found.',
                     startLabel: 'Start',
+                    coursesTitle: 'Courses',
+                    noEnrollments: 'No enrollments',
+                    closeButton: 'Close',
                 },
                 bulk: {
                     title: 'Bulk import',
@@ -1216,6 +1243,7 @@ const dictionaries = {
             header: {
                 myCourses: 'My courses',
                 exams: 'All my exams',
+                corrections: 'Corrections',
             },
             coursesPage: {
                 title: 'My courses',
@@ -1291,6 +1319,8 @@ const dictionaries = {
                 title: 'Exams',
                 newExamButton: 'New exam',
                 emptyStateText: 'No exams found.',
+                showArchived: 'Show archived',
+                archivedBadge: 'Archived',
                 table: {
                     columnTitle: 'Title',
                     columnCourse: 'Course',
@@ -1317,6 +1347,24 @@ const dictionaries = {
                 sections: 'sections',
                 section: 'section',
                 noStudents: 'No students',
+            },
+            correctionsPage: {
+                title: 'Corrections',
+                emptyStateText: 'No exams to grade.',
+                showArchived: 'Show archived',
+                table: {
+                    columnExam: 'Exam',
+                    columnCourse: 'Course',
+                    columnSubmissions: 'Submissions',
+                    columnGraded: 'Graded',
+                    columnStatus: 'Status',
+                    columnActions: 'Actions',
+                },
+                statusNotStarted: 'Not graded',
+                statusInProgress: 'Grading in progress',
+                statusCompleted: 'Graded',
+                gradeButton: 'Grade',
+                viewButton: 'View',
             },
             courseDetailPage: {
                 backToCourses: 'Back to my courses',

@@ -26,7 +26,7 @@ export async function GET(
             }
         })
 
-        if (!exam || exam.archivedAt || exam.course.archivedAt) {
+        if (!exam) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 

@@ -61,7 +61,7 @@ export async function POST(
             }
         })
 
-        if (!exam || exam.archivedAt || exam.course.archivedAt) {
+        if (!exam) {
             return NextResponse.json({ error: "Exam not found" }, { status: 404 })
         }
 
@@ -70,10 +70,15 @@ export async function POST(
         }
 
         // 4. Check queue availability
-        if (!aiGradingQueue) {
+        // Note: Queue-based grading requires Redis + worker process running separately
+        // Default to indicating queue not available so frontend uses sync grading
+        // To enable queue-based grading, set ENABLE_GRADING_QUEUE=true
+        const useQueue = process.env.ENABLE_GRADING_QUEUE === 'true' && aiGradingQueue
+
+        if (!useQueue) {
             return NextResponse.json({
                 error: "QUEUE_NOT_AVAILABLE",
-                message: "AI grading queue is not available."
+                message: "Queue grading not enabled. Using synchronous grading."
             }, { status: 500 })
         }
 
@@ -182,7 +187,7 @@ export async function POST(
         }))
 
         if (jobs.length > 0) {
-            await aiGradingQueue.addBulk(jobs)
+            await aiGradingQueue!.addBulk(jobs)
 
             // Update attempt statuses to GRADING_IN_PROGRESS
             const attemptIds = [...new Set(answersToGrade.map(a => a.attemptId))]

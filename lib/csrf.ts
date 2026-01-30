@@ -63,7 +63,7 @@ export const setCsrfCookie = (
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         path: '/',
-        maxAge: options?.maxAge ?? 60 * 60
+        maxAge: options?.maxAge ?? 60 * 60 * 6 // 6 hours - covers long exams
     })
 }
 

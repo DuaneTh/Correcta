@@ -51,11 +51,12 @@ export async function getTeacherAccessForAttempt(
         return false
     }
 
+    // Include archived exams - teachers should be able to view grading for past exams
     const permissions = await getExamPermissions(examId, {
         id: sessionUser.id,
         role: sessionUser.role,
         institutionId: sessionUser.institutionId as string
-    })
+    }, { includeArchived: true })
 
     return permissions.canEdit
 }

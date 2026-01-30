@@ -59,7 +59,8 @@ model User {
   gradingTasks  GradingTask[] // If human grader
   authoredExams Exam[] // Exams created by this user
   examChanges   ExamChange[]
-  
+  harmonizations HarmonizationHistory[] // Harmonizations applied by this user
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
@@ -343,23 +344,26 @@ model AnswerSegment {
 
 model Grade {
   id              String         @id @default(uuid())
-  
+
   // For question-level grades (manual grading)
   answerId        String?        @unique
   answer          Answer?        @relation(fields: [answerId], references: [id])
-  
+
   // For segment-level grades (future AI grading)
   answerSegmentId String?        @unique
   answerSegment   AnswerSegment? @relation(fields: [answerSegmentId], references: [id])
-  
+
   score           Float
   feedback        String?        // Teacher comment or AI feedback
   aiRationale     String?        // AI-specific rationale
   isOverridden    Boolean        @default(false)
+  isHarmonized    Boolean        @default(false) // True if score was adjusted by harmonization
   gradedByUserId  String?        // Null if AI, userId if manual
-  
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
+
+  harmonizationDetails HarmonizationDetail[]
 }
 
 // --- Anti-Cheat & Logs ---
@@ -401,12 +405,94 @@ model GradingTask {
   id          String     @id @default(uuid())
   attemptId   String
   attempt     Attempt    @relation(fields: [attemptId], references: [id])
-  
+
   status      TaskStatus @default(PENDING)
   assignedTo  String?    // User ID if manual review
   user        User?      @relation(fields: [assignedTo], references: [id])
-  
+
   error       String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+}
+
+// --- Platform Settings ---
+
+model SystemSetting {
+  key       String   @id
+  value     String   // Encrypted for sensitive values
+  encrypted Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+  updatedBy String?  // User ID who last updated
+}
+
+// --- AI Configuration ---
+
+model AIPromptConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique // e.g., "GRADING_SYSTEM", "GRADING_USER", "RUBRIC_SYSTEM"
+  name        String   // Display name
+  description String?  // Description of what this prompt does
+  content     String   // The prompt content (can be long)
+  isActive    Boolean  @default(true)
+  version     Int      @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?  // User ID who last updated
+}
+
+model AIGradingLog {
+  id            String   @id @default(uuid())
+  attemptId     String?  // Link to attempt if applicable
+  answerId      String?  // Link to answer if applicable
+  questionId    String?  // Link to question if applicable
+
+  operation     String   // "GRADING" | "RUBRIC_GENERATION" | "TEST"
+  model         String   // e.g., "gpt-4o"
+
+  // Input
+  systemPrompt  String
+  userPrompt    String
+
+  // Output
+  rawResponse   String?  // Full JSON response
+  score         Float?
+  feedback      String?
+  aiRationale   String?
+
+  // Metadata
+  tokensInput   Int?
+  tokensOutput  Int?
+  durationMs    Int?
+  success       Boolean  @default(true)
+  error         String?
+
+  createdAt     DateTime @default(now())
+  createdBy     String?  // User who triggered the grading
+}
+
+// --- Grade Harmonization ---
+
+model HarmonizationHistory {
+  id               String   @id @default(uuid())
+  examId           String
+  method           String   // bonus, linear, curve_average, sqrt, floor, ceiling
+  params           Json     // Method-specific parameters
+  attemptsAffected Int?     // Number of attempts modified
+  appliedBy        String   // User ID who applied
+  appliedByUser    User     @relation(fields: [appliedBy], references: [id])
+  appliedAt        DateTime @default(now())
+
+  details          HarmonizationDetail[]
+
+  @@index([examId])
+}
+
+model HarmonizationDetail {
+  id              String   @id @default(uuid())
+  harmonizationId String
+  harmonization   HarmonizationHistory @relation(fields: [harmonizationId], references: [id], onDelete: Cascade)
+  gradeId         String
+  grade           Grade    @relation(fields: [gradeId], references: [id])
+  originalScore   Float
+  newScore        Float
 }

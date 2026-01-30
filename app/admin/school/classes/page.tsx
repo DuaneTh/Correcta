@@ -40,6 +40,7 @@ export default async function SchoolClassesPage() {
                 sections={data.sections}
                 exams={data.exams}
                 students={data.students}
+                teachers={data.teachers}
             />
         </SchoolAdminLayout>
     )

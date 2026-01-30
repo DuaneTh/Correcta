@@ -71,6 +71,7 @@ export default async function StudentExamsPage() {
     }
     const classIds = Array.from(classIdSet)
 
+    // Active exams (not archived) that the student can take
     const baseExamWhere = {
         archivedAt: null,
         status: "PUBLISHED" as const,
@@ -108,6 +109,15 @@ export default async function StudentExamsPage() {
         classId: { in: classIds },
     }
 
+    // Also get archived exams where the student has attempts (to see past results)
+    const archivedExamsWithAttemptsWhere = {
+        archivedAt: { not: null },
+        status: "PUBLISHED" as const,
+        attempts: {
+            some: { studentId: studentId },
+        },
+    }
+
     const examSelect = {
         id: true,
         title: true,
@@ -118,6 +128,7 @@ export default async function StudentExamsPage() {
         parentExamId: true,
         classId: true,
         classIds: true,
+        archivedAt: true,
         course: {
             select: {
                 code: true,
@@ -143,11 +154,30 @@ export default async function StudentExamsPage() {
                 status: true,
                 startedAt: true,
                 submittedAt: true,
+                answers: {
+                    select: {
+                        grades: {
+                            select: { score: true },
+                            take: 1
+                        }
+                    }
+                }
             },
         },
+        sections: {
+            select: {
+                questions: {
+                    select: {
+                        segments: {
+                            select: { maxPoints: true }
+                        }
+                    }
+                }
+            }
+        }
     }
 
-    const [variantExams, baseExams] = await Promise.all([
+    const [variantExams, baseExams, archivedExamsWithAttempts] = await Promise.all([
         prisma.exam.findMany({
             where: variantExamWhere,
             select: examSelect,
@@ -156,24 +186,67 @@ export default async function StudentExamsPage() {
             where: baseExamWhere,
             select: examSelect,
         }),
+        // Archived exams where student has attempts (to view past results)
+        prisma.exam.findMany({
+            where: archivedExamsWithAttemptsWhere,
+            select: examSelect,
+        }),
     ])
 
-    type ExamWithAttempts = (typeof variantExams)[number]
-    const exams = resolvePublishedExamsForClasses({
+    type ExamWithAttempts = (typeof variantExams)[number] & { archivedAt?: Date | null }
+    const activeExams = resolvePublishedExamsForClasses({
         baseExams,
         variantExams,
         classIds,
         context: 'student-exams',
-    }).sort((a, b) => new Date(b.startAt as Date).getTime() - new Date(a.startAt as Date).getTime()) as ExamWithAttempts[]
+    }) as ExamWithAttempts[]
+
+    // Combine active exams with archived exams that have attempts
+    // Use a Map to avoid duplicates (in case an exam appears in both)
+    const examMap = new Map<string, ExamWithAttempts>()
+    activeExams.forEach(exam => examMap.set(exam.id, exam))
+    archivedExamsWithAttempts.forEach(exam => {
+        if (!examMap.has(exam.id)) {
+            examMap.set(exam.id, exam as ExamWithAttempts)
+        }
+    })
+
+    const exams = Array.from(examMap.values())
+        .sort((a, b) => new Date(b.startAt as Date).getTime() - new Date(a.startAt as Date).getTime())
 
     return (
         <StudentExamsClient
-            exams={exams.map((exam) => ({
-                ...exam,
-                startAt: exam.startAt as Date,
-                durationMinutes: exam.durationMinutes as number,
-                gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
-            }))}
+            exams={exams.map((exam) => {
+                // Calculate max points from exam sections
+                const maxPoints = exam.sections?.reduce((total, section) => {
+                    return total + section.questions.reduce((qTotal, question) => {
+                        return qTotal + question.segments.reduce((sTotal, segment) => sTotal + (segment.maxPoints || 0), 0)
+                    }, 0)
+                }, 0) || 0
+
+                // Calculate score from attempt grades
+                const attempt = exam.attempts[0]
+                const score = attempt?.answers?.reduce((total, answer) => {
+                    const grade = answer.grades?.[0]
+                    return total + (grade?.score || 0)
+                }, 0) ?? null
+
+                return {
+                    ...exam,
+                    startAt: exam.startAt as Date,
+                    durationMinutes: exam.durationMinutes as number,
+                    gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
+                    archivedAt: exam.archivedAt ?? null,
+                    attempts: exam.attempts.map(a => ({
+                        id: a.id,
+                        status: a.status,
+                        startedAt: a.startedAt,
+                        submittedAt: a.submittedAt,
+                        score: a.status === 'GRADED' ? score : null,
+                        maxPoints: maxPoints > 0 ? maxPoints : null
+                    }))
+                }
+            })}
             dictionary={dictionary}
             locale={locale}
         />

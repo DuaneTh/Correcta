@@ -25,7 +25,7 @@ type ExamPermission = {
 
 const isAdmin = (role: UserRole) => role === 'ADMIN' || role === 'SCHOOL_ADMIN' || role === 'PLATFORM_ADMIN'
 
-export async function getExamPermissions(examId: string, user: SessionUser): Promise<ExamPermission> {
+export async function getExamPermissions(examId: string, user: SessionUser, options?: { includeArchived?: boolean }): Promise<ExamPermission> {
     const exam = await prisma.exam.findUnique({
         where: { id: examId },
         select: {
@@ -39,7 +39,15 @@ export async function getExamPermissions(examId: string, user: SessionUser): Pro
         },
     })
 
-    if (!exam || exam.archivedAt || exam.course.archivedAt || exam.course.institutionId !== user.institutionId) {
+    const includeArchived = options?.includeArchived ?? false
+
+    // Course archived = institution-level deletion, always block
+    if (!exam || exam.course.archivedAt || exam.course.institutionId !== user.institutionId) {
+        return { exam: null, canEdit: false, teacherClassIds: [] }
+    }
+
+    // Exam archived = past exam, allow read access if includeArchived is true
+    if (exam.archivedAt && !includeArchived) {
         return { exam: null, canEdit: false, teacherClassIds: [] }
     }
 

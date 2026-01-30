@@ -17,11 +17,14 @@ interface ExamWithDetails {
     endAt: Date | null
     durationMinutes: number
     gradingConfig?: Record<string, unknown> | null
+    archivedAt?: Date | string | null
     attempts: Array<{
         id: string
         status: AttemptStatus
         startedAt: Date
         submittedAt: Date | null
+        score?: number | null
+        maxPoints?: number | null
     }>
 }
 
@@ -183,19 +186,38 @@ export default function StudentCoursesClient({ courses, dictionary, locale }: Pr
                                         const isBeforeStart = now < startAt
                                         const isAfterEnd = endAt && now > endAt
                                         const isWithinWindow = !isBeforeStart && !isAfterEnd
+                                        const isArchived = Boolean(exam.archivedAt)
                                         const releaseInfo = getCorrectionReleaseInfo({
                                             gradingConfig: exam.gradingConfig,
                                             startAt,
                                             durationMinutes: exam.durationMinutes,
                                             endAt,
                                         })
-                                        const canViewCorrection = Boolean(isSubmitted && isAfterEnd && isGraded && releaseInfo.isReleased)
+                                        const canViewCorrection = Boolean(isSubmitted && (isAfterEnd || isArchived) && isGraded && releaseInfo.isReleased)
+                                        const score = attempt?.score
+                                        const maxPoints = attempt?.maxPoints
 
                                         let statusLabel = "Non démarré"
                                         let statusColor = "bg-gray-100 text-gray-800"
                                         let actionButton = null
 
-                                        if (isBeforeStart) {
+                                        // Handle archived exams first
+                                        if (isArchived) {
+                                            statusLabel = isGraded && canViewCorrection ? dict.statusCorrected : (isSubmitted ? dict.statusSubmitted : "Archivé")
+                                            statusColor = canViewCorrection
+                                                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
+                                                : "bg-gray-100 text-gray-500"
+                                            actionButton = isSubmitted && attempt ? (
+                                                <Link
+                                                    href={`/student/attempts/${attempt.id}/results`}
+                                                    className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                                                >
+                                                    {dict.viewGradedCopyButton}
+                                                </Link>
+                                            ) : (
+                                                <span className="text-sm text-gray-400 italic">Examen archivé</span>
+                                            )
+                                        } else if (isBeforeStart) {
                                             statusLabel = dict.statusUpcoming
                                             statusColor = "bg-yellow-100 text-yellow-800"
                                             actionButton = (
@@ -327,18 +349,23 @@ export default function StudentCoursesClient({ courses, dictionary, locale }: Pr
                                         }
 
                                         return (
-                                            <div key={exam.id} className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                            <div key={exam.id} className={`bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isArchived ? 'opacity-70' : ''}`}>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-2">
                                                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
                                                             {statusLabel}
                                                         </span>
+                                                        {canViewCorrection && score !== null && score !== undefined && maxPoints ? (
+                                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-brand-100 text-brand-900 border border-brand-200">
+                                                                {score} / {maxPoints}
+                                                            </span>
+                                                        ) : null}
                                                     </div>
                                                     <h3 className="text-lg font-semibold text-gray-900 mb-1">{exam.title}</h3>
                                                     <div className="text-sm text-gray-600 space-y-1">
                                                         <p>{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</p>
                                                         <p>{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</p>
-                                                        {endAt && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
+                                                        {endAt && !isArchived && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
                                                     </div>
                                                 </div>
                                                 <div className="flex-shrink-0">

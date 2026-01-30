@@ -14,16 +14,14 @@ export default async function TeacherCoursesPage() {
 
     const dictionary = await getDictionary()
 
-    // Fetch courses where user is teacher or admin
+    // Fetch courses where user is teacher or admin (include archived for visibility)
     const courses = await prisma.course.findMany({
         where: {
-            archivedAt: null,
             OR: [
                 {
                     // User is enrolled as TEACHER
                     classes: {
                         some: {
-                            archivedAt: null,
                             enrollments: {
                                 some: {
                                     userId: session.user.id,
@@ -42,7 +40,7 @@ export default async function TeacherCoursesPage() {
         },
         include: {
             exams: {
-                where: { archivedAt: null, parentExamId: null },
+                where: { parentExamId: null },
                 orderBy: {
                     startAt: 'desc'
                 },
@@ -66,8 +64,9 @@ export default async function TeacherCoursesPage() {
 
     const serializedCourses = courses.map(course => ({
         ...course,
+        archivedAt: course.archivedAt ? course.archivedAt.toISOString() : null,
         _count: {
-            exams: course.exams.length,
+            exams: course.exams.filter(e => !e.archivedAt).length,
         },
         exams: course.exams.map(exam => ({
             ...exam,
@@ -75,6 +74,7 @@ export default async function TeacherCoursesPage() {
             endAt: exam.endAt ? exam.endAt.toISOString() : null,
             createdAt: exam.createdAt.toISOString(),
             updatedAt: exam.updatedAt.toISOString(),
+            archivedAt: exam.archivedAt ? exam.archivedAt.toISOString() : null,
             classId: exam.classId ?? null,
             parentExamId: exam.parentExamId ?? null,
             className: exam.class?.name ?? null,

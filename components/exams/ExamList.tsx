@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState, useEffect, useRef } from 'react'
-import { Plus, Search, Trash2 } from 'lucide-react'
+import { Plus, Search, Trash2, ClipboardCheck } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
@@ -20,6 +20,7 @@ interface Exam {
     classId?: string | null
     classIds?: string[]
     parentExamId?: string | null
+    archivedAt?: string | null
     class?: {
         id: string
         name: string
@@ -46,6 +47,7 @@ export default function ExamList({ dictionary }: ExamListProps) {
     const [exams, setExams] = useState<Exam[]>([])
     const [loading, setLoading] = useState(true)
     const [searchQuery, setSearchQuery] = useState('')
+    const [showArchived, setShowArchived] = useState(false)
     const [examIdPendingDelete, setExamIdPendingDelete] = useState<string | null>(null)
     const [isDeleting, setIsDeleting] = useState(false)
     const [pendingCorrectionExamId, setPendingCorrectionExamId] = useState<string | null>(null)
@@ -56,12 +58,19 @@ export default function ExamList({ dictionary }: ExamListProps) {
     const examBuilderDict = dictionary.teacher.examBuilderPage
 
     const filteredExams = useMemo(() => {
+        let filtered = exams
+
+        // Filter by archived status
+        if (!showArchived) {
+            filtered = filtered.filter((exam) => !exam.archivedAt)
+        }
+
         if (!searchQuery) {
-            return exams
+            return filtered
         }
 
         const query = searchQuery.toLowerCase()
-        return exams.filter((exam) => {
+        return filtered.filter((exam) => {
             if (exam.title.toLowerCase().includes(query)) return true
             if (exam.course.name.toLowerCase().includes(query)) return true
             if (exam.course.code.toLowerCase().includes(query)) return true
@@ -76,11 +85,11 @@ export default function ExamList({ dictionary }: ExamListProps) {
 
             return false
         })
-    }, [exams, searchQuery])
+    }, [exams, searchQuery, showArchived])
 
     useEffect(() => {
         fetchExams()
-    }, [])
+    }, [showArchived])
 
     // Handle click outside for exam delete confirmation
     useEffect(() => {
@@ -99,7 +108,13 @@ export default function ExamList({ dictionary }: ExamListProps) {
 
     const fetchExams = async () => {
         try {
-            const res = await fetch('/api/exams')
+            setLoading(true)
+            const params = new URLSearchParams()
+            if (showArchived) {
+                params.set('includeArchived', 'true')
+            }
+            const url = `/api/exams${params.toString() ? `?${params.toString()}` : ''}`
+            const res = await fetch(url)
             if (res.ok) {
                 const data = await res.json()
                 setExams(data)
@@ -199,6 +214,15 @@ export default function ExamList({ dictionary }: ExamListProps) {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+                        <input
+                            type="checkbox"
+                            checked={showArchived}
+                            onChange={(e) => setShowArchived(e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
+                        />
+                        {dict.showArchived}
+                    </label>
                     <button
                         onClick={() => router.push('/teacher/exams/new')}
                         className="inline-flex items-center gap-2 rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2 transition-colors"
@@ -247,12 +271,17 @@ export default function ExamList({ dictionary }: ExamListProps) {
                                 const canSendCorrection = releaseInfo.canSendManually && exam.status === 'PUBLISHED'
                                 const isPendingCorrection = pendingCorrectionExamId === exam.id
                                 const isSendingCorrection = sendingCorrectionExamId === exam.id
+                                const isArchived = Boolean(exam.archivedAt)
 
                                 let statusLabel: string = coursesDict.examPublishedBadge
                                 let statusClassName = 'border-brand-900/20 bg-brand-50 text-brand-900'
                                 const draftStatusClass = 'border-amber-200 bg-amber-50 text-amber-700'
                                 const endedStatusClass = 'border-gray-200 bg-gray-100 text-gray-600'
-                                if (exam.status === 'DRAFT') {
+                                const archivedStatusClass = 'border-gray-300 bg-gray-100 text-gray-500'
+                                if (isArchived) {
+                                    statusLabel = dict.archivedBadge
+                                    statusClassName = archivedStatusClass
+                                } else if (exam.status === 'DRAFT') {
                                     statusLabel = coursesDict.examDraftBadge
                                     statusClassName = draftStatusClass
                                 } else if (!start) {
@@ -276,7 +305,7 @@ export default function ExamList({ dictionary }: ExamListProps) {
                                     <tr
                                         key={exam.id}
                                         onClick={() => handleRowClick(exam)}
-                                        className="cursor-pointer hover:bg-gray-50"
+                                        className={`cursor-pointer hover:bg-gray-50 ${isArchived ? 'bg-gray-50 opacity-60' : ''}`}
                                     >
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-3 max-w-xs md:max-w-sm lg:max-w-md">
@@ -322,10 +351,23 @@ export default function ExamList({ dictionary }: ExamListProps) {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <ExamStatusBadge label={statusLabel} className={statusClassName} />
                                         </td>
-                                        <td 
+                                        <td
                                             className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium"
                                         >
                                             <div className="flex items-center justify-end gap-2">
+                                                {exam.status === 'PUBLISHED' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={(event) => {
+                                                            event.stopPropagation()
+                                                            router.push(`/dashboard/exams/${exam.id}/grading`)
+                                                        }}
+                                                        className="inline-flex items-center h-9 rounded-md border border-brand-200 bg-brand-50 px-3 text-sm font-medium text-brand-900 hover:bg-brand-100"
+                                                    >
+                                                        <ClipboardCheck className="w-4 h-4 mr-1" />
+                                                        {dict.actions.grading}
+                                                    </button>
+                                                )}
                                                 {canSendCorrection && (
                                                     <div className="inline-flex items-center gap-2">
                                                         <button

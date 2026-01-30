@@ -31,8 +31,12 @@ export function GradingProgressModal({
 }: GradingProgressModalProps) {
     const [progress, setProgress] = useState<ProgressData | null>(null)
     const [isCancelling, setIsCancelling] = useState(false)
+    const [isSwitchingToSync, setIsSwitchingToSync] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [isStuck, setIsStuck] = useState(false)
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    const lastCompletedRef = useRef<number>(0)
+    const stuckCheckCountRef = useRef<number>(0)
 
     const fetchProgress = useCallback(async () => {
         try {
@@ -49,11 +53,26 @@ export function GradingProgressModal({
                     clearInterval(pollIntervalRef.current)
                     pollIntervalRef.current = null
                 }
+                setIsStuck(false)
                 // Small delay before closing to show completion state
                 setTimeout(() => {
                     onComplete()
                     onClose()
                 }, 1500)
+            } else if (data.status === 'IN_PROGRESS') {
+                // Check if progress is stuck (no change after several polls)
+                if (data.completed === lastCompletedRef.current) {
+                    stuckCheckCountRef.current++
+                    // After 15 polls (30 seconds with 2s interval) with no progress, consider stuck
+                    if (stuckCheckCountRef.current >= 15) {
+                        setIsStuck(true)
+                    }
+                } else {
+                    // Progress was made, reset stuck counter
+                    lastCompletedRef.current = data.completed
+                    stuckCheckCountRef.current = 0
+                    setIsStuck(false)
+                }
             }
         } catch (err) {
             console.error('Error fetching progress:', err)
@@ -64,6 +83,12 @@ export function GradingProgressModal({
     // Start polling when modal opens
     useEffect(() => {
         if (isOpen) {
+            // Reset state
+            lastCompletedRef.current = 0
+            stuckCheckCountRef.current = 0
+            setIsStuck(false)
+            setError(null)
+
             fetchProgress() // Initial fetch
             pollIntervalRef.current = setInterval(fetchProgress, 2000)
         }
@@ -75,6 +100,51 @@ export function GradingProgressModal({
             }
         }
     }, [isOpen, fetchProgress])
+
+    // Switch to synchronous grading when queue is stuck
+    const handleSwitchToSync = async () => {
+        setIsSwitchingToSync(true)
+        setError(null)
+
+        try {
+            const csrfToken = await getCsrfToken()
+
+            // First reset stuck attempts
+            await fetch(`/api/exams/${examId}/reset-grading`, {
+                method: 'POST',
+                headers: { 'x-csrf-token': csrfToken }
+            })
+
+            // Then run synchronous grading
+            const res = await fetch(`/api/exams/${examId}/grade-sync`, {
+                method: 'POST',
+                headers: { 'x-csrf-token': csrfToken }
+            })
+
+            if (!res.ok) {
+                const data = await res.json()
+                throw new Error(data.error || 'Erreur lors de la correction')
+            }
+
+            const data = await res.json()
+            console.log('[Grading] Sync grading complete:', data)
+
+            // Stop polling and trigger completion
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current)
+                pollIntervalRef.current = null
+            }
+
+            setIsStuck(false)
+            onComplete()
+            onClose()
+        } catch (err) {
+            console.error('[Grading] Switch to sync error:', err)
+            setError(err instanceof Error ? err.message : 'Une erreur est survenue')
+        } finally {
+            setIsSwitchingToSync(false)
+        }
+    }
 
     const handleCancel = async () => {
         setIsCancelling(true)
@@ -174,13 +244,32 @@ export function GradingProgressModal({
 
                         {/* Progress text */}
                         <p className="text-center text-gray-700 font-medium">
-                            {progress.completed} / {progress.total} copies corrigees
+                            {progress.completed} / {progress.total} {progress.total > 1 ? 'copies corrigees' : 'copie corrigee'}
                         </p>
 
                         {/* Percentage */}
                         <p className="text-center text-2xl font-bold text-gray-900">
                             {progress.percentage}%
                         </p>
+
+                        {/* Stuck warning */}
+                        {isStuck && !isComplete && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <p className="text-sm text-amber-800 font-medium">
+                                    La correction semble bloquee
+                                </p>
+                                <p className="text-xs text-amber-600 mt-1">
+                                    Le service de correction en arriere-plan ne repond pas.
+                                </p>
+                                <button
+                                    onClick={handleSwitchToSync}
+                                    disabled={isSwitchingToSync}
+                                    className="mt-2 w-full px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                                >
+                                    {isSwitchingToSync ? 'Correction en cours...' : 'Corriger directement (sans file d\'attente)'}
+                                </button>
+                            </div>
+                        )}
 
                         {/* Publish option checkbox */}
                         {onPublishAfterGradingChange && (

@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronDown, Filter, MoreHorizontal, FileDown, FileText } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Filter, FileDown, FileText, Eye, List, BarChart3 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { GradeAllButton } from '@/components/grading/GradeAllButton'
 import { ExportProgressModal } from '@/components/export/ExportProgressModal'
+import { AttemptDetailModal } from '@/components/grading/AttemptDetailModal'
+import { GradingProgressModal } from '@/components/grading/GradingProgressModal'
+import { GradeDistributionPanel } from '@/components/grading/GradeDistributionPanel'
 
 interface AttemptSummary {
     attemptId: string
@@ -16,6 +19,7 @@ interface AttemptSummary {
     }
     status: string
     submittedAt: string | null
+    gradedAt: string | null
     totalScore: number | null
     maxPoints: number | null
     gradedQuestionsCount: number
@@ -28,9 +32,22 @@ interface GradingDashboardProps {
     examTitle: string
 }
 
+interface RubricStatus {
+    total: number
+    generated: number
+    allGenerated: boolean
+}
+
+interface GradingStatusData {
+    total: number
+    graded: number
+    allGraded: boolean
+}
+
 type SortField = 'name' | 'submittedAt' | 'score'
 type SortOrder = 'asc' | 'desc'
 type FilterOption = 'all' | 'ungraded' | 'graded' | 'modified'
+type ViewMode = 'list' | 'stats'
 
 export default function GradingDashboard({ examId, examTitle }: GradingDashboardProps) {
     const router = useRouter()
@@ -46,10 +63,18 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
     const [showActionsDropdown, setShowActionsDropdown] = useState(false)
     const [exportJobId, setExportJobId] = useState<string | null>(null)
     const [isStartingExport, setIsStartingExport] = useState(false)
+    const [selectedAttemptId, setSelectedAttemptId] = useState<string | null>(null)
+    const [showGradingProgress, setShowGradingProgress] = useState(false)
+    const [viewMode, setViewMode] = useState<ViewMode>('list')
+    const [gradesReleased, setGradesReleased] = useState(false)
+    const [rubricStatus, setRubricStatus] = useState<RubricStatus | undefined>(undefined)
+    const [gradingStatusData, setGradingStatusData] = useState<GradingStatusData | undefined>(undefined)
 
-    const fetchAttempts = useCallback(async () => {
+    const fetchAttempts = useCallback(async (showLoading = true) => {
         try {
-            setLoading(true)
+            if (showLoading) {
+                setLoading(true)
+            }
             const res = await fetch(`/api/exams/${examId}/grading`)
             if (!res.ok) {
                 console.error('Failed to fetch grading data')
@@ -57,15 +82,27 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
             }
             const data = await res.json()
             setAttempts(data.attempts || [])
+            setGradesReleased(data.gradesReleased || false)
+            setRubricStatus(data.rubricStatus)
+            setGradingStatusData(data.gradingStatus)
         } catch (error) {
             console.error('Error fetching attempts:', error)
         } finally {
-            setLoading(false)
+            if (showLoading) {
+                setLoading(false)
+            }
         }
     }, [examId])
 
     useEffect(() => {
-        fetchAttempts()
+        fetchAttempts(true)
+
+        // Auto-refresh every 30 seconds to catch grading updates (silent refresh)
+        const interval = setInterval(() => {
+            fetchAttempts(false)
+        }, 30000)
+
+        return () => clearInterval(interval)
     }, [fetchAttempts])
 
     const handleSort = (field: SortField) => {
@@ -136,6 +173,19 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
 
     const gradedCount = stats.graded
     const canPublish = stats.allGraded
+
+    // Prepare grade data for distribution panel
+    const gradeDataForPanel = useMemo(() => {
+        return attempts
+            .filter(a => a.status === 'GRADED' && a.totalScore !== null && a.maxPoints !== null)
+            .map(a => ({
+                attemptId: a.attemptId,
+                studentName: a.student.name,
+                originalScore: a.totalScore!,
+                currentScore: a.totalScore!,
+                maxPoints: a.maxPoints!
+            }))
+    }, [attempts])
 
     const handleReleaseResults = async () => {
         setIsReleasing(true)
@@ -224,31 +274,31 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         switch (status) {
             case 'SUBMITTED':
                 return (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                    <span className="text-sm text-gray-500">
                         Non corrigée
                     </span>
                 )
             case 'GRADING_IN_PROGRESS':
                 return (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                    <span className="text-sm text-gray-500">
                         Correction en cours
                     </span>
                 )
             case 'GRADED':
                 return (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                    <span className="text-sm text-gray-900">
                         Corrigée
                     </span>
                 )
             case 'IN_PROGRESS':
                 return (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                    <span className="text-sm text-gray-500">
                         En cours
                     </span>
                 )
             default:
                 return (
-                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                    <span className="text-sm text-gray-500">
                         {status}
                     </span>
                 )
@@ -281,7 +331,14 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                             <p className="text-gray-600 mt-1">{examTitle}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <GradeAllButton examId={examId} onComplete={fetchAttempts} onPublishAfterGrading={handleReleaseResults} />
+                            <GradeAllButton
+                                examId={examId}
+                                rubricStatus={rubricStatus}
+                                gradingStatus={gradingStatusData}
+                                onComplete={fetchAttempts}
+                                onPublishAfterGrading={handleReleaseResults}
+                                disabled={gradesReleased}
+                            />
 
                             {/* Actions dropdown */}
                             <div className="relative">
@@ -289,8 +346,8 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                     onClick={() => setShowActionsDropdown(!showActionsDropdown)}
                                     className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                 >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                    Actions
+                                    <FileDown className="w-4 h-4" />
+                                    Exporter
                                     <ChevronDown className="w-4 h-4" />
                                 </button>
                                 {showActionsDropdown && (
@@ -326,16 +383,16 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
 
                             {/* Publish button */}
                             <button
-                                onClick={() => canPublish ? setShowPublishConfirm(true) : null}
-                                disabled={isReleasing || !canPublish}
+                                onClick={() => canPublish && !gradesReleased ? setShowPublishConfirm(true) : null}
+                                disabled={isReleasing || !canPublish || gradesReleased}
                                 className={`px-4 py-2 font-semibold rounded-lg transition-colors ${
-                                    canPublish
+                                    canPublish && !gradesReleased
                                         ? 'bg-indigo-600 text-white hover:bg-indigo-700'
                                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                                 }`}
-                                title={!canPublish ? 'Toutes les copies doivent etre corrigees' : undefined}
+                                title={gradesReleased ? 'Les copies ont deja ete rendues' : !canPublish ? 'Toutes les copies doivent etre corrigees' : undefined}
                             >
-                                {isReleasing ? 'Publication...' : 'Rendre les copies'}
+                                {isReleasing ? 'Publication...' : gradesReleased ? 'Copies rendues' : 'Rendre les copies'}
                             </button>
                         </div>
                     </div>
@@ -369,9 +426,12 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                     </div>
                 </div>
 
-                {/* Progress bar (only show if not all graded) */}
+                {/* Progress bar (only show if not all graded) - clickable to show details */}
                 {!stats.allGraded && stats.total > 0 && (
-                    <div className="bg-white rounded-lg shadow p-4 mb-6">
+                    <div
+                        onClick={() => setShowGradingProgress(true)}
+                        className="bg-white rounded-lg shadow p-4 mb-6 cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-indigo-200"
+                    >
                         <div className="flex justify-between items-center mb-2">
                             <span className="text-sm font-medium text-gray-700">Progression de la correction</span>
                             <span className="text-sm text-gray-500">{stats.graded}/{stats.total} copies corrigees</span>
@@ -382,8 +442,35 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                 style={{ width: `${stats.percentage}%` }}
                             />
                         </div>
+                        <p className="text-xs text-indigo-600 mt-2 text-center">Cliquez pour voir les details</p>
                     </div>
                 )}
+
+                {/* View mode tabs */}
+                <div className="flex items-center gap-2 mb-6">
+                    <button
+                        onClick={() => setViewMode('list')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                            viewMode === 'list'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                    >
+                        <List className="w-4 h-4" />
+                        Liste des copies
+                    </button>
+                    <button
+                        onClick={() => setViewMode('stats')}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                            viewMode === 'stats'
+                                ? 'bg-indigo-600 text-white'
+                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
+                        }`}
+                    >
+                        <BarChart3 className="w-4 h-4" />
+                        Statistiques et harmonisation
+                    </button>
+                </div>
 
                 {/* Release message */}
                 {releaseMessage && (
@@ -438,140 +525,175 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                     </div>
                 )}
 
-                {/* Filter dropdown */}
-                <div className="mb-4 flex items-center gap-4">
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                            className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                        >
-                            <Filter className="w-4 h-4" />
-                            {getFilterLabel(filterOption)}
-                            <ChevronDown className="w-4 h-4" />
-                        </button>
-                        {showFilterDropdown && (
-                            <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
-                                {(['all', 'ungraded', 'graded', 'modified'] as FilterOption[]).map((option) => (
-                                    <button
-                                        key={option}
-                                        onClick={() => {
-                                            setFilterOption(option)
-                                            setShowFilterDropdown(false)
-                                        }}
-                                        className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
-                                            filterOption === option ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'
-                                        }`}
-                                    >
-                                        {getFilterLabel(option)}
-                                    </button>
-                                ))}
+                {/* Stats View - Distribution Panel */}
+                {viewMode === 'stats' && (
+                    <GradeDistributionPanel
+                        examId={examId}
+                        grades={gradeDataForPanel}
+                        maxPoints={stats.avgMaxPoints || 20}
+                        onHarmonizationApplied={fetchAttempts}
+                    />
+                )}
+
+                {/* List View - Filter dropdown and table */}
+                {viewMode === 'list' && (
+                    <>
+                        {/* Filter dropdown */}
+                        <div className="mb-4 flex items-center gap-4">
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                                >
+                                    <Filter className="w-4 h-4" />
+                                    {getFilterLabel(filterOption)}
+                                    <ChevronDown className="w-4 h-4" />
+                                </button>
+                                {showFilterDropdown && (
+                                    <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                                        {(['all', 'ungraded', 'graded', 'modified'] as FilterOption[]).map((option) => (
+                                            <button
+                                                key={option}
+                                                onClick={() => {
+                                                    setFilterOption(option)
+                                                    setShowFilterDropdown(false)
+                                                }}
+                                                className={`w-full px-4 py-2 text-left hover:bg-gray-50 ${
+                                                    filterOption === option ? 'bg-indigo-50 text-indigo-700' : 'text-gray-700'
+                                                }`}
+                                            >
+                                                {getFilterLabel(option)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                            {filterOption !== 'all' && (
+                                <span className="text-sm text-gray-500">
+                                    {filteredAttempts.length} resultat{filteredAttempts.length !== 1 ? 's' : ''}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Attempts table */}
+                        <div className="bg-white shadow overflow-hidden sm:rounded-lg overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50 sticky top-0 z-10">
+                                    <tr>
+                                        <th
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            onClick={() => handleSort('name')}
+                                        >
+                                            Etudiant
+                                        </th>
+                                        <th
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            onClick={() => handleSort('submittedAt')}
+                                        >
+                                            Statut
+                                        </th>
+                                        <th
+                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                            onClick={() => handleSort('score')}
+                                        >
+                                            Score
+                                        </th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {sortedAttempts.map((attempt, index) => {
+                                        const isSubmitted = ['SUBMITTED', 'GRADING_IN_PROGRESS', 'GRADED'].includes(attempt.status)
+                                        const hasScore = attempt.totalScore !== null
+                                        const hasHumanModifications = attempt.humanModifiedCount > 0
+
+                                        return (
+                                            <tr
+                                                key={attempt.attemptId}
+                                                onClick={() => isSubmitted && setSelectedAttemptId(attempt.attemptId)}
+                                                className={`hover:bg-indigo-50 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                                            >
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="text-sm font-medium text-gray-900">{attempt.student.name}</div>
+                                                    <div className="text-sm text-gray-500">{attempt.student.email}</div>
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    <div className="flex items-center gap-2">
+                                                        {getStatusLabel(attempt.status)}
+                                                        {hasHumanModifications && (
+                                                            <span
+                                                                className="text-xs text-gray-500 italic"
+                                                                title={`${attempt.humanModifiedCount} question${attempt.humanModifiedCount > 1 ? 's' : ''} modifiée${attempt.humanModifiedCount > 1 ? 's' : ''} par le professeur`}
+                                                            >
+                                                                (modifié)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {attempt.gradedAt ? (
+                                                        <span className="text-xs text-gray-500">
+                                                            Corrigé le {new Date(attempt.gradedAt).toLocaleString()}
+                                                        </span>
+                                                    ) : attempt.submittedAt ? (
+                                                        <span className="text-xs text-gray-500">
+                                                            Soumis le {new Date(attempt.submittedAt).toLocaleString()}
+                                                        </span>
+                                                    ) : null}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap">
+                                                    {hasScore ? (
+                                                        <div className="text-sm font-bold text-gray-900">
+                                                            {attempt.totalScore}{attempt.maxPoints ? ` / ${attempt.maxPoints}` : ''} pts
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-sm text-gray-400">Non corrige</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                    {isSubmitted ? (
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    setSelectedAttemptId(attempt.attemptId)
+                                                                }}
+                                                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded"
+                                                                title="Apercu rapide"
+                                                            >
+                                                                <Eye className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation()
+                                                                    router.push(`/dashboard/exams/${examId}/grading/${attempt.attemptId}`)
+                                                                }}
+                                                                className="text-indigo-600 hover:text-indigo-900 font-bold"
+                                                            >
+                                                                Corriger
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 cursor-not-allowed">
+                                                            Non disponible
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        {sortedAttempts.length === 0 && (
+                            <div className="p-12 text-center text-gray-500">
+                                {filterOption === 'all'
+                                    ? 'Aucune copie trouvee pour cet examen.'
+                                    : `Aucune copie correspondant au filtre "${getFilterLabel(filterOption)}".`}
                             </div>
                         )}
                     </div>
-                    {filterOption !== 'all' && (
-                        <span className="text-sm text-gray-500">
-                            {filteredAttempts.length} resultat{filteredAttempts.length !== 1 ? 's' : ''}
-                        </span>
-                    )}
-                </div>
-
-                {/* Attempts table */}
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50 sticky top-0 z-10">
-                            <tr>
-                                <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                    onClick={() => handleSort('name')}
-                                >
-                                    Etudiant
-                                </th>
-                                <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                    onClick={() => handleSort('submittedAt')}
-                                >
-                                    Statut
-                                </th>
-                                <th
-                                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                    onClick={() => handleSort('score')}
-                                >
-                                    Score
-                                </th>
-                                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {sortedAttempts.map((attempt, index) => {
-                                const isSubmitted = ['SUBMITTED', 'GRADING_IN_PROGRESS', 'GRADED'].includes(attempt.status)
-                                const hasScore = attempt.totalScore !== null
-                                const hasHumanModifications = attempt.humanModifiedCount > 0
-
-                                return (
-                                    <tr
-                                        key={attempt.attemptId}
-                                        className={`hover:bg-indigo-50 transition-colors ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
-                                    >
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">{attempt.student.name}</div>
-                                            <div className="text-sm text-gray-500">{attempt.student.email}</div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="flex items-center gap-2">
-                                                {getStatusLabel(attempt.status)}
-                                                {hasHumanModifications && (
-                                                    <span
-                                                        className="px-1.5 py-0.5 text-xs rounded bg-orange-100 text-orange-700"
-                                                        title={`${attempt.humanModifiedCount} question${attempt.humanModifiedCount > 1 ? 's' : ''} modifiee${attempt.humanModifiedCount > 1 ? 's' : ''} par le professeur`}
-                                                    >
-                                                        Modifie
-                                                    </span>
-                                                )}
-                                            </div>
-                                            {attempt.submittedAt && (
-                                                <span className="text-xs text-gray-500">
-                                                    {new Date(attempt.submittedAt).toLocaleString()}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            {hasScore ? (
-                                                <div className="text-sm font-bold text-gray-900">
-                                                    {attempt.totalScore}{attempt.maxPoints ? ` / ${attempt.maxPoints}` : ''} pts
-                                                </div>
-                                            ) : (
-                                                <span className="text-sm text-gray-400">Non corrige</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            {isSubmitted ? (
-                                                <button
-                                                    onClick={() => router.push(`/dashboard/exams/${examId}/grading/${attempt.attemptId}`)}
-                                                    className="text-indigo-600 hover:text-indigo-900 font-bold"
-                                                >
-                                                    Corriger
-                                                </button>
-                                            ) : (
-                                                <span className="text-gray-400 cursor-not-allowed">
-                                                    Non disponible
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                    {sortedAttempts.length === 0 && (
-                        <div className="p-12 text-center text-gray-500">
-                            {filterOption === 'all'
-                                ? 'Aucune copie trouvee pour cet examen.'
-                                : `Aucune copie correspondant au filtre "${getFilterLabel(filterOption)}".`}
-                        </div>
-                    )}
-                </div>
+                    </>
+                )}
             </div>
 
             {/* Export Progress Modal */}
@@ -582,6 +704,27 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                     onClose={() => setExportJobId(null)}
                 />
             )}
+
+            {/* Attempt Detail Modal */}
+            {selectedAttemptId && (
+                <AttemptDetailModal
+                    attemptId={selectedAttemptId}
+                    isOpen={!!selectedAttemptId}
+                    onClose={() => setSelectedAttemptId(null)}
+                    onGradeUpdated={fetchAttempts}
+                />
+            )}
+
+            {/* Grading Progress Modal */}
+            <GradingProgressModal
+                examId={examId}
+                isOpen={showGradingProgress}
+                onClose={() => setShowGradingProgress(false)}
+                onComplete={() => {
+                    setShowGradingProgress(false)
+                    fetchAttempts()
+                }}
+            />
         </div>
     )
 }

@@ -19,6 +19,7 @@ export default function TeacherLayoutClient({ children, dictionary, currentLocal
     const navLinks = [
         { href: '/teacher/courses', label: dictionary.teacher.header.myCourses },
         { href: '/teacher/exams', label: dictionary.teacher.header.exams },
+        { href: '/teacher/corrections', label: dictionary.teacher.header.corrections },
     ]
 
     const isActive = (href: string) => {

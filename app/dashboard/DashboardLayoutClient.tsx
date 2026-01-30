@@ -128,6 +128,7 @@ export default function DashboardLayoutClient({
     const teacherNavLinks = [
         { href: '/teacher/courses', label: dictionary.teacher.header.myCourses },
         { href: '/teacher/exams', label: dictionary.teacher.header.exams },
+        { href: '/teacher/corrections', label: dictionary.teacher.header.corrections },
     ]
 
     return (

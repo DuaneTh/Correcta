@@ -1,0 +1,31 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git fetch:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run lint:local:*)",
+      "Bash(npm run test:ci:*)",
+      "Bash(npm run typecheck:api:*)",
+      "Bash(npm run build:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm view:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx tsc:*)",
+      "WebSearch",
+      "Bash(cd:*)",
+      "Bash(npx prisma db push)",
+      "Bash(npx prisma:*)",
+      "Bash(npx tsx:*)",
+      "Bash(Select-String -Pattern \"correction|grading\" -AllMatches)",
+      "Bash(npx next lint:*)",
+      "Bash(npx next build)",
+      "Bash(node -e:*)",
+      "Bash(timeout 30 npx next dev:*)",
+      "Bash(npx eslint:*)",
+      "Bash(timeout 30 npm run dev:*)",
+      "Bash(git reset:*)"
+    ]
+  }
+}

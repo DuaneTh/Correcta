@@ -325,3 +325,88 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ section: updated })
 }
+
+export async function DELETE(req: NextRequest) {
+    const session = await getAuthSession(req)
+
+    if (!session || !session.user || !isSchoolAdmin(session)) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const body = await req.json()
+    const sectionId = typeof body?.sectionId === 'string' ? body.sectionId : ''
+
+    if (!sectionId) {
+        return NextResponse.json({ error: 'Missing sectionId' }, { status: 400 })
+    }
+
+    const section = await prisma.class.findUnique({
+        where: { id: sectionId },
+        select: {
+            id: true,
+            name: true,
+            courseId: true,
+            course: { select: { institutionId: true } },
+        }
+    })
+
+    if (!section || section.course.institutionId !== session.user.institutionId) {
+        return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    // Cannot delete the default section
+    if (section.name === DEFAULT_SECTION_NAME) {
+        return NextResponse.json({ error: 'Cannot delete default section' }, { status: 400 })
+    }
+
+    // Move enrollments to default section, then delete
+    await prisma.$transaction(async (tx) => {
+        // Find or create default section for this course
+        let defaultSection = await tx.class.findFirst({
+            where: { courseId: section.courseId, name: DEFAULT_SECTION_NAME },
+            select: { id: true },
+        })
+
+        if (!defaultSection) {
+            defaultSection = await tx.class.create({
+                data: {
+                    name: DEFAULT_SECTION_NAME,
+                    courseId: section.courseId,
+                },
+                select: { id: true },
+            })
+        }
+
+        // Move enrollments to default section
+        const enrollments = await tx.enrollment.findMany({
+            where: { classId: sectionId },
+            select: { userId: true, role: true },
+        })
+
+        if (enrollments.length > 0) {
+            await tx.enrollment.createMany({
+                data: enrollments.map((entry) => ({
+                    userId: entry.userId,
+                    classId: defaultSection!.id,
+                    role: entry.role,
+                })),
+                skipDuplicates: true,
+            })
+            await tx.enrollment.deleteMany({
+                where: { classId: sectionId },
+            })
+        }
+
+        // Delete any child sections first
+        await tx.class.deleteMany({
+            where: { parentId: sectionId },
+        })
+
+        // Delete the section
+        await tx.class.delete({
+            where: { id: sectionId },
+        })
+    })
+
+    return NextResponse.json({ success: true })
+}

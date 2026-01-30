@@ -70,6 +70,7 @@ export default async function StudentCoursesPage() {
     const classIds = Array.from(classIdSet)
 
     // Récupérer les cours de l'étudiant avec leurs examens ET les professeurs
+    // Inclure les examens archivés où l'étudiant a des tentatives
     const courses = await prisma.course.findMany({
         where: {
             archivedAt: null,
@@ -85,10 +86,13 @@ export default async function StudentCoursesPage() {
         include: {
             exams: {
                 where: {
-                    archivedAt: null,
                     status: 'PUBLISHED',
                     durationMinutes: { not: null, gt: 0 },
-                    startAt: { not: null, gt: new Date('2000-01-01') }
+                    startAt: { not: null, gt: new Date('2000-01-01') },
+                    OR: [
+                        { archivedAt: null },
+                        { attempts: { some: { studentId: studentId } } }
+                    ]
                 },
                 include: {
                     attempts: {
@@ -97,7 +101,26 @@ export default async function StudentCoursesPage() {
                             id: true,
                             status: true,
                             startedAt: true,
-                            submittedAt: true
+                            submittedAt: true,
+                            answers: {
+                                select: {
+                                    grades: {
+                                        select: { score: true },
+                                        take: 1
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    sections: {
+                        select: {
+                            questions: {
+                                select: {
+                                    segments: {
+                                        select: { maxPoints: true }
+                                    }
+                                }
+                            }
                         }
                     }
                 },
@@ -148,15 +171,39 @@ export default async function StudentCoursesPage() {
                 name: instructor.name,
                 email: instructor.email
             } : undefined,
-            exams: examsForStudent.map(exam => ({
-                id: exam.id,
-                title: exam.title,
-                startAt: exam.startAt as Date,
-                endAt: exam.endAt,
-                durationMinutes: exam.durationMinutes as number,
-                gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
-                attempts: exam.attempts
-            }))
+            exams: examsForStudent.map(exam => {
+                // Calculate max points from exam sections
+                const maxPoints = exam.sections?.reduce((total, section) => {
+                    return total + section.questions.reduce((qTotal, question) => {
+                        return qTotal + question.segments.reduce((sTotal, segment) => sTotal + (segment.maxPoints || 0), 0)
+                    }, 0)
+                }, 0) || 0
+
+                // Calculate score from attempt grades
+                const attempt = exam.attempts[0]
+                const score = attempt?.answers?.reduce((total, answer) => {
+                    const grade = answer.grades?.[0]
+                    return total + (grade?.score || 0)
+                }, 0) || null
+
+                return {
+                    id: exam.id,
+                    title: exam.title,
+                    startAt: exam.startAt as Date,
+                    endAt: exam.endAt,
+                    durationMinutes: exam.durationMinutes as number,
+                    gradingConfig: exam.gradingConfig as Record<string, unknown> | null,
+                    archivedAt: exam.archivedAt,
+                    attempts: exam.attempts.map(a => ({
+                        id: a.id,
+                        status: a.status,
+                        startedAt: a.startedAt,
+                        submittedAt: a.submittedAt,
+                        score: a.status === 'GRADED' ? score : null,
+                        maxPoints: maxPoints > 0 ? maxPoints : null
+                    }))
+                }
+            })
         }
     })
 

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { recomputeAttemptStatus } from '../lib/attemptStatus'
 import { gradeAnswer } from '../lib/grading/grader'
 import { segmentsToLatexString, parseContent } from '../lib/content'
-import { isOpenAIConfigured } from '../lib/grading/openai-client'
+import { isOpenAIConfigured, isOpenAIConfiguredSync } from '../lib/grading/openai-client'
 import type { ContentSegment } from '@/types/exams'
 import type { Rubric } from '../lib/grading/schemas'
 
@@ -21,8 +21,8 @@ const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
 console.log('[AI Worker] Starting worker...')
 console.log(`[AI Worker] Connecting to Redis at ${redisUrl}`)
 
-if (!isOpenAIConfigured()) {
-    console.warn('[AI Worker] WARNING: OPENAI_API_KEY is not configured. AI grading will fail.')
+if (!isOpenAIConfiguredSync()) {
+    console.warn('[AI Worker] WARNING: OPENAI_API_KEY is not configured in environment. Will check database on first job.')
 }
 
 const connection = new Redis(redisUrl, {

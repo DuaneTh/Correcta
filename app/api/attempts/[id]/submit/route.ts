@@ -4,7 +4,7 @@ import { getAuthSession, isStudent } from "@/lib/api-auth"
 import { getExamEndAt } from "@/lib/exam-time"
 import { canAccessAttemptAction } from "@/lib/attemptPermissions"
 import { getAttemptAuthContext } from "@/lib/attempt-access"
-import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
 import { scoreMultipleChoiceAnswer } from "@/lib/actions/exam-taking"
 
@@ -23,7 +23,7 @@ export async function POST(
 
         const csrfResult = verifyCsrf({
             req,
-            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            cookieToken: getCsrfCookieToken(req),
             headerToken: req.headers.get('x-csrf-token'),
             allowedOrigins: getAllowedOrigins()
         })

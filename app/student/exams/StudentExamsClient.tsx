@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { getExamEndAt } from "@/lib/exam-time"
 import { getCorrectionReleaseInfo } from "@/lib/correction-release"
 import StartExamButton from "./StartExamButton"
@@ -17,6 +18,7 @@ type ExamRow = {
     endAt: Date | string | null
     durationMinutes: number
     gradingConfig?: Record<string, unknown> | null
+    archivedAt?: Date | string | null
     course: {
         code: string
         name: string
@@ -31,6 +33,8 @@ type ExamRow = {
         status: AttemptStatus
         startedAt: Date | string
         submittedAt: Date | string | null
+        score?: number | null
+        maxPoints?: number | null
     }>
 }
 
@@ -73,9 +77,19 @@ const matchesExamSearch = (exam: ExamRow, term: string, localeString: string): b
 }
 
 export default function StudentExamsClient({ exams, dictionary, locale }: StudentExamsClientProps) {
+    const router = useRouter()
     const [searchTerm, setSearchTerm] = useState('')
     const dict = dictionary.student.coursesPage
     const localeString = locale === 'fr' ? 'fr-FR' : 'en-US'
+
+    // Auto-refresh every 30 seconds to catch exam start/end events
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.refresh()
+        }, 30000)
+
+        return () => clearInterval(interval)
+    }, [router])
 
     const filteredExams = useMemo(() => {
         if (!searchTerm) return exams
@@ -132,13 +146,32 @@ export default function StudentExamsClient({ exams, dictionary, locale }: Studen
                         const isBeforeStart = now < startAt
                         const isAfterEnd = endAt && now > endAt
                         const isWithinWindow = !isBeforeStart && !isAfterEnd
-                        const canViewCorrection = Boolean(isSubmitted && isAfterEnd && isGraded && releaseInfo.isReleased)
+                        const isArchived = Boolean(exam.archivedAt)
+                        const canViewCorrection = Boolean(isSubmitted && (isAfterEnd || isArchived) && isGraded && releaseInfo.isReleased)
+                        const score = attempt?.score
+                        const maxPoints = attempt?.maxPoints
 
                         let statusLabel = "Non demarre"
                         let statusColor = "bg-gray-100 text-gray-800"
                         let actionButton = null
 
-                        if (isBeforeStart) {
+                        // Handle archived exams - they can only be viewed for results
+                        if (isArchived) {
+                            statusLabel = isSubmitted ? (canViewCorrection ? dict.statusCorrected : dict.statusSubmitted) : "Archive"
+                            statusColor = isSubmitted
+                                ? (canViewCorrection ? "bg-emerald-50 text-emerald-900 border border-emerald-200" : "bg-gray-100 text-gray-600")
+                                : "bg-gray-100 text-gray-500"
+                            actionButton = isSubmitted && attempt ? (
+                                <Link
+                                    href={`/student/attempts/${attempt.id}/results`}
+                                    className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
+                                >
+                                    {dict.viewGradedCopyButton}
+                                </Link>
+                            ) : (
+                                <span className="text-sm text-gray-400 italic">Examen archive</span>
+                            )
+                        } else if (isBeforeStart) {
                             statusLabel = dict.statusUpcoming
                             statusColor = "bg-yellow-100 text-yellow-800"
                             actionButton = (
@@ -279,13 +312,18 @@ export default function StudentExamsClient({ exams, dictionary, locale }: Studen
                         return (
                             <div
                                 key={exam.id}
-                                className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                                className={`bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isArchived ? 'opacity-70' : ''}`}
                             >
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-2">
                                         <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
                                             {statusLabel}
                                         </span>
+                                        {canViewCorrection && score !== null && score !== undefined && maxPoints ? (
+                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-brand-100 text-brand-900 border border-brand-200">
+                                                {score} / {maxPoints}
+                                            </span>
+                                        ) : null}
                                     </div>
                                     <p className="text-sm text-gray-500">
                                         {exam.course.code} - {exam.course.name}
@@ -301,7 +339,7 @@ export default function StudentExamsClient({ exams, dictionary, locale }: Studen
                                         <p>
                                             {dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}
                                         </p>
-                                        {endAt && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
+                                        {endAt && !isArchived && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
                                     </div>
                                 </div>
                                 <div className="flex-shrink-0">{actionButton}</div>
