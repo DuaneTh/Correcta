@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { getAuthSession } from "@/lib/api-auth"
-import ExamEditor from "@/components/exams/ExamEditor"
+import NewExamPageClient from "@/components/exams/NewExamPageClient"
 import { redirect } from "next/navigation"
 
 export default async function NewExamPage() {
@@ -22,7 +22,7 @@ export default async function NewExamPage() {
 
     return (
         <div className="max-w-5xl mx-auto py-8 px-4">
-            <ExamEditor courses={courses} />
+            <NewExamPageClient courses={courses} />
         </div>
     )
 }
