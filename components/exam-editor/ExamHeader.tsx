@@ -6,6 +6,7 @@ import { ArrowLeft, Save, Loader2, Settings } from 'lucide-react'
 import { useExamStore, useTotalPoints, useQuestionCount } from './store'
 import { updateExamMetadata } from '@/lib/actions/exam-editor'
 import Link from 'next/link'
+import ExamSettingsPanel from './ExamSettingsPanel'
 
 export default function ExamHeader() {
   const router = useRouter()
@@ -21,6 +22,7 @@ export default function ExamHeader() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const handleTitleClick = useCallback(() => {
     if (exam) {
@@ -134,12 +136,18 @@ export default function ExamHeader() {
           </span>
 
           {/* Settings button */}
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Exam settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              title="Exam settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            {isSettingsOpen && (
+              <ExamSettingsPanel onClose={() => setIsSettingsOpen(false)} />
+            )}
+          </div>
 
           {/* Save button */}
           <button
