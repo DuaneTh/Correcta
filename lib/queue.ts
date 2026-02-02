@@ -102,6 +102,37 @@ if (!exportQueue) {
 }
 
 /**
+ * PDF Import Queue
+ *
+ * Used to queue PDF exam import jobs for AI-powered extraction.
+ * Jobs include: { userId, pdfKey, institutionId, courseId }
+ */
+export const pdfImportQueue = connection
+    ? new Queue('pdf-import', {
+        connection,
+        defaultJobOptions: {
+            attempts: 2,
+            backoff: {
+                type: 'fixed',
+                delay: 5000
+            },
+            removeOnComplete: {
+                age: 3600, // Keep completed jobs for 1 hour
+                count: 50
+            },
+            removeOnFail: {
+                age: 24 * 3600, // Keep failed jobs for 24 hours
+                count: 100
+            }
+        }
+    })
+    : null
+
+if (!pdfImportQueue) {
+    console.warn('[Queue] PDF import queue not initialized due to Redis connection failure')
+}
+
+/**
  * Gracefully close the queue and Redis connection
  */
 export async function closeQueue() {
@@ -110,6 +141,9 @@ export async function closeQueue() {
     }
     if (exportQueue) {
         await exportQueue.close()
+    }
+    if (pdfImportQueue) {
+        await pdfImportQueue.close()
     }
     if (connection) {
         await connection.quit()
