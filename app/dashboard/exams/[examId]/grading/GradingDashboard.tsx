@@ -9,6 +9,14 @@ import { ExportProgressModal } from '@/components/export/ExportProgressModal'
 import { AttemptDetailModal } from '@/components/grading/AttemptDetailModal'
 import { GradingProgressModal } from '@/components/grading/GradingProgressModal'
 import { GradeDistributionPanel } from '@/components/grading/GradeDistributionPanel'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { Badge } from '@/components/ui/Badge'
+import { TextLink } from '@/components/ui/TextLink'
+import { SegmentedControl } from '@/components/ui/SegmentedControl'
+import { StatPill } from '@/components/ui/StatPill'
 
 interface AttemptSummary {
     attemptId: string
@@ -273,42 +281,22 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
     const getStatusLabel = (status: string) => {
         switch (status) {
             case 'SUBMITTED':
-                return (
-                    <span className="text-sm text-gray-500">
-                        Non corrigée
-                    </span>
-                )
+                return <Text variant="muted">Non corrigée</Text>
             case 'GRADING_IN_PROGRESS':
-                return (
-                    <span className="text-sm text-gray-500">
-                        Correction en cours
-                    </span>
-                )
+                return <Text variant="muted">Correction en cours</Text>
             case 'GRADED':
-                return (
-                    <span className="text-sm text-gray-900">
-                        Corrigée
-                    </span>
-                )
+                return <Text variant="body">Corrigée</Text>
             case 'IN_PROGRESS':
-                return (
-                    <span className="text-sm text-gray-500">
-                        En cours
-                    </span>
-                )
+                return <Text variant="muted">En cours</Text>
             default:
-                return (
-                    <span className="text-sm text-gray-500">
-                        {status}
-                    </span>
-                )
+                return <Text variant="muted">{status}</Text>
         }
     }
 
     if (loading) {
         return (
             <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg text-gray-600">Chargement...</div>
+                <Text variant="body" className="text-gray-600">Chargement...</Text>
             </div>
         )
     }
@@ -317,20 +305,17 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
-                <div className="mb-8">
-                    <button
-                        onClick={() => router.push(`/dashboard/exams/${examId}`)}
-                        className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
-                    >
+                <Stack gap="lg" className="mb-8">
+                    <TextLink href={`/dashboard/exams/${examId}`}>
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         Retour a l&apos;examen
-                    </button>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Correction</h1>
-                            <p className="text-gray-600 mt-1">{examTitle}</p>
-                        </div>
-                        <div className="flex items-center gap-3">
+                    </TextLink>
+                    <Inline align="between" gap="md">
+                        <Stack gap="xs">
+                            <Text as="h1" variant="pageTitle">Correction</Text>
+                            <Text variant="muted">{examTitle}</Text>
+                        </Stack>
+                        <Inline align="start" gap="sm">
                             <GradeAllButton
                                 examId={examId}
                                 rubricStatus={rubricStatus}
@@ -342,14 +327,14 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
 
                             {/* Actions dropdown */}
                             <div className="relative">
-                                <button
+                                <Button
+                                    variant="secondary"
                                     onClick={() => setShowActionsDropdown(!showActionsDropdown)}
-                                    className="px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2"
                                 >
                                     <FileDown className="w-4 h-4" />
                                     Exporter
                                     <ChevronDown className="w-4 h-4" />
-                                </button>
+                                </Button>
                                 {showActionsDropdown && (
                                     <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                                         <button
@@ -382,94 +367,101 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                             </div>
 
                             {/* Publish button */}
-                            <button
+                            <Button
                                 onClick={() => canPublish && !gradesReleased ? setShowPublishConfirm(true) : null}
                                 disabled={isReleasing || !canPublish || gradesReleased}
-                                className={`px-4 py-2 font-semibold rounded-lg transition-colors ${
-                                    canPublish && !gradesReleased
-                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                }`}
+                                variant={canPublish && !gradesReleased ? 'primary' : 'secondary'}
                                 title={gradesReleased ? 'Les copies ont deja ete rendues' : !canPublish ? 'Toutes les copies doivent etre corrigees' : undefined}
                             >
                                 {isReleasing ? 'Publication...' : gradesReleased ? 'Copies rendues' : 'Rendre les copies'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                            </Button>
+                        </Inline>
+                    </Inline>
+                </Stack>
 
                 {/* Statistics summary */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div className="bg-white rounded-lg shadow p-4">
-                        <div className="text-sm text-gray-500">Copies corrigees</div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {stats.graded} <span className="text-lg text-gray-500">sur {stats.total}</span>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-4">
-                        <div className="text-sm text-gray-500">Modifications manuelles</div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {stats.humanModified} <span className="text-lg text-gray-500">copies</span>
-                        </div>
-                    </div>
-                    <div className="bg-white rounded-lg shadow p-4">
-                        <div className="text-sm text-gray-500">Score moyen</div>
-                        <div className="text-2xl font-bold text-gray-900">
-                            {stats.avgMaxPoints > 0 ? (
-                                <>
-                                    {stats.avgScore.toFixed(1)} <span className="text-lg text-gray-500">/ {stats.avgMaxPoints}</span>
-                                </>
-                            ) : (
-                                <span className="text-gray-400">-</span>
-                            )}
-                        </div>
-                    </div>
+                    <Card>
+                        <CardBody padding="md">
+                            <Stack gap="xs">
+                                <Text variant="caption">Copies corrigees</Text>
+                                <Text variant="pageTitle" className="text-2xl">
+                                    {stats.graded} <Text as="span" variant="body" className="text-gray-500">sur {stats.total}</Text>
+                                </Text>
+                            </Stack>
+                        </CardBody>
+                    </Card>
+                    <Card>
+                        <CardBody padding="md">
+                            <Stack gap="xs">
+                                <Text variant="caption">Modifications manuelles</Text>
+                                <Text variant="pageTitle" className="text-2xl">
+                                    {stats.humanModified} <Text as="span" variant="body" className="text-gray-500">copies</Text>
+                                </Text>
+                            </Stack>
+                        </CardBody>
+                    </Card>
+                    <Card>
+                        <CardBody padding="md">
+                            <Stack gap="xs">
+                                <Text variant="caption">Score moyen</Text>
+                                <Text variant="pageTitle" className="text-2xl">
+                                    {stats.avgMaxPoints > 0 ? (
+                                        <>
+                                            {stats.avgScore.toFixed(1)} <Text as="span" variant="body" className="text-gray-500">/ {stats.avgMaxPoints}</Text>
+                                        </>
+                                    ) : (
+                                        <span className="text-gray-400">-</span>
+                                    )}
+                                </Text>
+                            </Stack>
+                        </CardBody>
+                    </Card>
                 </div>
 
                 {/* Progress bar (only show if not all graded) - clickable to show details */}
                 {!stats.allGraded && stats.total > 0 && (
-                    <div
+                    <Card
+                        interactive="subtle"
                         onClick={() => setShowGradingProgress(true)}
-                        className="bg-white rounded-lg shadow p-4 mb-6 cursor-pointer hover:shadow-md transition-shadow border-2 border-transparent hover:border-indigo-200"
+                        className="mb-6 cursor-pointer border-2 border-transparent hover:border-indigo-200"
                     >
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-gray-700">Progression de la correction</span>
-                            <span className="text-sm text-gray-500">{stats.graded}/{stats.total} copies corrigees</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                            <div
-                                className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
-                                style={{ width: `${stats.percentage}%` }}
-                            />
-                        </div>
-                        <p className="text-xs text-indigo-600 mt-2 text-center">Cliquez pour voir les details</p>
-                    </div>
+                        <CardBody padding="md">
+                            <Stack gap="sm">
+                                <Inline align="between" gap="sm">
+                                    <Text variant="label">Progression de la correction</Text>
+                                    <Text variant="caption">{stats.graded}/{stats.total} copies corrigees</Text>
+                                </Inline>
+                                <div className="w-full bg-gray-200 rounded-full h-2.5">
+                                    <div
+                                        className="bg-indigo-600 h-2.5 rounded-full transition-all duration-500"
+                                        style={{ width: `${stats.percentage}%` }}
+                                    />
+                                </div>
+                                <Text variant="caption" className="text-indigo-600 text-center">Cliquez pour voir les details</Text>
+                            </Stack>
+                        </CardBody>
+                    </Card>
                 )}
 
                 {/* View mode tabs */}
-                <div className="flex items-center gap-2 mb-6">
-                    <button
-                        onClick={() => setViewMode('list')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                            viewMode === 'list'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                        <List className="w-4 h-4" />
-                        Liste des copies
-                    </button>
-                    <button
-                        onClick={() => setViewMode('stats')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                            viewMode === 'stats'
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                        }`}
-                    >
-                        <BarChart3 className="w-4 h-4" />
-                        Statistiques et harmonisation
-                    </button>
+                <div className="mb-6">
+                    <SegmentedControl
+                        value={viewMode}
+                        onChange={(value) => setViewMode(value)}
+                        options={[
+                            {
+                                value: 'list',
+                                label: 'Liste des copies',
+                                icon: <List className="w-4 h-4" />
+                            },
+                            {
+                                value: 'stats',
+                                label: 'Statistiques et harmonisation',
+                                icon: <BarChart3 className="w-4 h-4" />
+                            }
+                        ]}
+                    />
                 </div>
 
                 {/* Release message */}
@@ -493,35 +485,32 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                             onClick={() => setShowPublishConfirm(false)}
                         />
-                        <div className="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                Publier les notes ?
-                            </h3>
-                            <p className="text-gray-600 mb-2">
-                                Etes-vous sur de vouloir publier les notes ?
-                            </p>
-                            <p className="text-gray-600 mb-4">
-                                Les etudiants pourront voir leurs notes et les commentaires.
-                            </p>
-                            <div className="bg-blue-50 text-blue-800 px-3 py-2 rounded-lg mb-6 text-sm">
-                                {gradedCount} copies seront publiees
-                            </div>
-                            <div className="flex justify-end gap-3">
-                                <button
-                                    onClick={() => setShowPublishConfirm(false)}
-                                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={handleReleaseResults}
-                                    disabled={isReleasing}
-                                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:bg-gray-400"
-                                >
-                                    {isReleasing ? 'Publication...' : 'Publier'}
-                                </button>
-                            </div>
-                        </div>
+                        <Card className="relative w-full max-w-md mx-4">
+                            <CardBody padding="lg">
+                                <Stack gap="md">
+                                    <Text variant="sectionTitle">Publier les notes ?</Text>
+                                    <Text variant="muted">Etes-vous sur de vouloir publier les notes ?</Text>
+                                    <Text variant="muted">Les etudiants pourront voir leurs notes et les commentaires.</Text>
+                                    <div className="bg-blue-50 text-blue-800 px-3 py-2 rounded-lg">
+                                        <Text variant="caption" className="text-blue-800">{gradedCount} copies seront publiees</Text>
+                                    </div>
+                                    <Inline align="end" gap="sm">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => setShowPublishConfirm(false)}
+                                        >
+                                            Annuler
+                                        </Button>
+                                        <Button
+                                            onClick={handleReleaseResults}
+                                            disabled={isReleasing}
+                                        >
+                                            {isReleasing ? 'Publication...' : 'Publier'}
+                                        </Button>
+                                    </Inline>
+                                </Stack>
+                            </CardBody>
+                        </Card>
                     </div>
                 )}
 
@@ -539,16 +528,16 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                 {viewMode === 'list' && (
                     <>
                         {/* Filter dropdown */}
-                        <div className="mb-4 flex items-center gap-4">
+                        <Inline align="start" gap="md" className="mb-4">
                             <div className="relative">
-                                <button
+                                <Button
+                                    variant="secondary"
                                     onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                                 >
                                     <Filter className="w-4 h-4" />
                                     {getFilterLabel(filterOption)}
                                     <ChevronDown className="w-4 h-4" />
-                                </button>
+                                </Button>
                                 {showFilterDropdown && (
                                     <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                                         {(['all', 'ungraded', 'graded', 'modified'] as FilterOption[]).map((option) => (
@@ -569,129 +558,140 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                 )}
                             </div>
                             {filterOption !== 'all' && (
-                                <span className="text-sm text-gray-500">
+                                <Text variant="caption">
                                     {filteredAttempts.length} resultat{filteredAttempts.length !== 1 ? 's' : ''}
-                                </span>
+                                </Text>
                             )}
-                        </div>
+                        </Inline>
 
                         {/* Attempts table */}
-                        <div className="bg-white shadow overflow-hidden sm:rounded-lg overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50 sticky top-0 z-10">
-                                    <tr>
-                                        <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                            onClick={() => handleSort('name')}
-                                        >
-                                            Etudiant
-                                        </th>
-                                        <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                            onClick={() => handleSort('submittedAt')}
-                                        >
-                                            Statut
-                                        </th>
-                                        <th
-                                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                                            onClick={() => handleSort('score')}
-                                        >
-                                            Score
-                                        </th>
-                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {sortedAttempts.map((attempt, index) => {
-                                        const isSubmitted = ['SUBMITTED', 'GRADING_IN_PROGRESS', 'GRADED'].includes(attempt.status)
-                                        const hasScore = attempt.totalScore !== null
-                                        const hasHumanModifications = attempt.humanModifiedCount > 0
-
-                                        return (
-                                            <tr
-                                                key={attempt.attemptId}
-                                                onClick={() => isSubmitted && setSelectedAttemptId(attempt.attemptId)}
-                                                className={`hover:bg-indigo-50 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                        <Card overflow="hidden">
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50 sticky top-0 z-10">
+                                        <tr>
+                                            <th
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                onClick={() => handleSort('name')}
                                             >
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="text-sm font-medium text-gray-900">{attempt.student.name}</div>
-                                                    <div className="text-sm text-gray-500">{attempt.student.email}</div>
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="flex items-center gap-2">
-                                                        {getStatusLabel(attempt.status)}
-                                                        {hasHumanModifications && (
-                                                            <span
-                                                                className="text-xs text-gray-500 italic"
-                                                                title={`${attempt.humanModifiedCount} question${attempt.humanModifiedCount > 1 ? 's' : ''} modifiée${attempt.humanModifiedCount > 1 ? 's' : ''} par le professeur`}
-                                                            >
-                                                                (modifié)
-                                                            </span>
+                                                Etudiant
+                                            </th>
+                                            <th
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                onClick={() => handleSort('submittedAt')}
+                                            >
+                                                Statut
+                                            </th>
+                                            <th
+                                                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                                                onClick={() => handleSort('score')}
+                                            >
+                                                Score
+                                            </th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {sortedAttempts.map((attempt, index) => {
+                                            const isSubmitted = ['SUBMITTED', 'GRADING_IN_PROGRESS', 'GRADED'].includes(attempt.status)
+                                            const hasScore = attempt.totalScore !== null
+                                            const hasHumanModifications = attempt.humanModifiedCount > 0
+
+                                            return (
+                                                <tr
+                                                    key={attempt.attemptId}
+                                                    onClick={() => isSubmitted && setSelectedAttemptId(attempt.attemptId)}
+                                                    className={`hover:bg-indigo-50 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                                                >
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Stack gap="xs">
+                                                            <Text variant="body" className="font-medium">{attempt.student.name}</Text>
+                                                            <Text variant="caption">{attempt.student.email}</Text>
+                                                        </Stack>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Stack gap="xs">
+                                                            <Inline align="start" gap="xs">
+                                                                {getStatusLabel(attempt.status)}
+                                                                {hasHumanModifications && (
+                                                                    <Text
+                                                                        variant="caption"
+                                                                        className="italic"
+                                                                        title={`${attempt.humanModifiedCount} question${attempt.humanModifiedCount > 1 ? 's' : ''} modifiée${attempt.humanModifiedCount > 1 ? 's' : ''} par le professeur`}
+                                                                    >
+                                                                        (modifié)
+                                                                    </Text>
+                                                                )}
+                                                            </Inline>
+                                                            {attempt.gradedAt ? (
+                                                                <Text variant="xsMuted">
+                                                                    Corrigé le {new Date(attempt.gradedAt).toLocaleString()}
+                                                                </Text>
+                                                            ) : attempt.submittedAt ? (
+                                                                <Text variant="xsMuted">
+                                                                    Soumis le {new Date(attempt.submittedAt).toLocaleString()}
+                                                                </Text>
+                                                            ) : null}
+                                                        </Stack>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {hasScore ? (
+                                                            <Text variant="body" className="font-bold">
+                                                                {attempt.totalScore}{attempt.maxPoints ? ` / ${attempt.maxPoints}` : ''} pts
+                                                            </Text>
+                                                        ) : (
+                                                            <Text variant="muted">Non corrige</Text>
                                                         )}
-                                                    </div>
-                                                    {attempt.gradedAt ? (
-                                                        <span className="text-xs text-gray-500">
-                                                            Corrigé le {new Date(attempt.gradedAt).toLocaleString()}
-                                                        </span>
-                                                    ) : attempt.submittedAt ? (
-                                                        <span className="text-xs text-gray-500">
-                                                            Soumis le {new Date(attempt.submittedAt).toLocaleString()}
-                                                        </span>
-                                                    ) : null}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    {hasScore ? (
-                                                        <div className="text-sm font-bold text-gray-900">
-                                                            {attempt.totalScore}{attempt.maxPoints ? ` / ${attempt.maxPoints}` : ''} pts
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-sm text-gray-400">Non corrige</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    {isSubmitted ? (
-                                                        <div className="flex items-center justify-end gap-2">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    setSelectedAttemptId(attempt.attemptId)
-                                                                }}
-                                                                className="p-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 rounded"
-                                                                title="Apercu rapide"
-                                                            >
-                                                                <Eye className="w-4 h-4" />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    router.push(`/dashboard/exams/${examId}/grading/${attempt.attemptId}`)
-                                                                }}
-                                                                className="text-indigo-600 hover:text-indigo-900 font-bold"
-                                                            >
-                                                                Corriger
-                                                            </button>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400 cursor-not-allowed">
-                                                            Non disponible
-                                                        </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        )
-                                    })}
-                                </tbody>
-                            </table>
-                        {sortedAttempts.length === 0 && (
-                            <div className="p-12 text-center text-gray-500">
-                                {filterOption === 'all'
-                                    ? 'Aucune copie trouvee pour cet examen.'
-                                    : `Aucune copie correspondant au filtre "${getFilterLabel(filterOption)}".`}
-                            </div>
-                        )}
-                    </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        {isSubmitted ? (
+                                                            <Inline align="end" gap="xs">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="xs"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        setSelectedAttemptId(attempt.attemptId)
+                                                                    }}
+                                                                    title="Apercu rapide"
+                                                                >
+                                                                    <Eye className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="primary"
+                                                                    size="xs"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation()
+                                                                        router.push(`/dashboard/exams/${examId}/grading/${attempt.attemptId}`)
+                                                                    }}
+                                                                >
+                                                                    Corriger
+                                                                </Button>
+                                                            </Inline>
+                                                        ) : (
+                                                            <Text variant="muted" className="cursor-not-allowed">
+                                                                Non disponible
+                                                            </Text>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            {sortedAttempts.length === 0 && (
+                                <div className="p-12 text-center">
+                                    <Text variant="muted">
+                                        {filterOption === 'all'
+                                            ? 'Aucune copie trouvee pour cet examen.'
+                                            : `Aucune copie correspondant au filtre "${getFilterLabel(filterOption)}".`}
+                                    </Text>
+                                </div>
+                            )}
+                        </div>
+                        </Card>
                     </>
                 )}
             </div>
