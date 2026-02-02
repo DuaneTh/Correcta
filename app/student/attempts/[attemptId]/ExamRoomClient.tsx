@@ -7,6 +7,7 @@ import type { Dictionary } from "@/lib/i18n/dictionaries"
 import MathRenderer from "@/components/exams/MathRenderer"
 import ExamChangeLog from "@/components/exams/ExamChangeLog"
 import StringMathField from "@/components/exams/StringMathField"
+import ProctoringProvider from "@/components/proctoring/ProctoringProvider"
 import { ContentSegment, StudentToolsConfig, StudentMathSymbolSet, ExamChange } from "@/types/exams"
 import { parseContent, segmentsToPlainText, serializeContent } from "@/lib/content"
 import { getCsrfToken } from "@/lib/csrfClient"
@@ -66,6 +67,7 @@ type ExamData = {
     } | null
     requireHonorCommitment?: boolean
     allowedMaterials?: string | null
+    antiCheatConfig?: { webcamDeterrent?: boolean; browserLockdown?: boolean } | null
     changes?: ExamChange[]
     sections: Section[]
 }
@@ -489,7 +491,12 @@ export default function ExamRoomClient({
     }
 
     return (
-        <div className="max-w-5xl mx-auto py-8 px-4 pb-24 space-y-6">
+        <ProctoringProvider
+            antiCheatConfig={exam.antiCheatConfig ?? null}
+            attemptId={attempt.id}
+            nonce={attempt.nonce ?? ""}
+        >
+            <div className="max-w-5xl mx-auto py-8 px-4 pb-24 space-y-6">
             {showStickyHeader && (
                 <div className="sticky top-0 z-20 bg-white/95 backdrop-blur border border-gray-200 rounded-md px-4 py-3 shadow-sm flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -953,5 +960,6 @@ export default function ExamRoomClient({
                 </div>
             </div>
         </div>
+        </ProctoringProvider>
     )
 }
