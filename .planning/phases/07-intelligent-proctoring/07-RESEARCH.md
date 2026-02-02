@@ -1,21 +1,18 @@
 # Phase 7: Intelligent Proctoring - Research
 
 **Researched:** 2026-02-02
-**Domain:** Browser-based exam proctoring systems
+**Domain:** Browser-based exam proctoring with AI vision analysis
 **Confidence:** HIGH
 
 ## Summary
 
-Intelligent proctoring systems combine webcam monitoring, browser lockdown techniques, and AI-powered behavior analysis to maintain exam integrity. The standard approach uses native browser APIs (MediaRecorder, Page Visibility API, clipboard events) for client-side monitoring, with periodic snapshot uploads for server-side AI analysis.
+Intelligent proctoring for online exams requires three core capabilities: webcam monitoring with AI analysis, browser lockdown event detection, and comprehensive activity logging. The 2026 landscape shows a mature ecosystem with established patterns for lightweight client-side monitoring combined with asynchronous server-side AI analysis.
 
-**Key architectural insight:** Modern proctoring systems use a "layered" or "hybrid" approach, combining:
-1. **Client-side detection** (instant feedback via JavaScript APIs) for browser-level events (tab switches, copy/paste, DevTools)
-2. **Server-side AI analysis** (async, via BullMQ) for webcam snapshots to detect suspicious behavior
-3. **Post-exam review dashboard** for teachers to validate AI flags and review timestamped events
+The standard approach uses react-webcam (v7.2.0) for periodic snapshot capture (20-30 second intervals), OpenAI GPT-4o Vision API for analyzing frames (detecting multiple faces, absence, looking away), and native browser APIs (Page Visibility, Clipboard, Fullscreen) for lockdown monitoring. All events flow to a centralized logging system with BullMQ queues processing AI analysis asynchronously to avoid blocking the exam experience.
 
-The critical challenge is balancing security with privacy/legal considerations, and managing false positives (research shows 8-30% false positive rates in production systems).
+Key architectural insight: Decouple real-time monitoring (lightweight, instant) from AI analysis (intensive, asynchronous). This prevents performance degradation during exams while maintaining comprehensive security. The two-phase architecture (instant capture + retrospective analysis) balances security, cost, and user experience.
 
-**Primary recommendation:** Use native browser APIs with react-webcam for capture, GPT-4 Vision for snapshot analysis (already in stack), and design a teacher review workflow to validate AI flags before taking action.
+**Primary recommendation:** Use react-webcam for snapshot capture every 20-30 seconds, queue frames for GPT-4o Vision analysis via BullMQ (existing pattern), detect browser events with native APIs, and store all findings as ProctorEvent records with GDPR-compliant retention.
 
 ## Standard Stack
 
@@ -24,35 +21,31 @@ The established libraries/tools for this domain:
 ### Core
 | Library | Version | Purpose | Why Standard |
 |---------|---------|---------|--------------|
-| react-webcam | ^7.x | Webcam capture & snapshots | Most popular React library (113k+ weekly downloads), zero native dependencies, built on getUserMedia API |
-| MediaRecorder API | Native | Video recording | Standard web API, widely supported since 2021, no library needed |
-| Page Visibility API | Native | Tab switch detection | Native browser API, baseline support across all modern browsers |
-| OpenAI GPT-4 Vision | 4.x | Image analysis for proctoring | Already in project stack, can detect multiple faces/objects, describe scenes |
+| react-webcam | 7.2.0 | Webcam access and screenshot capture | Most popular React webcam library (307k weekly downloads), simple API, TypeScript support, wraps MediaDevices API cleanly |
+| OpenAI GPT-4o | API 2026 | Vision analysis of webcam frames | State-of-the-art multimodal model, 85 tokens per low-detail image ($0.0002125 per frame), detects faces/absence/behavior |
+| Page Visibility API | Native | Tab switch and focus detection | Browser standard (W3C), reliable visibilitychange events, widely supported |
+| Clipboard API | Native | Copy/paste event interception | Standard browser API, supports preventDefault(), secure contexts only |
+| BullMQ | Existing | Background job processing for AI analysis | Already in project for grading, Redis-based, rate limiting support |
 
 ### Supporting
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| MediaPipe Face Detector | @mediapipe/tasks-vision | Client-side face detection | Optional: real-time face tracking without server roundtrips |
-| BullMQ | 5.x | Async snapshot analysis queue | Already in stack for AI grading, reuse for proctoring analysis |
-| MinIO | 8.x | Snapshot image storage | Already in stack, S3-compatible object storage |
+| Fullscreen API | Native | Fullscreen exit detection | Standard browser API for lockdown enforcement |
+| GPT-4o-mini | API 2026 | Cheaper vision analysis | Cost optimization if GPT-4o too expensive ($0.0000128 per low-detail image, 16x cheaper) |
 
 ### Alternatives Considered
 | Instead of | Could Use | Tradeoff |
 |------------|-----------|----------|
-| react-webcam | react-record-webcam | More recording features but less popular (lower maintenance) |
-| GPT-4 Vision | MediaPipe Face Detector | Faster (client-side) but requires more code, no context understanding |
-| GPT-4 Vision | Specialized CV models (YOLO, DETR) | More accurate for object detection but requires model hosting infrastructure |
+| react-webcam | Native MediaDevices API | More control but more boilerplate, same underlying API |
+| react-webcam | react-camera-pro | Mobile-focused, similar capabilities but less mature |
+| GPT-4o Vision | Custom CV model | Lower cost but requires ML expertise, training data, hosting |
+| Async processing | Real-time analysis | Lower latency but blocks UI, expensive, poor UX |
 
 **Installation:**
 ```bash
 npm install react-webcam
-# MediaRecorder, Page Visibility API are native - no install needed
-# OpenAI, BullMQ, MinIO already installed
-```
-
-**Optional (for real-time client-side face detection):**
-```bash
-npm install @mediapipe/tasks-vision
+# BullMQ, OpenAI client already installed
+# Browser APIs are native
 ```
 
 ## Architecture Patterns
@@ -60,294 +53,213 @@ npm install @mediapipe/tasks-vision
 ### Recommended Project Structure
 ```
 app/
-├── (exam)/
-│   └── student/exams/[examId]/take/
-│       └── components/
-│           ├── ProctorMonitor.tsx        # Main proctoring orchestrator
-│           ├── WebcamCapture.tsx         # Webcam display & snapshot capture
-│           └── BrowserLockdown.tsx       # Event listeners for tab/copy/paste
-├── api/
-│   ├── attempts/[id]/
-│   │   ├── proctor-events/route.ts      # Log browser events (existing)
-│   │   └── proctor-snapshots/route.ts   # Upload webcam snapshots
-│   └── exams/[examId]/
-│       ├── proctoring/route.ts          # Get/update proctoring config (existing)
-│       └── proctoring-review/[attemptId]/route.ts  # Teacher review dashboard data
-├── teacher/exams/[examId]/
-│   └── proctoring/
-│       ├── page.tsx                      # Proctoring review dashboard
-│       └── components/
-│           ├── EventTimeline.tsx         # Chronological event list
-│           ├── SnapshotGallery.tsx       # Grid of flagged snapshots
-│           └── StudentProctoringSummary.tsx  # Per-student overview
-lib/
-├── antiCheat.ts                          # Score calculation (existing)
+├── exam/[examId]/take/
+│   └── proctoring-context.tsx     # Client-side monitoring orchestrator
+components/
 ├── proctoring/
-│   ├── browserDetection.ts               # Client-side event handlers
-│   ├── snapshotAnalysis.ts               # GPT-4 Vision prompts for analysis
-│   └── proctoringSummary.ts              # Generate teacher-facing summaries
-workers/
-└── proctoring-worker.ts                  # BullMQ worker for async snapshot analysis
+│   ├── webcam-monitor.tsx         # Webcam snapshot component
+│   ├── lockdown-monitor.tsx       # Browser event listeners
+│   └── proctoring-status.tsx      # Visual indicator for students
+lib/
+├── proctoring/
+│   ├── event-logger.ts            # Send events to API
+│   ├── vision-analyzer.ts         # GPT-4o Vision prompts
+│   └── snapshot-uploader.ts       # Base64 → MinIO via presigned URL
+api/
+├── proctor/
+│   ├── event/route.ts             # Log ProctorEvent to DB
+│   ├── snapshot/route.ts          # Generate presigned URL, queue analysis
+│   └── config/route.ts            # Fetch exam proctoring settings
+scripts/
+└── proctoring-worker.ts           # BullMQ worker for GPT-4o analysis
+app/teacher/exams/[examId]/
+└── proctoring/
+    ├── page.tsx                   # Review dashboard
+    └── components/
+        ├── event-timeline.tsx     # Chronological event list
+        └── snapshot-gallery.tsx   # Flagged snapshots
 ```
 
-### Pattern 1: Periodic Snapshot Capture
+### Pattern 1: Two-Phase Monitoring Architecture
+**What:** Separate lightweight real-time monitoring from intensive AI analysis.
 
-**What:** Capture webcam snapshots at configurable intervals (e.g., every 30s) during exam, upload to MinIO, enqueue for AI analysis
-
-**When to use:** All proctored exams with webcam monitoring enabled
+**When to use:** Always for proctoring systems - prevents exam disruption from slow AI calls.
 
 **Example:**
 ```typescript
-// Source: react-webcam npm package + MediaRecorder API patterns
-import Webcam from 'react-webcam';
-import { useRef, useEffect } from 'react';
+// Phase 1: Client captures and logs instantly
+const captureSnapshot = async () => {
+  const imageSrc = webcamRef.current?.getScreenshot() // Instant, base64
 
-function WebcamCapture({ attemptId, interval = 30000 }) {
-  const webcamRef = useRef<Webcam>(null);
+  // 1. Send to API immediately (non-blocking)
+  await fetch('/api/proctor/snapshot', {
+    method: 'POST',
+    body: JSON.stringify({ attemptId, imageSrc, timestamp: Date.now() })
+  })
 
-  useEffect(() => {
-    const captureSnapshot = async () => {
-      if (!webcamRef.current) return;
-
-      // Capture base64 image
-      const imageSrc = webcamRef.current.getScreenshot();
-      if (!imageSrc) return;
-
-      // Convert to blob
-      const blob = await fetch(imageSrc).then(r => r.blob());
-
-      // Upload to API
-      const formData = new FormData();
-      formData.append('snapshot', blob, `${Date.now()}.jpg`);
-
-      await fetch(`/api/attempts/${attemptId}/proctor-snapshots`, {
-        method: 'POST',
-        body: formData
-      });
-    };
-
-    const intervalId = setInterval(captureSnapshot, interval);
-    return () => clearInterval(intervalId);
-  }, [attemptId, interval]);
-
-  return (
-    <Webcam
-      ref={webcamRef}
-      audio={false}
-      screenshotFormat="image/jpeg"
-      videoConstraints={{ width: 1280, height: 720, facingMode: "user" }}
-    />
-  );
+  // 2. API route generates presigned URL, uploads to MinIO, queues BullMQ job
+  // Student continues exam without waiting
 }
-```
 
-### Pattern 2: Tab Switch Detection with Page Visibility API
+// Phase 2: Worker analyzes asynchronously (30s-2min later)
+const worker = new Worker('proctoring-analysis', async (job: Job) => {
+  const { snapshotUrl, attemptId } = job.data
 
-**What:** Use visibilitychange event to detect when student switches tabs or minimizes window
+  // Call GPT-4o Vision (slow, expensive)
+  const analysis = await analyzeWithGPT4o(snapshotUrl)
 
-**When to use:** All proctored exams with browser lockdown enabled
-
-**Example:**
-```typescript
-// Source: MDN Page Visibility API documentation
-// https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
-
-useEffect(() => {
-  const handleVisibilityChange = async () => {
-    if (document.hidden) {
-      // Tab hidden - log event
-      await fetch(`/api/attempts/${attemptId}/proctor-events`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: 'TAB_SWITCH',
-          metadata: {
-            visibilityState: document.visibilityState,
-            timestamp: Date.now()
-          }
-        })
-      });
-    }
-  };
-
-  document.addEventListener('visibilitychange', handleVisibilityChange);
-  return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-}, [attemptId]);
-```
-
-### Pattern 3: Copy/Paste Detection
-
-**What:** Listen to clipboard events to detect copy/paste behavior, including cross-tab copying
-
-**When to use:** Exams where copy/paste should be restricted or monitored
-
-**Example:**
-```typescript
-// Source: Browser clipboard events + existing antiCheat.ts patterns
-
-useEffect(() => {
-  const handleCopy = (e: ClipboardEvent) => {
-    const selection = window.getSelection()?.toString() || '';
-
-    fetch(`/api/attempts/${attemptId}/proctor-events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'COPY',
-        metadata: {
-          selectionLength: selection.length,
-          timestamp: Date.now()
-        }
-      })
-    });
-  };
-
-  const handlePaste = (e: ClipboardEvent) => {
-    const pastedText = e.clipboardData?.getData('text') || '';
-
-    fetch(`/api/attempts/${attemptId}/proctor-events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'PASTE',
-        metadata: {
-          pasteLength: pastedText.length,
-          timestamp: Date.now()
-        }
-      })
-    });
-  };
-
-  document.addEventListener('copy', handleCopy);
-  document.addEventListener('paste', handlePaste);
-
-  return () => {
-    document.removeEventListener('copy', handleCopy);
-    document.removeEventListener('paste', handlePaste);
-  };
-}, [attemptId]);
-```
-
-### Pattern 4: AI Snapshot Analysis with GPT-4 Vision
-
-**What:** Analyze webcam snapshots using GPT-4 Vision to detect suspicious behavior (multiple faces, absence, looking away)
-
-**When to use:** Server-side async analysis via BullMQ worker
-
-**Example:**
-```typescript
-// Source: OpenAI GPT-4 Vision patterns + existing AI grading worker patterns
-
-import { OpenAI } from 'openai';
-
-async function analyzeSnapshot(snapshotUrl: string): Promise<{
-  flags: string[];
-  confidence: number;
-  description: string;
-}> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-  const response = await openai.chat.completions.create({
-    model: "gpt-4-vision-preview",
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: `Analyze this exam proctoring snapshot. Detect:
-            - Number of faces visible (0 = absent, 2+ = multiple people)
-            - Student looking away from screen (eyes not on screen)
-            - Any suspicious behavior
-
-            Respond in JSON: { "faces": number, "looking_away": boolean, "suspicious": boolean, "description": string }`
-          },
-          {
-            type: "image_url",
-            image_url: { url: snapshotUrl }
-          }
-        ]
+  // Store flags as ProctorEvents
+  if (analysis.multipleFaces) {
+    await prisma.proctorEvent.create({
+      data: {
+        attemptId,
+        type: 'MULTIPLE_FACES',
+        metadata: { confidence: analysis.confidence, snapshotUrl }
       }
-    ],
-    max_tokens: 300
-  });
-
-  const result = JSON.parse(response.choices[0].message.content || '{}');
-  const flags: string[] = [];
-
-  if (result.faces === 0) flags.push('ABSENCE');
-  if (result.faces > 1) flags.push('MULTIPLE_FACES');
-  if (result.looking_away) flags.push('LOOKING_AWAY');
-  if (result.suspicious) flags.push('SUSPICIOUS_BEHAVIOR');
-
-  return {
-    flags,
-    confidence: 0.8, // GPT-4V has ~80-90% accuracy per research
-    description: result.description
-  };
-}
+    })
+  }
+})
 ```
 
-### Pattern 5: Teacher Review Dashboard with Timeline View
+**Why this pattern:**
+- Real-time monitoring stays responsive (< 100ms to capture and send)
+- AI analysis happens in background without blocking student
+- Failed AI calls don't crash exam
+- Can retry AI analysis with BullMQ
+- Teacher reviews happen post-exam anyway
 
-**What:** Display chronological timeline of all proctoring events + flagged snapshots for teacher review
+### Pattern 2: Event Stream Logging
+**What:** All browser and webcam events logged to single ProctorEvent table with type discrimination.
 
-**When to use:** Post-exam review for teachers to validate AI flags
+**When to use:** For comprehensive audit trail and flexible querying.
 
 **Example:**
 ```typescript
-// Source: React timeline component patterns (react-chrono, Flowbite timeline)
-// https://github.com/prabhuignoto/react-chrono
+// Source: Existing Prisma schema + research patterns
+enum ProctorEventType {
+  // Browser lockdown
+  FOCUS_LOST, FOCUS_GAINED, TAB_SWITCH, FULLSCREEN_EXIT,
+  COPY, PASTE,
 
-import { Badge } from '@/components/ui/Badge';
-import { Card } from '@/components/ui/Card';
-
-function EventTimeline({ events }: { events: ProctorEvent[] }) {
-  return (
-    <div className="space-y-4">
-      {events.map((event) => (
-        <Card key={event.id} className="flex items-start gap-4">
-          <div className="text-sm text-gray-500">
-            {new Date(event.timestamp).toLocaleTimeString()}
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <Badge variant={event.type.includes('FACE') ? 'warning' : 'info'}>
-                {event.type}
-              </Badge>
-              {event.metadata?.confidence && (
-                <span className="text-xs text-gray-500">
-                  {Math.round(event.metadata.confidence * 100)}% confidence
-                </span>
-              )}
-            </div>
-            {event.metadata?.description && (
-              <p className="text-sm text-gray-700 mt-1">
-                {event.metadata.description}
-              </p>
-            )}
-          </div>
-          {event.snapshotUrl && (
-            <img
-              src={event.snapshotUrl}
-              alt="Snapshot"
-              className="w-24 h-24 object-cover rounded"
-            />
-          )}
-        </Card>
-      ))}
-    </div>
-  );
+  // AI vision (from background worker)
+  MULTIPLE_FACES, ABSENCE, NOISE_DETECTED
 }
+
+// Client-side listener
+document.addEventListener('visibilitychange', () => {
+  const eventType = document.hidden ? 'FOCUS_LOST' : 'FOCUS_GAINED'
+  logProctorEvent(attemptId, eventType, { timestamp: Date.now() })
+})
+
+// Server stores all in one table
+await prisma.proctorEvent.create({
+  data: {
+    attemptId,
+    type: eventType,
+    timestamp: new Date(),
+    metadata: { ...eventDetails }
+  }
+})
+```
+
+### Pattern 3: Cost-Optimized Vision Analysis
+**What:** Use low-detail mode for snapshots, batch rate limiting, skip redundant frames.
+
+**When to use:** Always - GPT-4o Vision costs add up quickly at scale.
+
+**Example:**
+```typescript
+// Low-detail mode: 85 tokens vs up to 1,100 tokens
+// Cost: $0.0002125 per frame vs $0.00275 for high-detail
+const prompt = `Analyze this exam proctoring snapshot. Detect:
+1. Number of faces (should be exactly 1)
+2. Student presence (face visible vs absent)
+3. Gaze direction (looking at screen vs away)
+Return JSON with: { multipleFaces: boolean, absent: boolean, lookingAway: boolean, confidence: 0-1 }`
+
+const response = await openai.chat.completions.create({
+  model: 'gpt-4o',
+  messages: [{
+    role: 'user',
+    content: [
+      { type: 'text', text: prompt },
+      { type: 'image_url', image_url: {
+        url: snapshotUrl,
+        detail: 'low' // KEY: 85 tokens instead of ~765-1,105
+      }}
+    ]
+  }]
+})
+
+// BullMQ rate limiting (built-in)
+const queue = new Queue('proctoring-analysis', {
+  connection,
+  limiter: {
+    max: 10, // 10 jobs per minute
+    duration: 60000 // Spread OpenAI API load
+  }
+})
+```
+
+**Cost math (60-minute exam, 20-second intervals):**
+- 180 snapshots per exam
+- Low-detail: 180 × $0.0002125 = $0.038 per exam
+- High-detail: 180 × $0.00275 = $0.495 per exam
+- **Savings: 93% cost reduction**
+
+### Pattern 4: Presigned URL Upload for Snapshots
+**What:** Generate MinIO presigned PUT URLs server-side, client uploads base64 image directly.
+
+**When to use:** For large files (images, video) - avoids proxying through Next.js server.
+
+**Example:**
+```typescript
+// Source: MinIO documentation + Next.js patterns
+// API route: /api/proctor/snapshot/presigned
+export async function POST(req: Request) {
+  const { attemptId, fileName } = await req.json()
+
+  // Generate presigned PUT URL (60 second expiry)
+  const presignedUrl = await minioClient.presignedPutObject(
+    'proctoring-snapshots',
+    `${attemptId}/${fileName}`,
+    60
+  )
+
+  return Response.json({ presignedUrl, objectUrl: `.../${fileName}` })
+}
+
+// Client: Upload base64 as blob
+const base64 = webcamRef.current?.getScreenshot()
+const blob = base64ToBlob(base64)
+
+// 1. Request presigned URL
+const { presignedUrl, objectUrl } = await fetch('/api/proctor/snapshot/presigned', {
+  method: 'POST',
+  body: JSON.stringify({ attemptId, fileName: `${Date.now()}.jpg` })
+}).then(r => r.json())
+
+// 2. Upload directly to MinIO
+await fetch(presignedUrl, {
+  method: 'PUT',
+  body: blob,
+  headers: { 'Content-Type': 'image/jpeg' }
+})
+
+// 3. Queue analysis job with objectUrl
+await fetch('/api/proctor/snapshot/analyze', {
+  method: 'POST',
+  body: JSON.stringify({ attemptId, snapshotUrl: objectUrl })
+})
 ```
 
 ### Anti-Patterns to Avoid
-
-- **DevTools prevention scripts:** Client-side DevTools detection is easily bypassable and creates poor UX. Focus on backend validation instead.
-- **Blocking all copy/paste:** Prevent copy/paste prevention (e.g., `e.preventDefault()`) can frustrate legitimate users. LOG events, don't block them.
-- **Continuous video recording:** Recording entire exam sessions creates massive storage costs and privacy issues. Use periodic snapshots instead.
-- **Facial recognition for identity:** GPT-4 Vision deliberately won't identify people by name (privacy protection). Use pre-exam identity verification instead.
-- **Browser lockdown without webcam:** Research shows browser lockdown alone is ineffective for remote exams (students can use phones, second computers).
+- **Real-time AI analysis:** Blocks UI, expensive, crashes on API errors, poor student experience
+- **Continuous video recording:** GDPR nightmare, massive storage cost, bandwidth intensive
+- **DevTools detection as primary lockdown:** Too many false positives (sidebar toggles, undocked DevTools miss), use as soft signal only
+- **High-detail vision mode by default:** 13x more tokens for minimal proctoring benefit
+- **Synchronous snapshot upload:** Next.js API route proxying wastes memory and time
+- **No rate limiting on AI calls:** Blows through OpenAI budget, risks rate limit errors
 
 ## Don't Hand-Roll
 
@@ -355,346 +267,560 @@ Problems that look simple but have existing solutions:
 
 | Problem | Don't Build | Use Instead | Why |
 |---------|-------------|-------------|-----|
-| Webcam capture | Custom getUserMedia wrapper | react-webcam | Handles permissions, device selection, screenshot capture, 113k+ weekly users means bugs are found |
-| Face detection | Custom computer vision | GPT-4 Vision or MediaPipe | Face detection algorithms are complex (lighting, angles, occlusion). GPT-4V already in stack, MediaPipe is Google-maintained |
-| Video codec handling | Custom MediaRecorder wrapper | Native API + mimeType detection | Browser codec support varies (webm, mp4, etc). Use `MediaRecorder.isTypeSupported()` |
-| Timeline component | Custom timeline UI | react-chrono or Flowbite Timeline | Timeline interactions (zoom, scroll, filters) are UX-heavy to get right |
-| Copy/paste pattern analysis | Custom detection logic | Existing antiCheat.ts patterns | Already handles COPY→PASTE pairing, focus loss detection, scoring |
-| Snapshot storage | Custom blob handling | MinIO (existing) | Already configured, handles multipart uploads, signed URLs for secure access |
+| Webcam access | Custom getUserMedia wrapper | react-webcam | Handles permissions, errors, device switching, ref patterns, TypeScript types |
+| Background job processing | Custom Redis queue | BullMQ | Retries, rate limiting, monitoring, already in project for grading |
+| Vision analysis | Custom CV model | OpenAI GPT-4o Vision | State-of-the-art accuracy, no training data, no GPU hosting, flexible prompts |
+| Tab switch detection | Custom focus tracking | Page Visibility API | Browser standard, handles edge cases (notifications, dialogs, mobile), reliable |
+| Copy/paste detection | Custom clipboard monitoring | Clipboard API events | Secure, standard, preventDefault() support, permissions handled |
+| Fullscreen detection | Custom window size checks | Fullscreen API | Reliable fullscreenchange events, no false positives |
+| Image storage | Custom base64 in DB | MinIO presigned URLs | Scalable, CDN-ready, no DB bloat, existing project setup |
 
-**Key insight:** Browser APIs are mature and well-tested. The complexity is in orchestration (when to capture, how to analyze, how to present to teachers), not in low-level capture mechanisms.
+**Key insight:** Browser proctoring has mature APIs (Page Visibility, Clipboard, Fullscreen) that handle edge cases you'll miss. AI vision has been commoditized by GPT-4o Vision - building custom CV is massive effort for inferior results. Focus on orchestration, not low-level primitives.
 
 ## Common Pitfalls
 
-### Pitfall 1: False Positives Ruining Trust
-**What goes wrong:** AI flags innocent behavior (student thinking, adjusting posture, phone ringing in background), teachers see high flag counts and dismiss all flags as noise
+### Pitfall 1: Mobile Browser Inconsistency with Page Visibility
+**What goes wrong:** Firefox reliably fires visibilitychange on mobile, but Chrome/Safari miss events when entering App Switcher, firing only after next user action (or not at all).
 
-**Why it happens:**
-- GPT-4 Vision optimizes for detection over precision (research shows 8-30% false positive rates)
-- No context: AI doesn't know if student is allowed to look away briefly
-- Lighting/camera quality affects accuracy significantly
+**Why it happens:** Mobile browsers optimize battery by deferring events, and app switching has inconsistent lifecycle triggers across browsers.
 
 **How to avoid:**
-- Design UI to show confidence scores prominently
-- Allow teachers to mark flags as "false positive" to train their intuition
-- Use configurable sensitivity levels per exam
-- Display multiple snapshots in sequence (not just one) to show context
-- Never auto-fail students based on AI flags alone
+1. Use Page Visibility API but combine with pagehide event for broader coverage
+2. Test on actual mobile devices (iOS Safari, Android Chrome) not just desktop DevTools
+3. Document that mobile proctoring is less reliable than desktop
+4. Consider requiring desktop browsers for high-stakes exams
 
-**Warning signs:**
-- Teachers complaining about "too many flags"
-- Students reporting anxiety about normal movements
-- High variance in flag counts between similar exams
+**Warning signs:** Students reporting missed tab switches, inconsistent FOCUS_LOST events on mobile in logs.
 
-### Pitfall 2: Privacy and Legal Violations
-**What goes wrong:**
-- Recording students' private spaces without proper consent
-- Storing biometric data (facial images) without GDPR/CCPA compliance
-- Requiring 360-degree room scans exposes personal information
-- Facial recognition working poorly for darker skin tones (bias)
+### Pitfall 2: DevTools Detection False Positives
+**What goes wrong:** Libraries like devtools-detect trigger on any sidebar toggle (browser bookmarks, extensions) or miss detection entirely if DevTools is undocked.
 
-**Why it happens:**
-- Proctoring vendors prioritize security over privacy
-- Legal requirements vary by jurisdiction (FERPA in US, GDPR in EU, etc.)
-- Easy to copy patterns from commercial tools without understanding legal implications
+**Why it happens:** Detection relies on heuristics (window resize timing, console.log performance) that aren't specific to DevTools.
 
 **How to avoid:**
-- **Explicit consent:** Show clear proctoring disclosure before exam, require explicit checkbox
-- **Data retention policy:** Delete snapshots after grade appeals period (30-90 days)
-- **Access controls:** Only exam teacher + student can view their snapshots
-- **No room scans:** Don't require students to show their rooms
-- **Bias testing:** Test with diverse student population before deployment
-- **Legal review:** Consult legal counsel for your jurisdiction
+1. Use DevTools detection only as LOW-confidence soft signal
+2. Don't block exams or show warnings based on DevTools detection alone
+3. Combine with other signals (multiple tab switches + DevTools open = higher suspicion)
+4. Document limitations in teacher dashboard
 
-**Warning signs:**
-- Students refusing to take exams due to privacy concerns
-- Parents/lawyers contacting institution about proctoring
-- Retention of snapshots beyond grading period
+**Warning signs:** Student complaints about false "DevTools detected" warnings, inconsistent detection in testing.
 
-### Pitfall 3: Webcam Permission Hell
-**What goes wrong:** Students can't start exam because:
-- Browser blocks getUserMedia on HTTP (requires HTTPS)
-- Permission denied and student doesn't know how to reset
-- Webcam in use by another application
-- Browser doesn't support getUserMedia (old browsers)
+### Pitfall 3: Vision API Cost Explosion
+**What goes wrong:** Using high-detail mode or analyzing every frame in real-time can cost $0.50-$1.00 per exam, making proctoring prohibitively expensive at scale.
 
-**Why it happens:**
-- getUserMedia requires secure context (HTTPS)
-- Browser permission dialogs are confusing
-- Permission state persists (denied = permanently blocked until manual reset)
-- Students use various devices/browsers
+**Why it happens:** Default image detail is often 'auto' which uses high-detail for larger images. 20-second intervals over 60 minutes = 180 frames.
 
 **How to avoid:**
-- **Pre-exam check:** Create separate "proctoring test" page to verify camera works BEFORE exam starts
-- **Clear error messages:** "Camera blocked. Click the lock icon in address bar to allow camera access"
-- **Fallback UI:** If camera fails, show clear instructions with screenshots for each browser
-- **HTTPS required:** Never deploy proctoring on HTTP (will fail silently)
-- **Permission check:** Use Permissions API to detect "denied" state and show recovery instructions
+1. Always explicitly set `detail: 'low'` for webcam snapshots (85 tokens vs 1,105)
+2. Use 20-30 second intervals, not faster
+3. Implement smart skipping: If last 3 frames were OK, extend interval to 45-60 seconds
+4. Rate limit BullMQ worker to spread API load
+5. Monitor OpenAI usage dashboard, set budget alerts
 
-**Warning signs:**
-- High support tickets about "can't start exam"
-- Students starting exam but failing to enable camera
-- "Permission denied" errors without clear recovery path
+**Warning signs:** OpenAI bill spikes, rate limit errors in logs, slow analysis queue processing.
 
-### Pitfall 4: DevTools Detection Creating False Security
-**What goes wrong:** Implement DevTools detection thinking it prevents cheating, but:
-- Students bypass using browser menus or extensions
-- Creates false sense of security (backend validation neglected)
-- Legitimate users (students with accessibility tools) get flagged
+### Pitfall 4: GDPR Compliance Violations
+**What goes wrong:** Storing webcam images indefinitely, not getting explicit consent, not providing data deletion, transferring images outside EU without safeguards.
 
-**Why it happens:**
-- DevTools detection scripts are easy to find online
-- Looks impressive ("we detect F12!")
-- Doesn't address real threat model (students using second device)
+**Why it happens:** Proctoring captures "sensitive personal data" (biometric - faces), GDPR requires heightened protection, and developers often don't implement retention policies.
 
 **How to avoid:**
-- **Log, don't block:** If you detect DevTools, log it as a proctoring event but don't prevent exam access
-- **Focus on backend:** Validate all submissions server-side (timing, attempt integrity, answer validation)
-- **Acknowledge bypasses:** Document that lockdown is bypassable, focus on multi-layered detection
+1. Get explicit consent before webcam access with clear explanation
+2. Store snapshots in EU region (MinIO bucket configuration)
+3. Implement automatic deletion after exam review period (e.g., 90 days)
+4. Provide student data export and deletion requests in UI
+5. Document in privacy policy: what's captured, why, how long, who sees it
+6. Use end-to-end encryption for image storage (MinIO supports this)
+7. Conduct Data Protection Impact Assessment (DPIA) before launch
 
-**Warning signs:**
-- Students bypassing detection easily
-- Accessibility complaints (screen readers, zoom tools blocked)
-- False confidence in security posture
+**Warning signs:** GDPR complaints, no retention policy in place, images stored indefinitely, no consent flow.
 
-### Pitfall 5: Snapshot Analysis Cost Explosion
-**What goes wrong:**
-- 100 students × 60-minute exam × 30-second snapshots = 12,000 API calls
-- GPT-4 Vision at $0.01/image = $120 per exam
-- Costs scale linearly with students/exam duration
+### Pitfall 5: Webcam Permission Denial Blocking Exam
+**What goes wrong:** Student denies webcam permission (accidentally or intentionally), exam crashes or becomes unsubmittable.
 
-**Why it happens:**
-- Research examples use aggressive snapshot intervals (15-30s)
-- No awareness of OpenAI pricing model
-- No optimization (analyze every snapshot even if nothing changed)
+**Why it happens:** Not handling getUserMedia() NotAllowedError, no fallback UI, exam code assumes webcam is always available.
 
 **How to avoid:**
-- **Configurable intervals:** Default to 60s, allow teachers to increase for high-stakes exams
-- **Smart analysis:** Only analyze when motion detected (client-side) or use MediaPipe for free pre-filtering
-- **Budget caps:** Set per-exam budget limits in BullMQ worker
-- **Batch processing:** Analyze multiple snapshots in single API call (GPT-4V supports multiple images)
-- **Teacher opt-in:** Disable AI analysis by default, let teachers enable per exam
+1. Check exam's proctoring config before requiring webcam
+2. Handle permission denial gracefully with clear error message and retry button
+3. For exams with optional proctoring, allow proceeding without webcam (log event)
+4. For required proctoring, show instructions for enabling webcam permissions
+5. Log PERMISSION_DENIED ProctorEvent for teacher visibility
+6. Test on browsers with permissions blocked
 
-**Warning signs:**
-- OpenAI bill increasing linearly with exam activity
-- Analyzing snapshots where student hasn't moved
-- No cost controls in place
+**Warning signs:** Students can't submit exams, support requests about webcam errors, no error handling code.
+
+### Pitfall 6: Snapshot Timing Drift
+**What goes wrong:** setInterval() for snapshots drifts over time due to event loop delays, causing irregular intervals or missed snapshots during heavy computation.
+
+**Why it happens:** setInterval doesn't account for callback execution time, garbage collection, or CPU load. Can drift seconds over 60-minute exam.
+
+**How to avoid:**
+1. Use recursive setTimeout with timestamp correction instead of setInterval
+2. Calculate next snapshot time based on wall clock, not elapsed intervals
+3. Log actual snapshot timestamps to verify intervals
+4. Skip snapshot if previous upload is still in progress (don't queue up)
+
+**Example:**
+```typescript
+// BAD: setInterval drifts
+setInterval(captureSnapshot, 20000) // Will drift
+
+// GOOD: Self-correcting recursive setTimeout
+let nextSnapshotTime = Date.now() + 20000
+const scheduleSnapshot = () => {
+  const now = Date.now()
+  const delay = Math.max(0, nextSnapshotTime - now)
+
+  setTimeout(async () => {
+    await captureSnapshot()
+    nextSnapshotTime += 20000 // Wall clock, not relative
+    scheduleSnapshot()
+  }, delay)
+}
+```
+
+**Warning signs:** Irregular snapshot timing in logs, missed snapshots during long questions, intervals stretching to 30-40 seconds.
 
 ## Code Examples
 
 Verified patterns from official sources:
 
-### Browser Permission Pre-Check
+### react-webcam Screenshot Capture
 ```typescript
-// Source: MDN Permissions API + getUserMedia patterns
-// https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia
+// Source: react-webcam npm documentation, MDN MediaDevices API
+import { useRef, useState, useCallback } from 'react'
+import Webcam from 'react-webcam'
 
-async function checkCameraPermission(): Promise<{
-  state: 'granted' | 'denied' | 'prompt';
-  canProceed: boolean;
-  message: string;
-}> {
-  try {
-    // Check if Permissions API is available
-    if ('permissions' in navigator) {
-      const result = await navigator.permissions.query({ name: 'camera' as PermissionName });
+const WebcamMonitor = ({ attemptId }: { attemptId: string }) => {
+  const webcamRef = useRef<Webcam>(null)
+  const [permissionDenied, setPermissionDenied] = useState(false)
 
-      if (result.state === 'denied') {
-        return {
-          state: 'denied',
-          canProceed: false,
-          message: 'Camera access was denied. Click the lock icon in your browser\'s address bar and allow camera access.'
-        };
-      }
-    }
-
-    // Try to get user media (will prompt if needed)
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-
-    // Stop all tracks immediately (we're just testing)
-    stream.getTracks().forEach(track => track.stop());
-
-    return {
-      state: 'granted',
-      canProceed: true,
-      message: 'Camera access granted.'
-    };
-
-  } catch (error) {
-    if (error instanceof Error && error.name === 'NotAllowedError') {
-      return {
-        state: 'denied',
-        canProceed: false,
-        message: 'Camera access was denied. Please allow camera access to continue.'
-      };
-    }
-
-    return {
-      state: 'denied',
-      canProceed: false,
-      message: 'Camera not available. Please ensure a camera is connected and no other application is using it.'
-    };
+  const videoConstraints: MediaStreamConstraints['video'] = {
+    width: { ideal: 640 },
+    height: { ideal: 480 },
+    facingMode: 'user'
   }
+
+  const captureSnapshot = useCallback(async () => {
+    const imageSrc = webcamRef.current?.getScreenshot()
+    if (!imageSrc) return
+
+    // imageSrc is base64 data URL: "data:image/jpeg;base64,..."
+    await fetch('/api/proctor/snapshot', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ attemptId, imageSrc, timestamp: Date.now() })
+    })
+  }, [attemptId])
+
+  const handleUserMediaError = (error: string | DOMException) => {
+    console.error('Webcam error:', error)
+    if (error.toString().includes('NotAllowedError')) {
+      setPermissionDenied(true)
+    }
+  }
+
+  return (
+    <div>
+      <Webcam
+        ref={webcamRef}
+        audio={false}
+        screenshotFormat="image/jpeg"
+        videoConstraints={videoConstraints}
+        onUserMediaError={handleUserMediaError}
+      />
+      {permissionDenied && (
+        <div>Please enable webcam permissions to continue</div>
+      )}
+    </div>
+  )
 }
 ```
 
-### Right-Click Context Menu Disabling (Optional)
+### Page Visibility API Event Logging
 ```typescript
-// Source: MDN contextmenu event documentation
-// https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event
-// NOTE: Easily bypassable. Use only for discouraging casual cheating, not as security measure.
-
+// Source: MDN Page Visibility API documentation
 useEffect(() => {
-  const handleContextMenu = (e: MouseEvent) => {
-    e.preventDefault();
+  const handleVisibilityChange = () => {
+    const eventType = document.hidden ? 'FOCUS_LOST' : 'FOCUS_GAINED'
 
-    // Log the attempt instead of silently blocking
-    fetch(`/api/attempts/${attemptId}/proctor-events`, {
+    fetch('/api/proctor/event', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        type: 'RIGHT_CLICK_ATTEMPT',
-        metadata: { timestamp: Date.now() }
+        attemptId,
+        type: eventType,
+        timestamp: Date.now(),
+        metadata: { visibilityState: document.visibilityState }
       })
-    });
-  };
+    })
+  }
 
-  document.addEventListener('contextmenu', handleContextMenu);
-  return () => document.removeEventListener('contextmenu', handleContextMenu);
-}, [attemptId]);
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+
+  // Fallback for cases visibilitychange misses (especially mobile Safari)
+  window.addEventListener('pagehide', () => {
+    navigator.sendBeacon('/api/proctor/event', JSON.stringify({
+      attemptId,
+      type: 'FOCUS_LOST',
+      timestamp: Date.now(),
+      metadata: { source: 'pagehide' }
+    }))
+  })
+
+  return () => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+}, [attemptId])
 ```
 
-### BullMQ Worker for Snapshot Analysis
+### Clipboard Event Detection
 ```typescript
-// Source: Existing AI grading worker patterns + BullMQ documentation
+// Source: MDN Clipboard API documentation
+useEffect(() => {
+  const handleCopy = (e: ClipboardEvent) => {
+    const selection = window.getSelection()?.toString() || ''
 
-import { Worker, Job } from 'bullmq';
-import { prisma } from '@/lib/prisma';
-import { analyzeSnapshot } from '@/lib/proctoring/snapshotAnalysis';
+    fetch('/api/proctor/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attemptId,
+        type: 'COPY',
+        timestamp: Date.now(),
+        metadata: { selectionLength: selection.length }
+      })
+    })
 
-const worker = new Worker(
-  'proctoring-analysis',
-  async (job: Job) => {
-    const { attemptId, snapshotUrl, timestamp } = job.data;
+    // Optionally prevent copy for high-security exams
+    // e.preventDefault()
+  }
 
-    try {
-      // Analyze snapshot with GPT-4 Vision
-      const analysis = await analyzeSnapshot(snapshotUrl);
+  const handlePaste = async (e: ClipboardEvent) => {
+    const pastedText = e.clipboardData?.getData('text') || ''
 
-      // Log events for each flag
-      for (const flag of analysis.flags) {
-        await prisma.proctorEvent.create({
-          data: {
-            attemptId,
-            type: flag, // ABSENCE, MULTIPLE_FACES, etc.
-            timestamp: new Date(timestamp),
-            metadata: {
-              confidence: analysis.confidence,
-              description: analysis.description,
-              snapshotUrl
-            }
-          }
-        });
-      }
+    fetch('/api/proctor/event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        attemptId,
+        type: 'PASTE',
+        timestamp: Date.now(),
+        metadata: { pasteLength: pastedText.length }
+      })
+    })
 
-      return { success: true, flags: analysis.flags };
+    // Optionally prevent paste
+    // e.preventDefault()
+  }
 
-    } catch (error) {
-      console.error('Snapshot analysis failed:', error);
-      throw error; // BullMQ will retry
-    }
-  },
-  {
-    connection: { host: 'localhost', port: 6379 },
-    concurrency: 5, // Limit concurrent OpenAI calls
-    limiter: {
-      max: 10,
-      duration: 1000 // Max 10 requests per second to OpenAI
+  document.addEventListener('copy', handleCopy)
+  document.addEventListener('paste', handlePaste)
+
+  return () => {
+    document.removeEventListener('copy', handleCopy)
+    document.removeEventListener('paste', handlePaste)
+  }
+}, [attemptId])
+```
+
+### Fullscreen Exit Detection
+```typescript
+// Source: MDN Fullscreen API documentation
+useEffect(() => {
+  const handleFullscreenChange = () => {
+    if (!document.fullscreenElement) {
+      // User exited fullscreen
+      fetch('/api/proctor/event', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attemptId,
+          type: 'FULLSCREEN_EXIT',
+          timestamp: Date.now(),
+          metadata: { }
+        })
+      })
     }
   }
-);
 
-worker.on('failed', (job, error) => {
-  console.error(`Job ${job?.id} failed:`, error);
-});
+  document.addEventListener('fullscreenchange', handleFullscreenChange)
+
+  return () => {
+    document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }
+}, [attemptId])
+
+// Request fullscreen on exam start
+const enterFullscreen = () => {
+  document.documentElement.requestFullscreen().catch(err => {
+    console.error('Fullscreen request failed:', err)
+  })
+}
+```
+
+### BullMQ Proctoring Worker
+```typescript
+// Source: Existing ai-grading-worker.ts + BullMQ documentation
+import { Worker, Job } from 'bullmq'
+import Redis from 'ioredis'
+import OpenAI from 'openai'
+import { prisma } from '@/lib/prisma'
+
+const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+const connection = new Redis(redisUrl, {
+  maxRetriesPerRequest: null
+})
+
+const worker = new Worker('proctoring-analysis', async (job: Job) => {
+  const { attemptId, snapshotUrl, timestamp } = job.data
+
+  console.log(`[Proctoring Worker] Analyzing snapshot for attempt ${attemptId}`)
+
+  // Call GPT-4o Vision
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `Analyze this exam proctoring snapshot. Detect:
+1. Number of faces (should be exactly 1)
+2. Student presence (face visible vs absent)
+3. Gaze direction (looking at screen vs away)
+
+Return JSON only: { "multipleFaces": boolean, "absent": boolean, "lookingAway": boolean, "confidence": number }`
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: snapshotUrl,
+            detail: 'low' // 85 tokens
+          }
+        }
+      ]
+    }],
+    max_tokens: 100
+  })
+
+  const analysis = JSON.parse(response.choices[0].message.content || '{}')
+
+  // Create ProctorEvents for detected issues
+  if (analysis.multipleFaces) {
+    await prisma.proctorEvent.create({
+      data: {
+        attemptId,
+        type: 'MULTIPLE_FACES',
+        timestamp: new Date(timestamp),
+        metadata: {
+          confidence: analysis.confidence,
+          snapshotUrl,
+          aiModel: 'gpt-4o'
+        }
+      }
+    })
+  }
+
+  if (analysis.absent) {
+    await prisma.proctorEvent.create({
+      data: {
+        attemptId,
+        type: 'ABSENCE',
+        timestamp: new Date(timestamp),
+        metadata: {
+          confidence: analysis.confidence,
+          snapshotUrl,
+          aiModel: 'gpt-4o'
+        }
+      }
+    })
+  }
+
+  console.log(`[Proctoring Worker] Analysis complete for ${attemptId}`)
+}, {
+  connection,
+  concurrency: 3, // Process 3 snapshots in parallel
+  limiter: {
+    max: 10, // 10 jobs per minute (rate limiting for OpenAI)
+    duration: 60000
+  }
+})
+
+worker.on('failed', (job, err) => {
+  console.error(`[Proctoring Worker] Job ${job?.id} failed:`, err)
+})
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  await worker.close()
+  await connection.quit()
+})
+```
+
+### GPT-4o Vision Analysis Helper
+```typescript
+// Source: OpenAI documentation + proctoring best practices
+import OpenAI from 'openai'
+
+interface ProctoringAnalysis {
+  multipleFaces: boolean
+  absent: boolean
+  lookingAway: boolean
+  confidence: number
+}
+
+export async function analyzeProctorSnapshot(
+  imageUrl: string
+): Promise<ProctoringAnalysis> {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [{
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: `You are an exam proctoring AI. Analyze this webcam snapshot and detect:
+
+1. MULTIPLE_FACES: Are there 2+ people visible? (Should be exactly 1)
+2. ABSENCE: Is the student's face NOT visible? (Empty chair, turned away, out of frame)
+3. LOOKING_AWAY: Is the student looking significantly away from the screen? (Not just brief glances)
+
+Rules:
+- Brief glances or thinking poses are OK, don't flag unless sustained (>3 seconds implied)
+- Partial occlusion (hand on face, drinking) is OK
+- Only flag clear violations
+
+Return JSON only, no explanation:
+{
+  "multipleFaces": boolean,
+  "absent": boolean,
+  "lookingAway": boolean,
+  "confidence": 0.0-1.0
+}`
+        },
+        {
+          type: 'image_url',
+          image_url: {
+            url: imageUrl,
+            detail: 'low' // Cost: 85 tokens = $0.0002125
+          }
+        }
+      ]
+    }],
+    max_tokens: 100,
+    temperature: 0.1 // Low temperature for consistent detection
+  })
+
+  const content = response.choices[0].message.content || '{}'
+  const analysis = JSON.parse(content)
+
+  return {
+    multipleFaces: analysis.multipleFaces || false,
+    absent: analysis.absent || false,
+    lookingAway: analysis.lookingAway || false,
+    confidence: analysis.confidence || 0.5
+  }
+}
 ```
 
 ## State of the Art
 
 | Old Approach | Current Approach | When Changed | Impact |
 |--------------|------------------|--------------|--------|
-| Continuous video recording | Periodic snapshots (30-60s intervals) | 2023-2024 | 90% storage cost reduction, better privacy compliance |
-| Custom CV models (YOLO, etc.) | GPT-4 Vision API | Late 2023 | No model hosting needed, natural language output, but higher per-image cost |
-| navigator.getUserMedia() | navigator.mediaDevices.getUserMedia() | 2021 | Old API deprecated, new API required for modern browsers |
-| Browser plugins (Flash, Java) | Native browser APIs | 2020+ | No plugins needed, works on all platforms including mobile |
-| Facial recognition for identity | Face detection + pre-exam ID check | 2024-2025 | Privacy compliant (no biometric ID storage), avoids bias issues |
-| Auto-fail on AI flags | Teacher review + validation | 2024-2025 | Reduces false positive harm, maintains academic fairness |
+| Continuous screen recording | Periodic snapshots (20-30s intervals) | 2023-2024 | 95% storage reduction, better privacy, same detection rate |
+| Custom CV models (OpenCV, TensorFlow) | GPT-4o Vision API | 2024 | No training data needed, better accuracy, simpler code, cost $0.04/exam |
+| Synchronous image analysis | Async BullMQ queue processing | Always best practice | Non-blocking UI, retries, rate limiting, scalability |
+| High-detail vision mode | Low-detail mode (85 tokens) | 2025-2026 | 93% cost reduction, sufficient for face detection |
+| Browser extension lockdown | Native browser APIs | 2022-2023 | No installation, cross-browser, mobile compatible |
 
 **Deprecated/outdated:**
-- **Respondus LockDown Browser:** Desktop application required, not web-based. Modern approach uses browser APIs.
-- **ProctorU live proctors:** High cost ($20-30 per exam), AI-assisted proctoring reduces cost to $1-5 per exam.
-- **navigator.getUserMedia():** Deprecated since 2021, use `navigator.mediaDevices.getUserMedia()` instead.
-- **MediaPipe legacy models:** Use new @mediapipe/tasks-vision (2023+) not old @mediapipe/face_detection.
+- **Proctorio/ProctorU browser extensions:** Privacy concerns, installation friction, Chrome Web Store restrictions tightening. Modern approach: web-only using native APIs.
+- **Real-time video streaming to server:** Bandwidth intensive, expensive, privacy invasive. Current: periodic snapshots.
+- **Custom face detection libraries (tracking.js, clmtrackr):** Poor accuracy, unmaintained. Current: GPT-4o Vision.
+- **WebRTC for screen sharing detection:** Complex, unreliable. Current: Page Visibility + focus events.
 
 ## Open Questions
 
 Things that couldn't be fully resolved:
 
-1. **MediaPipe vs GPT-4 Vision for face detection**
-   - What we know: MediaPipe runs client-side (free, fast), GPT-4V is server-side (cost, slower but better context understanding)
-   - What's unclear: Performance comparison for proctoring use case (accuracy, false positive rates)
-   - Recommendation: Start with GPT-4 Vision (simpler integration, already in stack). Add MediaPipe as optimization if costs are high.
+1. **Mobile Safari WebRTC Stability**
+   - What we know: getUserMedia works on iOS Safari 14+, but permission prompts differ, background behavior unpredictable
+   - What's unclear: How reliably snapshots capture when exam tab backgrounded on iOS
+   - Recommendation: Test on real iOS devices, consider warning students that desktop is preferred for proctored exams
 
-2. **Optimal snapshot interval**
-   - What we know: Research papers use 15-30s, but this creates high API costs. Commercial systems use 30-60s.
-   - What's unclear: Does longer interval (60s+) significantly reduce cheating detection?
-   - Recommendation: Make configurable per exam (default 60s), allow teachers to adjust. Monitor false negative rates.
+2. **GPT-4o Vision Consistency**
+   - What we know: temperature=0.1 improves consistency, low-detail mode sufficient for faces
+   - What's unclear: False positive rate for "looking away" detection in production (no published benchmarks)
+   - Recommendation: Start with conservative prompts ("sustained looking away"), collect teacher feedback, tune prompts iteratively
 
-3. **Legal requirements by jurisdiction**
-   - What we know: FERPA (US), GDPR (EU), CCPA (California) have different requirements. California has Student Test Taker Privacy Protection Act.
-   - What's unclear: Specific compliance requirements for this project's target institutions
-   - Recommendation: Consult legal counsel. Include consent flow, data retention policy, and access controls as baseline.
+3. **GDPR Data Retention Requirements**
+   - What we know: Biometric data requires heightened protection, must document retention periods
+   - What's unclear: Exact retention duration for educational proctoring (varies by institution, country)
+   - Recommendation: Default 90 days post-exam, make configurable, consult legal counsel for specific jurisdiction
 
-4. **Browser compatibility for MediaRecorder**
-   - What we know: MediaRecorder widely supported since 2021, but MIME type support varies (webm vs mp4)
-   - What's unclear: Should we support older browsers (pre-2021)?
-   - Recommendation: Require modern browsers (Chrome 72+, Firefox 66+, Safari 14+). Use `MediaRecorder.isTypeSupported()` to detect codec.
+4. **DevTools Detection Reliability**
+   - What we know: Libraries have high false positive rates, undocked DevTools often undetected
+   - What's unclear: Whether any reliable detection method exists in 2026 without browser extensions
+   - Recommendation: Use as LOW-confidence signal only, don't base enforcement on it, document limitations
 
-5. **Real-time vs post-exam analysis**
-   - What we know: Real-time analysis (during exam) allows instant intervention. Post-exam analysis (async) is cheaper.
-   - What's unclear: Do teachers want real-time alerts during exams?
-   - Recommendation: Start with async post-exam analysis. Add real-time as Phase 2 feature if teachers request it.
+5. **Snapshot Interval Optimization**
+   - What we know: Industry uses 20-30 seconds, HackerEarth uses 20-30s random intervals
+   - What's unclear: Optimal balance between detection rate and cost for this specific user base
+   - Recommendation: Start with 25 seconds (144 snapshots/hour = $0.03/exam), monitor effectiveness, adjust based on data
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [MDN MediaRecorder API](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder) - Official documentation
-- [MDN Page Visibility API](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API) - Official documentation
-- [MDN getUserMedia](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) - Official documentation
-- [MDN contextmenu event](https://developer.mozilla.org/en-US/docs/Web/API/Element/contextmenu_event) - Official documentation
-- [Google MediaPipe Face Detector](https://ai.google.dev/edge/mediapipe/solutions/vision/face_detector/web_js) - Official guide
-- [react-webcam npm package](https://www.npmjs.com/package/react-webcam) - 113k+ weekly downloads
+- [react-webcam npm package](https://www.npmjs.com/package/react-webcam) - API documentation, version 7.2.0
+- [MDN Page Visibility API](https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API) - Browser API documentation
+- [MDN Clipboard API](https://developer.mozilla.org/en-US/docs/Web/API/Clipboard_API) - Copy/paste event handling
+- [MDN Fullscreen API](https://developer.mozilla.org/en-US/docs/Web/API/Fullscreen_API) - Fullscreen detection
+- [MDN MediaDevices.getUserMedia()](https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getUserMedia) - Webcam constraints
+- [OpenAI API Pricing](https://platform.openai.com/docs/pricing) - GPT-4o Vision token costs
+- [BullMQ Documentation](https://docs.bullmq.io) - Queue and worker patterns
+- Existing codebase: `scripts/ai-grading-worker.ts`, `lib/antiCheat.ts`, `prisma/schema.prisma`
 
 ### Secondary (MEDIUM confidence)
-- [Paradiso Solutions Online Proctoring Guide 2026](https://www.paradisosolutions.com/blog/complete-guide-online-proctoring-remote-exams/) - WebSearch verified with patterns
-- [Think Exam AI Webcam Proctoring 2026](https://thinkexam.com/blog/top-exam-proctoring-software-with-webcam-2026-how-ai-driven-webcam-monitoring-prevents-cheating/) - WebSearch verified practices
-- [Respondus LockDown Browser Best Practices](https://teaching.unl.edu/resources/grading-feedback/respondus-lockdown-browser-and-monitor-best-practices/) - Academic source
-- [OpenReplay React Webcam Tutorial](https://blog.openreplay.com/capture-real-time-images-and-videos-with-react-webcam/) - Implementation patterns
-- [Legal Implications of Remote Exam Proctoring](https://scholarlycommons.law.case.edu/cgi/viewcontent.cgi?article=5058&context=caselrev) - Legal research paper
+- [HackerRank Proctoring Guide](https://www.hackerrank.com/writing/tab-proctoring-what-it-catches-and-what-it-misses) - Tab proctoring patterns (verified with MDN)
+- [Codility Proctoring Documentation](https://support.codility.com/hc/en-us/articles/15584109019671-Proctoring-Ensuring-Assessment-Integrity-with-Behavioral-Events-Detection) - Event detection strategies
+- [GPT-4o Vision Guide (GetStream)](https://getstream.io/blog/gpt-4o-vision-guide/) - Vision API implementation patterns
+- [Building File Storage with Next.js and MinIO (Medium)](https://medium.com/@alexefimenko/building-s3-file-storage-with-next-js-4-upload-and-download-files-using-presigned-urls-a83207f48227) - Presigned URL patterns (verified with MinIO docs)
+- [GDPR & Remote Proctoring (Proctor360)](https://proctor360.com/blog/gdpr-compliance-remote-proctoring-essentials) - Compliance requirements
+- [OpenAI GPT-4o Pricing Guide (LaoZhang-AI)](https://blog.laozhang.ai/ai/openai-gpt-4o-api-pricing-guide/) - Cost optimization strategies
 
-### Tertiary (LOW confidence - flagged for validation)
-- [GPT-4 Vision for Exam Proctoring](https://www.visive.ai/solutions/proctor-ai) - WebSearch only, vendor claims
-- [AI Proctoring False Positive Rates](https://www.researchgate.net/publication/364345744_The_Accuracy_of_AI-Based_Automatic_Proctoring_in_Online_Exams) - Research paper, need to verify methodology
-- [Turnitin 1% False Positive Rate](https://proofademic.ai/blog/false-positives-ai-detection-guide/) - Vendor claim, not independently verified
-- [DevTools Detection Bypass Methods](https://blog.exploit.cat/defeating-devtools-detection/) - Security blog, demonstrates bypasses
+### Tertiary (LOW confidence - requires validation)
+- [devtools-detect library](https://github.com/sindresorhus/devtools-detect) - DevTools detection (noted limitations: false positives)
+- [Think Exam Proctoring Blog](https://thinkexam.com/blog/top-exam-proctoring-software-with-webcam-2026-how-ai-driven-webcam-monitoring-prevents-cheating/) - Snapshot interval practices (single source, not verified)
+- [Exam Proctoring System Using Machine Learning (IEEE)](https://ieeexplore.ieee.org/document/11026486/) - Two-phase architecture concept (academic paper, not production-verified)
 
 ## Metadata
 
 **Confidence breakdown:**
-- Standard stack: HIGH - Official documentation verified for MediaRecorder, Page Visibility API, getUserMedia. react-webcam is most popular React library with 113k+ weekly downloads.
-- Architecture: HIGH - Patterns verified against MDN documentation and existing codebase (ProctorEvent model, BullMQ workers, MinIO storage already implemented).
-- Pitfalls: MEDIUM - Based on WebSearch findings (false positive rates, privacy issues, legal cases) and research papers. Legal requirements need validation with counsel.
-- AI analysis: MEDIUM - GPT-4 Vision capabilities documented, but proctoring-specific accuracy (false positive rates) from research papers need independent verification.
+- Standard stack: HIGH - react-webcam verified via npm, OpenAI pricing from official docs, Browser APIs from MDN, BullMQ pattern exists in codebase
+- Architecture: HIGH - Two-phase pattern industry standard (verified multiple sources), existing BullMQ worker pattern in project, Prisma schema already supports structure
+- Pitfalls: MEDIUM-HIGH - Page Visibility mobile issues documented on MDN, DevTools detection issues verified in library docs, GDPR requirements from compliance guides, cost math verified with OpenAI pricing
+- Code examples: HIGH - All examples based on official documentation (react-webcam, MDN APIs, BullMQ docs, OpenAI API), adapted to existing project patterns
 
 **Research date:** 2026-02-02
-**Valid until:** 30 days (2026-03-04) - Browser APIs stable, AI capabilities evolving, legal landscape changing with new regulations
+**Valid until:** 2026-03-02 (30 days - stable domain with mature APIs, OpenAI pricing may change)
+
+**Key Research Focus:**
+This is a RE-RESEARCH focused on current best practices. Special attention paid to:
+- Latest react-webcam API (verified version 7.2.0, last updated 2024 but stable)
+- GPT-4o Vision 2026 capabilities and pricing (low-detail mode optimization critical)
+- Browser API compatibility in 2026 (Page Visibility mobile issues documented)
+- Cost optimization strategies (93% savings using low-detail mode)
+- GDPR compliance requirements for biometric data (heightened in 2025-2026)
+
+**Notable Changes Since Original Research:**
+- GPT-4o Vision detail modes now well-documented (low-detail = 85 tokens standard)
+- Increased GDPR enforcement (€6.7B in fines since 2018, stricter in 2025-2026)
+- Mobile Page Visibility API issues better documented (Firefox most reliable)
+- DevTools detection libraries acknowledged as unreliable (use sparingly)
+- Industry consensus on 20-30 second snapshot intervals (cost-effectiveness balance)
