@@ -195,35 +195,33 @@ Plans:
 
 ## Phase 7: Intelligent Proctoring
 
-**Goal:** Full proctoring suite for exam integrity — webcam monitoring with AI analysis, browser lockdown, activity logging, and teacher review dashboard.
+**Goal:** Browser-based exam integrity monitoring — webcam deterrent (camera on, no analysis), browser lockdown with focus loss detection, paste origin verification, suspicious pattern analysis, and teacher review dashboard.
 
 **Dependencies:** Phase 2 (exam taking flow), Phase 6 (UI Kit for consistent UI)
 
 **Requirements:**
-- PROCT-01: Webcam capture during exam with periodic snapshots
-- PROCT-02: AI analysis of webcam frames for suspicious behavior (looking away, multiple faces, absent student)
-- PROCT-03: Browser lockdown detection (tab switches, copy/paste, screen sharing, DevTools)
-- PROCT-04: Activity logging with timestamped events (webcam flags + browser events)
-- PROCT-05: Teacher proctoring review dashboard (per-student timeline, flagged events, snapshots)
-- PROCT-06: Proctoring configuration per exam (enable/disable, sensitivity level, lockdown strictness)
+- PROCT-01: Webcam deterrent mode (camera permission prompt + active indicator, no recording/analysis)
+- PROCT-02: Toggleable proctoring per exam (teacher enables/disables webcam + lockdown independently)
+- PROCT-03: Browser lockdown detection (tab switches, focus loss, external paste detection)
+- PROCT-04: Focus loss pattern analysis (correlate focus losses with answer timing = suspicious)
+- PROCT-05: Activity logging with timestamped events for teacher review
+- PROCT-06: Teacher proctoring review dashboard (per-student timeline, suspicion score, event patterns)
 
-**Plans:** 6 plans
+**Plans:** 4 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Schema extension, proctoring queue, config types, and exam editor config panel
-- [ ] 07-02-PLAN.md — Browser lockdown detection (tab switch, copy/paste, right-click, DevTools)
-- [ ] 07-03-PLAN.md — Webcam capture with periodic snapshots, camera permission check, consent flow
-- [ ] 07-04-PLAN.md — GPT-4 Vision AI snapshot analysis BullMQ worker
-- [ ] 07-05-PLAN.md — Teacher review dashboard upgrade with AI flags, snapshots, confidence scores
-- [ ] 07-06-PLAN.md — Anti-cheat score update, grading view integration, end-to-end verification
+- [ ] 07-01-PLAN.md — Proctoring config types + exam settings panel with toggles
+- [ ] 07-02-PLAN.md — Focus loss pattern analysis engine (TDD)
+- [ ] 07-03-PLAN.md — Client-side proctoring monitor (webcam deterrent + browser lockdown)
+- [ ] 07-04-PLAN.md — Enhanced teacher proctoring dashboard with pattern indicators
 
 **Success Criteria:**
-1. Student opening an exam with proctoring enabled sees camera permission prompt and active indicator
-2. Student looking away for >5 seconds triggers a flagged event with snapshot
-3. Student switching tabs triggers a warning and logged event
-4. Teacher can review a timeline of all proctoring events for each student attempt
-5. Teacher can configure proctoring settings (on/off, sensitivity) when creating an exam
-6. Proctoring events do not impact exam performance (async processing)
+1. Student opening a proctored exam sees camera permission prompt and active camera indicator (deterrent only)
+2. Student switching tabs triggers a logged event visible to teacher
+3. Student pasting text from external source (not from within the exam page) is flagged differently from internal paste
+4. Repeated focus loss before answering questions is detected as a suspicious pattern
+5. Teacher can toggle webcam deterrent and browser lockdown independently per exam
+6. Teacher can review a timeline of proctoring events per student with suspicion indicators
 
 ---
 
@@ -237,7 +235,7 @@ Plans:
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Complete |
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Complete |
 | 6 - UI Kit Integration | Consistent UI components across all pages | UIKIT-01 through UIKIT-06 | Complete |
-| 7 - Intelligent Proctoring | Webcam AI + browser lockdown + activity logging + review dashboard | PROCT-01 through PROCT-06 | In Progress |
+| 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | In Progress |
 
 ---
 
@@ -257,6 +255,7 @@ Plans:
 - Phase 1 creates `renderLatexToString` export for Phase 5 PDF generation
 - Phase 3: Research found 80% of infrastructure exists; 3 focused extension plans instead of 5
 - Phase 5: MathJax used for PDF (produces SVG), KaTeX used for web (produces HTML)
+- Phase 7: Webcam is deterrent ONLY (no recording, no snapshots, no AI Vision). Uses native getUserMedia, not react-webcam. Focus loss pattern analysis is the core intelligence.
 
 ---
 
