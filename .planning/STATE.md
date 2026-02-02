@@ -21,9 +21,9 @@
 ## Current Position
 
 **Phase:** 9 of 9 (Graph Editor Overhaul)
-**Plan:** 2 of 4
+**Plan:** 3 of 4
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 09-02-PLAN.md
+**Last activity:** 2026-02-02 - Completed 09-03-PLAN.md
 
 **Progress:**
 ```
@@ -35,10 +35,10 @@ Phase 5: Export                   [==========] 3/3 plans complete
 Phase 6: UI Kit Integration       [==========] 8/8 plans complete
 Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 Phase 8: PDF Exam Import          [==========] 3/3 plans complete
-Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans complete
+Phase 9: Graph Editor Overhaul    [███████░░░] 3/4 plans complete
 ```
 
-**Overall:** 35 plans complete (Phases 1-8 complete, Phase 9 in progress)
+**Overall:** 36 plans complete (Phases 1-8 complete, Phase 9 in progress)
 
 ---
 
@@ -46,9 +46,9 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 35 | 01-01 through 09-02 |
-| Success rate | 100% | 35/35 plans succeeded |
-| Avg duration | 5 min | Consistent execution time |
+| Plans completed | 36 | 01-01 through 09-03 |
+| Success rate | 100% | 36/36 plans succeeded |
+| Avg duration | 4 min | Consistent execution time |
 
 ---
 
@@ -135,6 +135,10 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 | Grid snap only when showGrid | Visual feedback matches snapping behavior | 9 |
 | Draggable endpoints only for coord anchors | Simpler V1, point anchors need resolver | 9 |
 | Control point handle on selection | Reduces clutter, reveals on interaction | 9 |
+| Simple mode layout (palette left, canvas center) | Familiar PowerPoint-like experience, clear separation | 9 |
+| Auto-select newly added shapes | Immediate feedback, enables instant drag after insertion | 9 |
+| Collapsible axes config in Simple mode | Reduces clutter, keeps focus on visual editing | 9 |
+| Default to Simple mode | Visual editing is primary use case for most users | 9 |
 
 ### Technical Patterns
 
@@ -201,6 +205,9 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 - **Grid snapping:** Applied in drag handlers when showGrid enabled
 - **Shape component pattern:** Element data + axes + dims + onUpdate + isSelected props
 - **Drag handles:** Colored circles for endpoints (blue selected, green control points)
+- **PowerPoint-like shape insertion:** Click palette → createElements → merge → auto-select → drag
+- **Dual-mode graph editor:** Simple (visual canvas) + Advanced (form-based) share same GraphPayload
+- **Collapsible config panels:** Reduces clutter while keeping advanced options accessible
 
 ### Roadmap Evolution
 
@@ -211,6 +218,7 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 - Phase 9 started: Graph Editor Overhaul — dual-mode graph editor (drag-and-drop + function-based)
   - 09-01 complete: Foundation infrastructure (types, utils, deps, AdvancedGraphEditor extracted)
   - 09-02 complete: Interactive canvas with editable shapes (react-konva)
+  - 09-03 complete: Simple mode editor and dual-mode wrapper (ShapePalette, SimpleGraphEditor, GraphEditorWrapper)
 
 ### Known Issues
 
@@ -254,6 +262,7 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 - [x] Complete 08-03: PDF Import UI Integration
 - [x] Complete 09-01: Graph Editor Foundation Infrastructure
 - [x] Complete 09-02: Interactive Canvas with Editable Shapes
+- [x] Complete 09-03: Simple Mode Editor and Dual-Mode Wrapper
 
 ### Blockers
 
@@ -263,14 +272,14 @@ Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans com
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 15:49 UTC
-**Stopped at:** Completed 09-02-PLAN.md
+**Last session:** 2026-02-02 15:55 UTC
+**Stopped at:** Completed 09-03-PLAN.md
 **Resume file:** None
 
 ### Resumption Prompt
 
 ```
-Correcta - 35 plans complete across 9 phases.
+Correcta - 36 plans complete across 9 phases.
 Phase 1: Math Foundation (3 plans) ✓
 Phase 2: Exam Creation (4 plans) ✓
 Phase 3: Organization (3 plans) ✓
@@ -279,10 +288,10 @@ Phase 5: Export (3 plans) ✓
 Phase 6: UI Kit Integration (8 plans) ✓
 Phase 7: Intelligent Proctoring (4 plans) ✓
 Phase 8: PDF Exam Import (3 plans) ✓
-Phase 9: Graph Editor Overhaul (2/4 plans) - IN PROGRESS
+Phase 9: Graph Editor Overhaul (3/4 plans) - IN PROGRESS
 
-Latest: 09-02 (Interactive Canvas with Editable Shapes) complete.
-react-konva canvas ready with all shape types, awaiting Simple mode integration (09-03).
+Latest: 09-03 (Simple Mode Editor and Dual-Mode Wrapper) complete.
+Dual-mode editor ready: ShapePalette + SimpleGraphEditor + GraphEditorWrapper, awaiting export/integration (09-04).
 ```
 
 ### Context Files
@@ -319,10 +328,11 @@ react-konva canvas ready with all shape types, awaiting Simple mode integration 
 - `.planning/phases/08-pdf-exam-import/08-03-SUMMARY.md` - PDF Import UI Integration summary
 - `.planning/phases/09-graph-editor-overhaul/09-01-SUMMARY.md` - Graph Editor Foundation Infrastructure summary
 - `.planning/phases/09-graph-editor-overhaul/09-02-SUMMARY.md` - Interactive Canvas with Editable Shapes summary
+- `.planning/phases/09-graph-editor-overhaul/09-03-SUMMARY.md` - Simple Mode Editor and Dual-Mode Wrapper summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-02 - Completed 09-02 (Interactive Canvas with Editable Shapes)*
-*Phase 9 in progress: 2/4 plans complete*
-*Total: 35 plans delivered*
+*Last execution: 2026-02-02 - Completed 09-03 (Simple Mode Editor and Dual-Mode Wrapper)*
+*Phase 9 in progress: 3/4 plans complete*
+*Total: 36 plans delivered*
