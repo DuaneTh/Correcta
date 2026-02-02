@@ -3,6 +3,10 @@
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, CheckCircle, Clock, XCircle } from "lucide-react"
+import { Surface } from "@/components/ui/Layout"
+import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { Text } from "@/components/ui/Text"
 
 interface StudentSummary {
     attemptId: string
@@ -17,6 +21,13 @@ interface StudentSummary {
     eventCounts: Record<string, number>
     totalEvents: number
     antiCheatScore: number
+    focusLossPattern: {
+        flag: string
+        ratio: number
+        suspiciousPairs: number
+        totalAnswers: number
+    }
+    externalPastes: number
 }
 
 interface ProctoringSummaryProps {
@@ -114,22 +125,23 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
         <div className="max-w-7xl mx-auto py-8 px-4">
             {/* Header */}
             <div className="mb-6">
-                <button
+                <Button
+                    variant="ghost"
                     onClick={() => router.push('/dashboard/exams')}
-                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                    className="mb-4"
                 >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    <ArrowLeft className="w-4 h-4" />
                     Retour aux examens
-                </button>
+                </Button>
                 <div className="flex justify-between items-start">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">{examTitle}</h1>
-                        <p className="text-gray-600 mt-1">{courseCode} - Proctoring / Anti-triche</p>
+                        <Text variant="pageTitle">{examTitle}</Text>
+                        <Text variant="muted" className="mt-1">{courseCode} - Proctoring / Anti-triche</Text>
                     </div>
                     <a
                         href={`/api/exams/${examId}/anti-cheat-report`}
                         download
-                        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        className="inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2 bg-brand-900 text-white hover:bg-brand-700 px-4 py-2 text-sm"
                     >
                         Télécharger le rapport anti-triche (CSV)
                     </a>
@@ -137,11 +149,11 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
             </div>
 
             {summary.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <p className="text-gray-500">Aucune tentative enregistrée pour cet examen.</p>
-                </div>
+                <Surface className="text-center py-12">
+                    <Text variant="muted">Aucune tentative enregistrée pour cet examen.</Text>
+                </Surface>
             ) : (
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
+                <Surface className="overflow-hidden shadow-sm">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -165,6 +177,9 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Événements
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Patterns
                                 </th>
                                 <th
                                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -207,24 +222,49 @@ export default function ProctoringSummary({ examId, examTitle, courseCode }: Pro
                                             <div className="font-medium">Total: {item.totalEvents}</div>
                                         </div>
                                     </td>
+                                    <td className="px-6 py-4">
+                                        <div className="flex flex-col gap-2">
+                                            {item.focusLossPattern.flag === 'SUSPICIOUS' && (
+                                                <Badge variant="warning" className="w-fit bg-orange-50 text-orange-700 border-orange-200">
+                                                    Focus suspect
+                                                </Badge>
+                                            )}
+                                            {item.focusLossPattern.flag === 'HIGHLY_SUSPICIOUS' && (
+                                                <Badge className="w-fit bg-red-50 text-red-700 border-red-200">
+                                                    Focus très suspect
+                                                </Badge>
+                                            )}
+                                            {item.externalPastes > 0 && (
+                                                <Badge className="w-fit bg-purple-50 text-purple-700 border-purple-200">
+                                                    {item.externalPastes} collage{item.externalPastes > 1 ? 's' : ''} externe{item.externalPastes > 1 ? 's' : ''}
+                                                </Badge>
+                                            )}
+                                            {item.focusLossPattern.totalAnswers > 0 && (
+                                                <Text variant="xsMuted" className="mt-1">
+                                                    {item.focusLossPattern.suspiciousPairs}/{item.focusLossPattern.totalAnswers} réponses après perte de focus
+                                                </Text>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getSuspicionColor(item.antiCheatScore)}`}>
                                             {item.antiCheatScore} - {getSuspicionLabel(item.antiCheatScore)}
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
                                             onClick={() => router.push(`/dashboard/exams/${examId}/proctoring/${item.attemptId}`)}
-                                            className="text-indigo-600 hover:text-indigo-900"
                                         >
                                             Détails
-                                        </button>
+                                        </Button>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                </div>
+                </Surface>
             )}
         </div>
     )
