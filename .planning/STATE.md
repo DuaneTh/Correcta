@@ -21,9 +21,9 @@
 ## Current Position
 
 **Phase:** 6 of 6 (UI Kit Integration)
-**Plan:** 1 of 8
+**Plan:** 4 of 8
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 06-01-PLAN.md
+**Last activity:** 2026-02-02 - Completed 06-04-PLAN.md
 
 **Progress:**
 ```
@@ -32,10 +32,10 @@ Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [==========] 3/3 plans complete
 Phase 4: AI Correction       [==========] 4/4 plans complete
 Phase 5: Export              [==========] 3/3 plans complete
-Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
+Phase 6: UI Kit Integration  [█████░░░░░] 4/8 plans complete
 ```
 
-**Overall:** 18/25 plans complete (72%)
+**Overall:** 21/25 plans complete (84%)
 
 ---
 
@@ -43,8 +43,8 @@ Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 18 | 01-01 through 06-01 |
-| Success rate | 100% | 18/18 plans succeeded |
+| Plans completed | 21 | 01-01 through 06-04 |
+| Success rate | 100% | 21/21 plans succeeded |
 | Avg duration | 8 min | Consistent execution time |
 
 ---
@@ -105,6 +105,8 @@ Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
 | Extract files via git show (not cherry-pick) | Avoids bringing unrelated changes from kourpat1 branch | 6 |
 | Strip UTF-8 BOM from extracted files | Ensures consistent encoding and prevents parser issues | 6 |
 | Preserve existing DateInput/DateTimePicker | Keeps working current versions, avoids breaking changes | 6 |
+| SegmentedControl for view mode switching | Provides consistent toggle UI pattern for list/grid/stats views | 6 |
+| StatusBadge for exam statuses | Consistent exam status visualization (draft/scheduled/published) | 6 |
 
 ### Technical Patterns
 
@@ -172,7 +174,8 @@ Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
 - [x] Complete 05-02: PDF Infrastructure with Math Rendering
 - [x] Complete 05-03: PDF Export API
 - [x] Complete 06-01: UI Kit Component Integration
-- [ ] Complete 06-02: Remaining UI migrations (plans 02-08)
+- [x] Complete 06-04: Teacher and Grading Pages Migration
+- [ ] Complete 06-02, 06-03, 06-05 through 06-08: Remaining UI migrations
 
 ### Blockers
 
@@ -187,12 +190,13 @@ Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
 ```
 Correcta Phase 6 (UI Kit Integration) in progress.
 Completed phases 1-5 (17 plans).
-Phase 6: 1/8 plans complete
+Phase 6: 4/8 plans complete
 - Plan 06-01: UI Kit components integrated ✓
-- Plans 06-02 to 06-08: UI migrations pending
+- Plan 06-04: Teacher and grading pages migrated ✓
+- Plans 06-02, 06-03, 06-05 to 06-08: UI migrations pending
 
-Current: Ready for plan 06-02 (next UI migration)
-Total: 18/25 plans complete (72%)
+Current: Ready for remaining UI migration plans
+Total: 21/25 plans complete (84%)
 ```
 
 ### Context Files
@@ -219,9 +223,10 @@ Total: 18/25 plans complete (72%)
 - `.planning/phases/05-export/05-02-SUMMARY.md` - PDF Infrastructure summary
 - `.planning/phases/05-export/05-03-SUMMARY.md` - PDF Export API summary
 - `.planning/phases/06-ui-kit-integration/06-01-SUMMARY.md` - UI Kit Component Integration summary
+- `.planning/phases/06-ui-kit-integration/06-04-SUMMARY.md` - Teacher and Grading Pages Migration summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-02 - Completed 06-01-PLAN.md (UI Kit Component Integration)*
-*Phase 6 in progress: 1/8 plans complete*
+*Last execution: 2026-02-02 - Completed 06-04-PLAN.md (Teacher and Grading Pages Migration)*
+*Phase 6 in progress: 4/8 plans complete*

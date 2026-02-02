@@ -9,6 +9,14 @@ import Drawer from '@/components/ui/Drawer'
 import ConfirmModal from '@/components/ui/ConfirmModal'
 import CsvUploader from '@/components/ui/CsvUploader'
 import { promoteToSchoolAdmin } from '@/lib/actions/organization'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Stack, Inline } from '@/components/ui/Layout'
+import { Badge } from '@/components/ui/Badge'
+import { Input } from '@/components/ui/Form'
+import { SearchField } from '@/components/ui/SearchField'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type CsvUser = { email: string; name: string }
 type CsvUserStatus = 'valid' | 'invalid-email' | 'duplicate'
@@ -361,85 +369,80 @@ export default function SchoolUsersClient({
     }, [])
 
     return (
-        <div className="flex flex-col gap-6">
+        <Stack gap="xl">
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-brand-900">{dict.nav.users}</h1>
-                    <p className="text-sm text-gray-500">
+            <Inline align="between" gap="md">
+                <Stack gap="xs">
+                    <Text as="h1" variant="pageTitle">{dict.nav.users}</Text>
+                    <Text variant="muted">
                         {activeRole === 'teacher' ? dict.tabs.teachers : dict.tabs.students}
-                    </p>
-                </div>
-                <div className="flex gap-2">
-                    <button
-                        type="button"
+                    </Text>
+                </Stack>
+                <Inline align="start" gap="xs">
+                    <Button
                         onClick={() => setCsvDrawerOpen(true)}
-                        className="inline-flex items-center rounded-md border border-brand-900 px-4 py-2 text-sm font-medium text-brand-900 hover:bg-brand-50"
+                        variant="secondary"
                     >
                         {dict.csvImport.button}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
                         onClick={(e) => openCreateDrawer(e.currentTarget)}
-                        className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                        variant="primary"
                     >
                         {activeRole === 'teacher' ? dict.createTeacherButton : dict.createStudentButton}
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </Inline>
+            </Inline>
 
             {/* Role tabs + Search */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setRoleParam('teacher')}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${activeRole === 'teacher'
-                                ? 'bg-brand-900 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {dict.tabs.teachers} ({teachers.filter(t => !isArchived(t.archivedAt)).length})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setRoleParam('student')}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${activeRole === 'student'
-                                ? 'bg-brand-900 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {dict.tabs.students} ({students.filter(s => !isArchived(s.archivedAt)).length})
-                        </button>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <input
-                            type="text"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder={activeRole === 'teacher' ? dict.searchTeachersPlaceholder : dict.searchStudentsPlaceholder}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                        />
-                        <label className="flex items-center gap-2 text-sm text-gray-600">
-                            <input
-                                type="checkbox"
-                                checked={showArchived}
-                                onChange={(e) => setShowArchived(e.target.checked)}
-                                className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
+            <Card>
+                <CardBody padding="md">
+                    <Inline align="between" gap="md" wrap="wrap">
+                        <Inline align="start" gap="xs">
+                            <Button
+                                onClick={() => setRoleParam('teacher')}
+                                variant={activeRole === 'teacher' ? 'primary' : 'secondary'}
+                                size="sm"
+                            >
+                                {dict.tabs.teachers} ({teachers.filter(t => !isArchived(t.archivedAt)).length})
+                            </Button>
+                            <Button
+                                onClick={() => setRoleParam('student')}
+                                variant={activeRole === 'student' ? 'primary' : 'secondary'}
+                                size="sm"
+                            >
+                                {dict.tabs.students} ({students.filter(s => !isArchived(s.archivedAt)).length})
+                            </Button>
+                        </Inline>
+                        <Inline align="center" gap="sm">
+                            <SearchField
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder={activeRole === 'teacher' ? dict.searchTeachersPlaceholder : dict.searchStudentsPlaceholder}
                             />
-                            {dict.showArchived}
-                        </label>
-                    </div>
-                </div>
-            </div>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    checked={showArchived}
+                                    onChange={(e) => setShowArchived(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
+                                />
+                                <Text variant="body">{dict.showArchived}</Text>
+                            </label>
+                        </Inline>
+                    </Inline>
+                </CardBody>
+            </Card>
 
             {/* Users table */}
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <Card>
                 {filteredUsers.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500">
-                        {activeRole === 'teacher' ? dict.emptyTeachers : dict.emptyStudents}
-                    </div>
+                    <CardBody padding="md">
+                        <EmptyState
+                            title={activeRole === 'teacher' ? dict.emptyTeachers : dict.emptyStudents}
+                            size="compact"
+                        />
+                    </CardBody>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-left text-sm">
@@ -468,9 +471,9 @@ export default function SchoolUsersClient({
                                                         {user.name || dict.unknownName}
                                                     </span>
                                                     {archived && (
-                                                        <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs text-gray-600">
+                                                        <Badge variant="neutral">
                                                             {dict.archivedBadge}
-                                                        </span>
+                                                        </Badge>
                                                     )}
                                                 </div>
                                             </td>
@@ -487,41 +490,41 @@ export default function SchoolUsersClient({
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        type="button"
+                                                <Inline align="end" gap="xs">
+                                                    <Button
                                                         onClick={(e) => {
                                                             e.stopPropagation()
                                                             openEditDrawer(user.id, e.currentTarget)
                                                         }}
-                                                        className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                                        variant="secondary"
+                                                        size="xs"
                                                     >
                                                         {dict.users.edit}
-                                                    </button>
+                                                    </Button>
                                                     {activeRole === 'teacher' && !archived && (
-                                                        <button
-                                                            type="button"
+                                                        <Button
                                                             onClick={(e) => {
                                                                 e.stopPropagation()
                                                                 setPendingPromoteUser({ id: user.id, name: user.name })
                                                                 setPromoteConfirmOpen(true)
                                                             }}
-                                                            className="rounded-md border border-brand-900 px-3 py-1 text-xs font-medium text-brand-900 hover:bg-brand-50"
+                                                            variant="primary"
+                                                            size="xs"
                                                         >
                                                             {dict.rolePromotion.promoteButton}
-                                                        </button>
+                                                        </Button>
                                                     )}
-                                                    <button
-                                                        type="button"
+                                                    <Button
                                                         onClick={(e) => {
                                                             e.stopPropagation()
                                                             requestArchive(user.id)
                                                         }}
-                                                        className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                                                        variant="ghost"
+                                                        size="xs"
                                                     >
                                                         {archived ? dict.restoreLabel : dict.archiveLabel}
-                                                    </button>
-                                                </div>
+                                                    </Button>
+                                                </Inline>
                                             </td>
                                         </tr>
                                     )
@@ -530,7 +533,7 @@ export default function SchoolUsersClient({
                         </table>
                     </div>
                 )}
-            </div>
+            </Card>
 
             {/* Create/Edit Drawer */}
             <Drawer
@@ -542,63 +545,59 @@ export default function SchoolUsersClient({
                 }
                 returnFocusRef={drawerReturnFocusRef}
             >
-                <div className="grid grid-cols-1 gap-4">
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.namePlaceholder}</span>
-                        <input
-                            type="text"
+                <Stack gap="md">
+                    <Stack gap="xs">
+                        <Text variant="label">{dict.namePlaceholder}</Text>
+                        <Input
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.emailPlaceholder} *</span>
-                        <input
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="label">{dict.emailPlaceholder} *</Text>
+                        <Input
                             type="email"
                             value={form.email}
                             onChange={(e) => setForm({ ...form, email: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.passwordPlaceholder}</span>
-                        <input
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="label">{dict.passwordPlaceholder}</Text>
+                        <Input
                             type="password"
                             value={form.password}
                             onChange={(e) => setForm({ ...form, password: e.target.value })}
                             placeholder={drawerMode === 'edit' ? dict.users.passwordHint : ''}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         />
-                    </label>
-                </div>
+                    </Stack>
+                </Stack>
 
                 {error && (
-                    <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {error}
-                    </div>
+                    <Card className="mt-4">
+                        <CardBody padding="sm">
+                            <Text variant="body" className="text-red-700">{error}</Text>
+                        </CardBody>
+                    </Card>
                 )}
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <button
-                        type="button"
+                <Inline align="end" gap="xs" className="mt-6">
+                    <Button
                         onClick={closeDrawer}
-                        className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        variant="secondary"
                     >
                         {dict.cancelArchiveButton}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
                         onClick={handleSave}
                         disabled={saving}
-                        className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                        variant="primary"
                     >
                         {drawerMode === 'create'
                             ? (activeRole === 'teacher' ? dict.createTeacherButton : dict.createStudentButton)
                             : dict.users.saveButton
                         }
-                    </button>
-                </div>
+                    </Button>
+                </Inline>
             </Drawer>
 
             {/* Archive Confirm Modal */}
@@ -684,25 +683,23 @@ export default function SchoolUsersClient({
                         </div>
 
                         {/* Actions */}
-                        <div className="flex justify-end gap-2 border-t border-gray-200 pt-4">
-                            <button
-                                type="button"
+                        <Inline align="end" gap="xs" className="border-t border-gray-200 pt-4">
+                            <Button
                                 onClick={() => {
                                     closeProfileDrawer()
                                     openEditDrawer(selectedUser.id)
                                 }}
-                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                variant="secondary"
                             >
                                 {dict.users.edit}
-                            </button>
-                            <button
-                                type="button"
+                            </Button>
+                            <Button
                                 onClick={closeProfileDrawer}
-                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                                variant="primary"
                             >
                                 {dict.profile.closeButton || 'Fermer'}
-                            </button>
-                        </div>
+                            </Button>
+                        </Inline>
                     </div>
                 )}
             </Drawer>
@@ -734,15 +731,14 @@ export default function SchoolUsersClient({
                                 </ul>
                             </div>
                         )}
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
+                        <Inline align="end" gap="xs">
+                            <Button
                                 onClick={closeCsvDrawer}
-                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                                variant="primary"
                             >
                                 {dict.csvImport.closeButton}
-                            </button>
-                        </div>
+                            </Button>
+                        </Inline>
                     </div>
                 ) : csvData.length === 0 ? (
                     // Upload view
@@ -767,15 +763,14 @@ export default function SchoolUsersClient({
                                 ))}
                             </div>
                         )}
-                        <div className="flex justify-end">
-                            <button
-                                type="button"
+                        <Inline align="end" gap="xs">
+                            <Button
                                 onClick={closeCsvDrawer}
-                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                variant="secondary"
                             >
                                 {dict.csvImport.cancelButton}
-                            </button>
-                        </div>
+                            </Button>
+                        </Inline>
                     </div>
                 ) : (
                     // Preview view
@@ -805,15 +800,11 @@ export default function SchoolUsersClient({
                                                 <td className="px-3 py-2 text-gray-900">{user.name || '-'}</td>
                                                 <td className="px-3 py-2 text-gray-600">{user.email || '-'}</td>
                                                 <td className="px-3 py-2">
-                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                                                        status === 'valid'
-                                                            ? 'bg-green-100 text-green-800'
-                                                            : 'bg-red-100 text-red-800'
-                                                    }`}>
+                                                    <Badge variant={status === 'valid' ? 'success' : 'warning'}>
                                                         {status === 'valid' && dict.csvImport.statusValid}
                                                         {status === 'invalid-email' && dict.csvImport.statusInvalidEmail}
                                                         {status === 'duplicate' && dict.csvImport.statusDuplicate}
-                                                    </span>
+                                                    </Badge>
                                                 </td>
                                             </tr>
                                         )
@@ -826,28 +817,26 @@ export default function SchoolUsersClient({
                                 </div>
                             )}
                         </div>
-                        <div className="flex justify-end gap-2">
-                            <button
-                                type="button"
+                        <Inline align="end" gap="xs">
+                            <Button
                                 onClick={closeCsvDrawer}
-                                className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                variant="secondary"
                             >
                                 {dict.csvImport.cancelButton}
-                            </button>
-                            <button
-                                type="button"
+                            </Button>
+                            <Button
                                 onClick={handleCsvImport}
                                 disabled={csvImporting || csvValidUsers.length === 0}
-                                className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                                variant="primary"
                             >
                                 {csvImporting
                                     ? dict.csvImport.importing
                                     : dict.csvImport.importButton.replace('{{count}}', String(csvValidUsers.length))}
-                            </button>
-                        </div>
+                            </Button>
+                        </Inline>
                     </div>
                 )}
             </Drawer>
-        </div>
+        </Stack>
     )
 }
