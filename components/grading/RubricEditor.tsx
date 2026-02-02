@@ -2,6 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, GripVertical } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Input, Textarea } from '@/components/ui/Form'
+import { Text } from '@/components/ui/Text'
+import { Stack, Inline } from '@/components/ui/Layout'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 
 interface Criterion {
     name: string
@@ -78,103 +84,102 @@ export function RubricEditor({
     }
 
     return (
-        <div className="space-y-4 bg-gray-50 p-4 rounded-lg">
+        <Stack gap="md" className="bg-gray-50 p-4 rounded-lg">
             {/* Header with actions */}
-            <div className="flex items-center justify-between">
-                <h4 className="font-semibold text-gray-900">Criteres de notation</h4>
-                <button
+            <Inline align="between">
+                <Text variant="sectionTitle">Criteres de notation</Text>
+                <Button
                     type="button"
                     onClick={distributePointsEvenly}
-                    className="px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-full hover:bg-indigo-700"
+                    variant="primary"
+                    size="xs"
+                    className="rounded-full"
                 >
                     Repartir {maxPoints} pts equitablement
-                </button>
-            </div>
+                </Button>
+            </Inline>
 
             {/* Criteria list */}
-            <div className="space-y-3">
+            <Stack gap="sm">
                 {criteria.map((criterion, index) => (
-                    <div
-                        key={index}
-                        className="bg-white rounded-lg p-4 border-2 border-indigo-100 shadow-sm"
-                    >
-                        <div className="flex items-start gap-3">
-                            {/* Drag handle (visual only for now) */}
-                            <div className="pt-2 text-indigo-300">
-                                <GripVertical className="w-4 h-4" />
-                            </div>
-
-                            {/* Criterion content */}
-                            <div className="flex-1 space-y-3">
-                                {/* Criterion number badge */}
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="px-2 py-0.5 text-xs font-bold text-indigo-700 bg-indigo-100 rounded">
-                                        Critere {index + 1}
-                                    </span>
+                    <Card key={index} className="border-2 border-indigo-100">
+                        <CardBody padding="md">
+                            <div className="flex items-start gap-3">
+                                {/* Drag handle (visual only for now) */}
+                                <div className="pt-2 text-indigo-300">
+                                    <GripVertical className="w-4 h-4" />
                                 </div>
 
-                                {/* Name and points row */}
-                                <div className="flex items-start gap-3">
-                                    <div className="flex-1">
-                                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                            Nom du critere
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={criterion.name}
-                                            onChange={(e) => updateCriterion(index, 'name', e.target.value)}
-                                            placeholder="Ex: Methode correcte"
-                                            className="w-full px-3 py-2 text-sm text-gray-900 bg-white border-2 border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
+                                {/* Criterion content */}
+                                <Stack gap="sm" className="flex-1">
+                                    {/* Criterion number badge */}
+                                    <Badge variant="info" className="w-fit">
+                                        Critere {index + 1}
+                                    </Badge>
+
+                                    {/* Name and points row */}
+                                    <Inline gap="sm" align="start" wrap="nowrap">
+                                        <div className="flex-1">
+                                            <Text as="label" variant="label" className="mb-1">
+                                                Nom du critere
+                                            </Text>
+                                            <Input
+                                                type="text"
+                                                value={criterion.name}
+                                                onChange={(e) => updateCriterion(index, 'name', e.target.value)}
+                                                placeholder="Ex: Methode correcte"
+                                            />
+                                        </div>
+                                        <div>
+                                            <Text as="label" variant="label" className="mb-1 text-indigo-700">
+                                                Points
+                                            </Text>
+                                            <Inline gap="xs" align="center" wrap="nowrap">
+                                                <Input
+                                                    type="number"
+                                                    value={criterion.points}
+                                                    onChange={(e) => updateCriterion(index, 'points', parseFloat(e.target.value) || 0)}
+                                                    min="0"
+                                                    max={maxPoints}
+                                                    step="0.5"
+                                                    className="w-20 text-center font-bold text-indigo-700 bg-indigo-50 border-2 border-indigo-200"
+                                                />
+                                                <Text variant="caption" className="font-semibold text-indigo-600">pts</Text>
+                                            </Inline>
+                                        </div>
+                                    </Inline>
+
+                                    {/* Description */}
+                                    <div>
+                                        <Text as="label" variant="label" className="mb-1">
+                                            Description (ce qui est attendu)
+                                        </Text>
+                                        <Textarea
+                                            value={criterion.description}
+                                            onChange={(e) => updateCriterion(index, 'description', e.target.value)}
+                                            placeholder="Ex: L'etudiant applique correctement la formule et montre les etapes de calcul"
+                                            rows={2}
                                         />
                                     </div>
-                                    <div>
-                                        <label className="block text-xs font-semibold text-indigo-700 mb-1">
-                                            Points
-                                        </label>
-                                        <div className="flex items-center gap-1">
-                                            <input
-                                                type="number"
-                                                value={criterion.points}
-                                                onChange={(e) => updateCriterion(index, 'points', parseFloat(e.target.value) || 0)}
-                                                min="0"
-                                                max={maxPoints}
-                                                step="0.5"
-                                                className="w-20 px-3 py-2 text-sm text-center font-bold text-indigo-700 bg-indigo-50 border-2 border-indigo-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                                            />
-                                            <span className="text-sm font-semibold text-indigo-600">pts</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                </Stack>
 
-                                {/* Description */}
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                                        Description (ce qui est attendu)
-                                    </label>
-                                    <textarea
-                                        value={criterion.description}
-                                        onChange={(e) => updateCriterion(index, 'description', e.target.value)}
-                                        placeholder="Ex: L'etudiant applique correctement la formule et montre les etapes de calcul"
-                                        rows={2}
-                                        className="w-full px-3 py-2 text-sm text-gray-800 bg-white border-2 border-gray-200 rounded-md focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 placeholder-gray-400"
-                                    />
-                                </div>
+                                {/* Delete button */}
+                                <Button
+                                    type="button"
+                                    onClick={() => removeCriterion(index)}
+                                    disabled={criteria.length <= 1}
+                                    variant="ghost"
+                                    className="pt-2 text-red-400 hover:text-red-600 disabled:opacity-30"
+                                    title="Supprimer ce critere"
+                                    size="xs"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </Button>
                             </div>
-
-                            {/* Delete button */}
-                            <button
-                                type="button"
-                                onClick={() => removeCriterion(index)}
-                                disabled={criteria.length <= 1}
-                                className="pt-2 text-red-400 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
-                                title="Supprimer ce critere"
-                            >
-                                <Trash2 className="w-4 h-4" />
-                            </button>
-                        </div>
-                    </div>
+                        </CardBody>
+                    </Card>
                 ))}
-            </div>
+            </Stack>
 
             {/* Add criterion button */}
             <button
@@ -194,7 +199,7 @@ export function RubricEditor({
                         ? 'bg-red-100 border-red-300'
                         : 'bg-amber-100 border-amber-300'
             }`}>
-                <span className={`text-sm font-semibold ${
+                <Text variant="caption" className={`font-semibold ${
                     totalPoints === maxPoints
                         ? 'text-green-800'
                         : totalPoints > maxPoints
@@ -202,8 +207,8 @@ export function RubricEditor({
                             : 'text-amber-800'
                 }`}>
                     Total des points attribues
-                </span>
-                <span className={`text-xl font-bold ${
+                </Text>
+                <Text className={`text-xl font-bold ${
                     totalPoints === maxPoints
                         ? 'text-green-700'
                         : totalPoints > maxPoints
@@ -211,36 +216,36 @@ export function RubricEditor({
                             : 'text-amber-700'
                 }`}>
                     {totalPoints} / {maxPoints} pts
-                </span>
+                </Text>
             </div>
 
             {totalPoints !== maxPoints && (
-                <p className={`text-sm font-medium ${totalPoints > maxPoints ? 'text-red-600' : 'text-amber-600'}`}>
+                <Text variant="caption" className={`font-medium ${totalPoints > maxPoints ? 'text-red-600' : 'text-amber-600'}`}>
                     {totalPoints > maxPoints
                         ? `Attention: le total depasse le maximum de ${maxPoints} points`
                         : `Il reste ${maxPoints - totalPoints} point(s) a attribuer`
                     }
-                </p>
+                </Text>
             )}
 
             {/* Action buttons */}
-            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-                <button
+            <Inline align="end" gap="sm" className="pt-4 border-t border-gray-200">
+                <Button
                     type="button"
                     onClick={onCancel}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border-2 border-gray-300 rounded-lg hover:bg-gray-50"
+                    variant="secondary"
                 >
                     Annuler
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
                     onClick={onSave}
                     disabled={saving || criteria.some(c => !c.name.trim())}
-                    className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                    variant="primary"
                 >
                     {saving ? 'Sauvegarde...' : 'Sauvegarder le bareme'}
-                </button>
-            </div>
-        </div>
+                </Button>
+            </Inline>
+        </Stack>
     )
 }

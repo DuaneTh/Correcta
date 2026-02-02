@@ -3,6 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Stack } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
 
 type ExamData = {
   id: string
@@ -86,123 +91,125 @@ export default function ExamStartPage({
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
         {/* Exam card */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <Card overflow="hidden">
           {/* Header */}
           <div className="bg-brand-900 px-6 py-8 text-center">
-            <div className="text-brand-100 text-sm uppercase tracking-wide mb-2">
+            <Text variant="caption" className="text-brand-100 uppercase tracking-wide mb-2">
               {exam.course.code} - {exam.course.name}
-            </div>
-            <h1 className="text-2xl font-bold text-white">
+            </Text>
+            <Text as="h1" variant="pageTitle" className="text-white">
               {exam.title}
-            </h1>
+            </Text>
             {exam.author?.name && (
-              <div className="text-brand-200 text-sm mt-2">
+              <Text variant="muted" className="text-brand-200 mt-2">
                 {locale === 'fr' ? 'Par' : 'By'} {exam.author.name}
-              </div>
+              </Text>
             )}
           </div>
 
           {/* Details */}
-          <div className="px-6 py-6 space-y-4">
-            {/* Student info */}
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-gray-600">
-                {locale === 'fr' ? 'Etudiant' : 'Student'}
-              </span>
-              <span className="font-medium text-gray-900">
-                {studentName || (locale === 'fr' ? 'Non identifie' : 'Not identified')}
-              </span>
-            </div>
-
-            {/* Duration */}
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-gray-600">
-                {locale === 'fr' ? 'Duree' : 'Duration'}
-              </span>
-              <span className="font-medium text-gray-900">
-                {exam.durationMinutes} {locale === 'fr' ? 'minutes' : 'minutes'}
-              </span>
-            </div>
-
-            {/* Questions */}
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
-              <span className="text-gray-600">
-                {locale === 'fr' ? 'Nombre de questions' : 'Number of questions'}
-              </span>
-              <span className="font-medium text-gray-900">
-                {exam.questionCount}
-              </span>
-            </div>
-
-            {/* Available until */}
-            {exam.examEndAt && (
+          <CardBody padding="lg">
+            <Stack gap="sm">
+              {/* Student info */}
               <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                <span className="text-gray-600">
-                  {locale === 'fr' ? 'Disponible jusqu\'au' : 'Available until'}
-                </span>
-                <span className="font-medium text-gray-900">
-                  {formatDate(exam.examEndAt)}
-                </span>
+                <Text variant="muted">
+                  {locale === 'fr' ? 'Etudiant' : 'Student'}
+                </Text>
+                <Text variant="body" className="font-medium">
+                  {studentName || (locale === 'fr' ? 'Non identifie' : 'Not identified')}
+                </Text>
               </div>
-            )}
 
-            {/* Allowed materials */}
-            {exam.allowedMaterials && (
-              <div className="py-3 border-b border-gray-100">
-                <div className="text-gray-600 mb-2">
-                  {locale === 'fr' ? 'Materiel autorise' : 'Allowed materials'}
+              {/* Duration */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <Text variant="muted">
+                  {locale === 'fr' ? 'Duree' : 'Duration'}
+                </Text>
+                <Text variant="body" className="font-medium">
+                  {exam.durationMinutes} {locale === 'fr' ? 'minutes' : 'minutes'}
+                </Text>
+              </div>
+
+              {/* Questions */}
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <Text variant="muted">
+                  {locale === 'fr' ? 'Nombre de questions' : 'Number of questions'}
+                </Text>
+                <Text variant="body" className="font-medium">
+                  {exam.questionCount}
+                </Text>
+              </div>
+
+              {/* Available until */}
+              {exam.examEndAt && (
+                <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                  <Text variant="muted">
+                    {locale === 'fr' ? 'Disponible jusqu\'au' : 'Available until'}
+                  </Text>
+                  <Text variant="body" className="font-medium">
+                    {formatDate(exam.examEndAt)}
+                  </Text>
                 </div>
-                <p className="text-gray-900 text-sm whitespace-pre-wrap">
-                  {exam.allowedMaterials}
-                </p>
-              </div>
-            )}
+              )}
 
-            {/* Honor commitment notice */}
-            {exam.requireHonorCommitment && (
-              <div className="py-3 bg-amber-50 -mx-6 px-6 border-y border-amber-100">
-                <div className="flex items-start gap-3">
-                  <svg
-                    className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                    />
-                  </svg>
-                  <div className="text-sm text-amber-800">
-                    <strong className="font-medium">
-                      {locale === 'fr'
-                        ? 'Declaration sur l\'honneur requise'
-                        : 'Honor statement required'}
-                    </strong>
-                    <p className="mt-1">
-                      {locale === 'fr'
-                        ? 'Vous devrez copier une declaration sur l\'honneur avant de pouvoir repondre aux questions.'
-                        : 'You will need to copy an honor statement before you can answer questions.'}
-                    </p>
+              {/* Allowed materials */}
+              {exam.allowedMaterials && (
+                <div className="py-3 border-b border-gray-100">
+                  <Text variant="muted" className="mb-2">
+                    {locale === 'fr' ? 'Materiel autorise' : 'Allowed materials'}
+                  </Text>
+                  <Text variant="body" className="whitespace-pre-wrap">
+                    {exam.allowedMaterials}
+                  </Text>
+                </div>
+              )}
+
+              {/* Honor commitment notice */}
+              {exam.requireHonorCommitment && (
+                <div className="py-3 bg-amber-50 -mx-6 px-6 border-y border-amber-100">
+                  <div className="flex items-start gap-3">
+                    <svg
+                      className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                      />
+                    </svg>
+                    <Stack gap="xs">
+                      <Text variant="body" className="font-medium text-amber-800">
+                        {locale === 'fr'
+                          ? 'Declaration sur l\'honneur requise'
+                          : 'Honor statement required'}
+                      </Text>
+                      <Text variant="muted" className="text-amber-800">
+                        {locale === 'fr'
+                          ? 'Vous devrez copier une declaration sur l\'honneur avant de pouvoir repondre aux questions.'
+                          : 'You will need to copy an honor statement before you can answer questions.'}
+                      </Text>
+                    </Stack>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Description */}
-            {exam.description && (
-              <div className="py-3">
-                <div className="text-gray-600 mb-2">
-                  {locale === 'fr' ? 'Description' : 'Description'}
+              {/* Description */}
+              {exam.description && (
+                <div className="py-3">
+                  <Text variant="muted" className="mb-2">
+                    {locale === 'fr' ? 'Description' : 'Description'}
+                  </Text>
+                  <Text variant="body" className="whitespace-pre-wrap">
+                    {exam.description}
+                  </Text>
                 </div>
-                <p className="text-gray-900 text-sm whitespace-pre-wrap">
-                  {exam.description}
-                </p>
-              </div>
-            )}
-          </div>
+              )}
+            </Stack>
+          </CardBody>
 
           {/* Important notice */}
           <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
@@ -220,11 +227,11 @@ export default function ExamStartPage({
                   d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="text-sm text-gray-600">
+              <Text variant="muted">
                 {locale === 'fr'
                   ? 'Une fois l\'examen demarre, le chronometre commencera et vous ne pourrez pas mettre en pause. Vos reponses seront sauvegardees automatiquement.'
                   : 'Once the exam starts, the timer will begin and you cannot pause. Your answers will be saved automatically.'}
-              </p>
+              </Text>
             </div>
           </div>
 
@@ -232,29 +239,31 @@ export default function ExamStartPage({
           <div className="px-6 py-6 bg-white border-t border-gray-200">
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-700">{error}</p>
+                <Text variant="muted" className="text-red-700">{error}</Text>
               </div>
             )}
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <button
+              <Button
                 onClick={() => router.push('/student/exams')}
-                className="flex-1 px-6 py-3 border border-gray-300 rounded-md text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                variant="secondary"
+                className="flex-1 py-3"
               >
                 {locale === 'fr' ? 'Retour' : 'Back'}
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={handleStartExam}
                 disabled={isStarting}
-                className="flex-1 px-6 py-3 bg-brand-900 rounded-md text-white font-semibold hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                variant="primary"
+                className="flex-1 py-3 font-semibold"
               >
                 {isStarting
                   ? (locale === 'fr' ? 'Demarrage...' : 'Starting...')
                   : (locale === 'fr' ? 'Demarrer l\'examen' : 'Start Exam')}
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       </div>
     </div>
   )
