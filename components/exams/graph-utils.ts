@@ -31,7 +31,7 @@ const extractBraceGroup = (input: string, startIndex: number): { content: string
     return null
 }
 
-const convertLatexToExpression = (input: string): string => {
+export const convertLatexToExpression = (input: string): string => {
     let output = ''
     let i = 0
     while (i < input.length) {
@@ -244,7 +244,7 @@ const applyFill = (el: SVGElement, style?: { color?: string; opacity?: number })
     el.setAttribute('fill-opacity', String(Math.max(0, Math.min(1, opacity))))
 }
 
-const compileExpression = (expression: string): ((x: number) => number) | null => {
+export const compileExpression = (expression: string): ((x: number) => number) | null => {
     const raw = normalizeGraphExpression(expression)
     if (!raw) return null
     if (!/^[0-9xX+\-*/^().,\sA-Za-z_]+$/.test(raw)) return null
@@ -368,7 +368,7 @@ const buildCurvePath = (curve: GraphCurve, axes: GraphAxes, payload: GraphSegmen
     return { start, control, end }
 }
 
-const sampleFunction = (fn: GraphFunction, axes: GraphAxes): GraphCoord[] => {
+export const sampleFunction = (fn: GraphFunction, axes: GraphAxes): GraphCoord[] => {
     const evaluator = compileExpression(fn.expression)
     if (!evaluator) return []
     const minX = typeof fn.domain?.min === 'number' ? fn.domain.min : axes.xMin

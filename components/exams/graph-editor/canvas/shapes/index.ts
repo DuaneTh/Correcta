@@ -1,0 +1,6 @@
+export { EditablePoint } from './EditablePoint'
+export { EditableLine } from './EditableLine'
+export { EditableCurve } from './EditableCurve'
+export { EditableFunction } from './EditableFunction'
+export { EditableText } from './EditableText'
+export { EditableArea } from './EditableArea'
