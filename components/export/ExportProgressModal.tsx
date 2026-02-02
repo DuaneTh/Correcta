@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { X, Download, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { Button } from '@/components/ui/Button'
+import { Text } from '@/components/ui/Text'
+import { Stack } from '@/components/ui/Layout'
 
 interface ExportProgressModalProps {
     examId: string
@@ -87,9 +90,9 @@ export function ExportProgressModal({ examId, jobId, onClose }: ExportProgressMo
                     </button>
                 )}
 
-                <div className="text-center">
+                <Stack gap="md" className="text-center">
                     {/* Icon */}
-                    <div className="mb-4">
+                    <div>
                         {status.status === 'completed' ? (
                             <CheckCircle className="w-12 h-12 mx-auto text-green-500" />
                         ) : status.status === 'failed' ? (
@@ -100,63 +103,63 @@ export function ExportProgressModal({ examId, jobId, onClose }: ExportProgressMo
                     </div>
 
                     {/* Title */}
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <Text as="h3" variant="sectionTitle">
                         {status.status === 'completed'
                             ? 'Export termine'
                             : status.status === 'failed'
                                 ? 'Erreur d\'export'
                                 : 'Export en cours...'}
-                    </h3>
+                    </Text>
 
                     {/* Phase label */}
-                    <p className="text-sm text-gray-600 mb-4">
+                    <Text variant="caption">
                         {status.status === 'failed'
                             ? status.error || 'Une erreur est survenue'
                             : getPhaseLabel(status.phase)}
-                    </p>
+                    </Text>
 
                     {/* Progress bar */}
                     {status.status !== 'completed' && status.status !== 'failed' && (
-                        <div className="mb-4">
+                        <div>
                             <div className="w-full bg-gray-200 rounded-full h-2.5">
                                 <div
                                     className="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
                                     style={{ width: `${status.progress || 0}%` }}
                                 />
                             </div>
-                            <p className="text-xs text-gray-500 mt-1">{status.progress || 0}%</p>
+                            <Text variant="xsMuted" className="mt-1">{status.progress || 0}%</Text>
                         </div>
                     )}
 
                     {/* Result info */}
                     {status.status === 'completed' && status.result && (
-                        <div className="mb-4 text-sm text-gray-600">
-                            <p>{status.result.attemptCount} copies exportees</p>
-                            <p>Taille: {(status.result.size / 1024).toFixed(1)} Ko</p>
-                        </div>
+                        <Stack gap="xs">
+                            <Text variant="caption">{status.result.attemptCount} copies exportees</Text>
+                            <Text variant="caption">Taille: {(status.result.size / 1024).toFixed(1)} Ko</Text>
+                        </Stack>
                     )}
 
                     {/* Actions */}
-                    <div className="flex justify-center gap-3 mt-6">
+                    <div className="flex justify-center gap-3">
                         {status.status === 'completed' && (
-                            <button
+                            <Button
                                 onClick={handleDownload}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                                variant="primary"
                             >
                                 <Download className="w-4 h-4" />
                                 Telecharger
-                            </button>
+                            </Button>
                         )}
                         {(status.status === 'completed' || status.status === 'failed') && (
-                            <button
+                            <Button
                                 onClick={onClose}
-                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                                variant="secondary"
                             >
                                 Fermer
-                            </button>
+                            </Button>
                         )}
                     </div>
-                </div>
+                </Stack>
             </div>
         </div>
     )
