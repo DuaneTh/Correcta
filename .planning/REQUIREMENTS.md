@@ -46,6 +46,15 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 - [x] **ORG-04**: Import CSV/Excel pour creation massive d'utilisateurs
 - [x] **ORG-05**: Attribution des roles (professeur, admin ecole)
 
+### UI Kit (UIKIT)
+
+- [x] **UIKIT-01**: cn() utility and base design tokens
+- [x] **UIKIT-02**: Migrate admin pages (school admin, platform admin) to UI Kit components
+- [x] **UIKIT-03**: Migrate teacher pages (courses, exams, grading) to UI Kit components
+- [x] **UIKIT-04**: Migrate student pages (courses, exams, results) to UI Kit components
+- [x] **UIKIT-05**: Consolidate modals (grading, export, confirm) using UI Kit patterns
+- [x] **UIKIT-06**: UI Kit showcase page at /internal/ui-kit
+
 ## v2 Requirements
 
 Defere apres pilote ESSEC.
@@ -106,12 +115,19 @@ Defere apres pilote ESSEC.
 | EXPO-02 | Phase 5 - Export | Complete |
 | EXPO-03 | Phase 5 - Export | Complete |
 | EXPO-04 | Phase 5 - Export | Complete |
+| UIKIT-01 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-02 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-03 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-04 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-05 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-06 | Phase 6 - UI Kit Integration | Complete |
 
 **Coverage:**
-- v1 requirements: 24 total
-- Mapped to phases: 24
+- v1 requirements: 24 total (all complete)
+- UI Kit requirements: 6 total (all complete)
+- Mapped to phases: 30
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-20 after Phase 5 completion - ALL v1 REQUIREMENTS COMPLETE*
+*Last updated: 2026-02-02 after Phase 6 completion - ALL REQUIREMENTS COMPLETE (v1 + UIKIT)*
