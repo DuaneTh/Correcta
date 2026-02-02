@@ -20,10 +20,10 @@
 
 ## Current Position
 
-**Phase:** 8 of 8 (PDF Exam Import)
-**Plan:** 2 of ?
+**Phase:** 9 of 9 (Graph Editor Overhaul)
+**Plan:** 2 of 4
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 08-02-PLAN.md
+**Last activity:** 2026-02-02 - Completed 09-02-PLAN.md
 
 **Progress:**
 ```
@@ -34,10 +34,11 @@ Phase 4: AI Correction            [==========] 4/4 plans complete
 Phase 5: Export                   [==========] 3/3 plans complete
 Phase 6: UI Kit Integration       [==========] 8/8 plans complete
 Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
-Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans complete
+Phase 8: PDF Exam Import          [==========] 3/3 plans complete
+Phase 9: Graph Editor Overhaul    [█████░░░░░] 2/4 plans complete
 ```
 
-**Overall:** 31 plans complete (Phases 1-7 complete, Phase 8 in progress)
+**Overall:** 35 plans complete (Phases 1-8 complete, Phase 9 in progress)
 
 ---
 
@@ -45,8 +46,8 @@ Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans com
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 31 | 01-01 through 08-02 |
-| Success rate | 100% | 31/31 plans succeeded |
+| Plans completed | 35 | 01-01 through 09-02 |
+| Success rate | 100% | 35/35 plans succeeded |
 | Avg duration | 5 min | Consistent execution time |
 
 ---
@@ -129,6 +130,11 @@ Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans com
 | Module-level Redis connection in status route | Avoids connection leaks from per-request creation | 8 |
 | CSRF on upload only (not status) | GET requests are safe methods, no CSRF needed | 8 |
 | Return full extraction metadata | Enables UI to show questionCount, confidence, warnings | 8 |
+| Export graph-utils functions | Canvas needs sampleFunction for function curves | 9 |
+| Separate shape components | Clean separation of concerns, easier to extend | 9 |
+| Grid snap only when showGrid | Visual feedback matches snapping behavior | 9 |
+| Draggable endpoints only for coord anchors | Simpler V1, point anchors need resolver | 9 |
+| Control point handle on selection | Reduces clutter, reveals on interaction | 9 |
 
 ### Technical Patterns
 
@@ -190,12 +196,21 @@ Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans com
 - **ContentSegments JSON:** Question content stored as JSON.stringify([{type, text}]) array
 - **PDF import API routes:** Upload validates and enqueues, status polls job state and returns examId
 - **Module-level queue connection:** Status route reuses Redis connection to avoid leaks
+- **Canvas-based graph editing:** react-konva Stage/Layer for interactive graphics
+- **Coordinate transformation:** graphToPixel/pixelToGraph with Y-axis inversion
+- **Grid snapping:** Applied in drag handlers when showGrid enabled
+- **Shape component pattern:** Element data + axes + dims + onUpdate + isSelected props
+- **Drag handles:** Colored circles for endpoints (blue selected, green control points)
 
 ### Roadmap Evolution
 
-- Phase 8 started: PDF Exam Import — AI-powered PDF analysis to auto-create exams from existing documents
+- Phase 8 complete: PDF Exam Import — AI-powered PDF analysis to auto-create exams from existing documents
   - 08-01 complete: Backend extraction pipeline (GPT-4o + BullMQ + worker)
   - 08-02 complete: API routes for upload and status polling
+  - 08-03 complete: PDF import UI integration
+- Phase 9 started: Graph Editor Overhaul — dual-mode graph editor (drag-and-drop + function-based)
+  - 09-01 complete: Foundation infrastructure (types, utils, deps, AdvancedGraphEditor extracted)
+  - 09-02 complete: Interactive canvas with editable shapes (react-konva)
 
 ### Known Issues
 
@@ -236,6 +251,9 @@ Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans com
 - [x] Complete 07-04: Teacher Dashboard Intelligence
 - [x] Complete 08-01: PDF Extraction Pipeline
 - [x] Complete 08-02: PDF Import API Routes
+- [x] Complete 08-03: PDF Import UI Integration
+- [x] Complete 09-01: Graph Editor Foundation Infrastructure
+- [x] Complete 09-02: Interactive Canvas with Editable Shapes
 
 ### Blockers
 
@@ -245,14 +263,14 @@ Phase 8: PDF Exam Import          [████░░░░░░] 2/? plans com
 
 ## Session Continuity
 
-**Last session:** 2026-02-02 13:50 UTC
-**Stopped at:** Completed 08-02-PLAN.md
+**Last session:** 2026-02-02 15:49 UTC
+**Stopped at:** Completed 09-02-PLAN.md
 **Resume file:** None
 
 ### Resumption Prompt
 
 ```
-Correcta - 31 plans complete across 8 phases.
+Correcta - 35 plans complete across 9 phases.
 Phase 1: Math Foundation (3 plans) ✓
 Phase 2: Exam Creation (4 plans) ✓
 Phase 3: Organization (3 plans) ✓
@@ -260,10 +278,11 @@ Phase 4: AI Correction (4 plans) ✓
 Phase 5: Export (3 plans) ✓
 Phase 6: UI Kit Integration (8 plans) ✓
 Phase 7: Intelligent Proctoring (4 plans) ✓
-Phase 8: PDF Exam Import (2/? plans) - IN PROGRESS
+Phase 8: PDF Exam Import (3 plans) ✓
+Phase 9: Graph Editor Overhaul (2/4 plans) - IN PROGRESS
 
-Latest: 08-02 (PDF Import API Routes) complete.
-Upload and status polling endpoints ready, awaiting UI integration plan.
+Latest: 09-02 (Interactive Canvas with Editable Shapes) complete.
+react-konva canvas ready with all shape types, awaiting Simple mode integration (09-03).
 ```
 
 ### Context Files
@@ -296,10 +315,14 @@ Upload and status polling endpoints ready, awaiting UI integration plan.
 - `.planning/phases/07-intelligent-proctoring/07-03-SUMMARY.md` - Client-Side Proctoring Monitor summary
 - `.planning/phases/07-intelligent-proctoring/07-04-SUMMARY.md` - Teacher Dashboard Intelligence summary
 - `.planning/phases/08-pdf-exam-import/08-01-SUMMARY.md` - PDF Extraction Pipeline summary
+- `.planning/phases/08-pdf-exam-import/08-02-SUMMARY.md` - PDF Import API Routes summary
+- `.planning/phases/08-pdf-exam-import/08-03-SUMMARY.md` - PDF Import UI Integration summary
+- `.planning/phases/09-graph-editor-overhaul/09-01-SUMMARY.md` - Graph Editor Foundation Infrastructure summary
+- `.planning/phases/09-graph-editor-overhaul/09-02-SUMMARY.md` - Interactive Canvas with Editable Shapes summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-02 - Completed 08-01 (PDF Extraction Pipeline)*
-*Phase 8 in progress: 1/? plans complete*
-*Total: 30 plans delivered*
+*Last execution: 2026-02-02 - Completed 09-02 (Interactive Canvas with Editable Shapes)*
+*Phase 9 in progress: 2/4 plans complete*
+*Total: 35 plans delivered*
