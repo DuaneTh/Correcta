@@ -254,6 +254,36 @@ Plans:
 
 ---
 
+## Phase 9: Graph Editor Overhaul
+
+**Goal:** Redesign the graph editor with an intuitive dual-mode interface — a simple mode for drag-and-drop manipulation of predefined curves and objects (PowerPoint-style), and an advanced mode for function-based graph creation — making it easy and beautiful to represent any mathematical graph.
+
+**Dependencies:** Phase 1 (math rendering), Phase 2 (exam editor), Phase 6 (UI Kit)
+
+**Requirements:**
+- GRAPH-01: Intuitive simple mode with draggable predefined curves and geometric objects
+- GRAPH-02: Advanced mode for function-based graph creation (enter f(x) expressions)
+- GRAPH-03: Clean, modern UI with dropdown menu for mode selection from graph button
+- GRAPH-04: Support for common math graph elements (axes, grids, labels, asymptotes, points)
+- GRAPH-05: Seamless integration with existing exam editor and content segment system
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Install deps, shared types/utils, predefined shapes, extract AdvancedGraphEditor
+- [ ] 09-02-PLAN.md — react-konva interactive canvas with editable shapes
+- [ ] 09-03-PLAN.md — SimpleGraphEditor with shape palette + GraphEditorWrapper dual-mode
+- [ ] 09-04-PLAN.md — Integration into exam builder with dropdown menu + visual verification
+
+**Success Criteria:**
+1. Teacher can create a parabola by dragging a predefined curve and adjusting control points
+2. Teacher can type f(x) = sin(x) in advanced mode and see the graph rendered immediately
+3. Graph button shows a dropdown with "Simple" and "Advanced" creation modes
+4. Teacher can add axes labels, grid lines, and annotations without writing code
+5. Created graphs integrate seamlessly as content segments in exam questions
+
+---
+
 ## Progress
 
 | Phase | Goal | Requirements | Status |
@@ -266,6 +296,7 @@ Plans:
 | 6 - UI Kit Integration | Consistent UI components across all pages | UIKIT-01 through UIKIT-06 | Complete |
 | 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | Complete |
 | 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
+| 9 - Graph Editor Overhaul | Dual-mode graph editor (drag-and-drop + function-based) | GRAPH-01 through GRAPH-05 | Planned |
 
 ---
 
@@ -287,8 +318,9 @@ Plans:
 - Phase 5: MathJax used for PDF (produces SVG), KaTeX used for web (produces HTML)
 - Phase 7: Webcam is deterrent ONLY (no recording, no snapshots, no AI Vision). Uses native getUserMedia, not react-webcam. Focus loss pattern analysis is the core intelligence.
 - Phase 8: Uses GPT-4o native PDF support (no pdf-parse). BullMQ async processing. react-dropzone for upload UI. All other infrastructure already exists.
+- Phase 9: Uses react-konva for interactive canvas, click-to-add shape palette (not drag from palette), existing form editor extracted as Advanced mode. Builds on existing GraphSegment data model without changes.
 
 ---
 
 *Roadmap created: 2026-01-18*
-*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements*
+*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements*
