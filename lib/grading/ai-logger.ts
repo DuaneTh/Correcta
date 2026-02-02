@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { GRADING_SYSTEM_PROMPT, RUBRIC_GENERATION_PROMPT } from './prompts'
 
-export type AIOperation = 'GRADING' | 'RUBRIC_GENERATION' | 'TEST'
+export type AIOperation = 'GRADING' | 'RUBRIC_GENERATION' | 'PDF_IMPORT' | 'TEST'
 
 export type AILogEntry = {
     attemptId?: string
