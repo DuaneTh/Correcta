@@ -4,6 +4,12 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { X, Upload, Users, GraduationCap, AlertCircle, CheckCircle, FileSpreadsheet, Layers, Plus, Trash2, Pencil, Check } from 'lucide-react'
 import type { PersonRow, CourseRow, SectionRow } from '@/lib/school-admin-data'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+import { Button } from '@/components/ui/Button'
+import { Text } from '@/components/ui/Text'
+import { Stack, Inline } from '@/components/ui/Layout'
+import { Input, Textarea, Select } from '@/components/ui/Form'
+import { Badge } from '@/components/ui/Badge'
+import { cn } from '@/components/ui/cn'
 
 type CourseFormModalProps = {
     open: boolean
@@ -1002,22 +1008,20 @@ export default function CourseFormModal({
                             Etes-vous sur de vouloir supprimer la section <strong>{sectionToDelete.name}</strong> ?
                             Cette action deplacera les inscriptions vers la section par defaut.
                         </p>
-                        <div className="flex justify-end gap-3">
-                            <button
-                                type="button"
+                        <Inline gap="sm" align="end">
+                            <Button
+                                variant="secondary"
                                 onClick={cancelDeleteExistingSection}
-                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                             >
                                 Annuler
-                            </button>
-                            <button
-                                type="button"
+                            </Button>
+                            <Button
+                                variant="destructive"
                                 onClick={confirmDeleteExistingSection}
-                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700"
                             >
                                 Supprimer
-                            </button>
-                        </div>
+                            </Button>
+                        </Inline>
                     </div>
                 </div>
             )}
@@ -1026,141 +1030,139 @@ export default function CourseFormModal({
             <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden mx-4">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                    <h2 className="text-xl font-bold text-gray-900">
+                    <Text as="h2" variant="pageTitle" className="text-xl">
                         {editCourse ? dict.editCourseTitle || 'Modifier le cours' : dict.createCourseTitle}
-                    </h2>
-                    <button
-                        type="button"
+                    </Text>
+                    <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={onClose}
-                        className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                        className="p-2"
                     >
                         <X className="w-5 h-5" />
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Tabs */}
                 <div className="flex border-b border-gray-200 px-6 overflow-x-auto">
-                    <button
-                        type="button"
+                    <Button
                         onClick={() => setActiveTab('info')}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                        className={cn(
+                            'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap rounded-none',
                             activeTab === 'info'
                                 ? 'border-brand-900 text-brand-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
+                        )}
                     >
                         Informations
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('sections')}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap ${
+                        className={cn(
+                            'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap rounded-none',
                             activeTab === 'sections'
                                 ? 'border-brand-900 text-brand-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
+                        )}
                     >
                         <Layers className="w-4 h-4" />
                         Sections
                         {(courseExistingSections.length + sectionsToCreate.length) > 0 && (
-                            <span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full text-xs">
+                            <Badge variant="info" className="text-xs">
                                 {courseExistingSections.length + sectionsToCreate.length}
-                            </span>
+                            </Badge>
                         )}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('teachers')}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap ${
+                        className={cn(
+                            'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap rounded-none',
                             activeTab === 'teachers'
                                 ? 'border-brand-900 text-brand-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
+                        )}
                     >
                         <Users className="w-4 h-4" />
                         Professeurs
                         {selectedTeacherIds.size > 0 && (
-                            <span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full text-xs">
+                            <Badge variant="info" className="text-xs">
                                 {selectedTeacherIds.size}
-                            </span>
+                            </Badge>
                         )}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('students')}
-                        className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap ${
+                        className={cn(
+                            'px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-2 whitespace-nowrap rounded-none',
                             activeTab === 'students'
                                 ? 'border-brand-900 text-brand-900'
                                 : 'border-transparent text-gray-500 hover:text-gray-700'
-                        }`}
+                        )}
                     >
                         <GraduationCap className="w-4 h-4" />
                         Etudiants
                         {csvStudents.length > 0 && (
-                            <span className="bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full text-xs">
+                            <Badge variant="info" className="text-xs">
                                 {csvStudents.length}
-                            </span>
+                            </Badge>
                         )}
-                    </button>
+                    </Button>
                 </div>
 
                 {/* Content */}
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-200px)]">
                     {/* Info Tab */}
                     {activeTab === 'info' && (
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <Stack gap="md">
+                            <Stack gap="xs">
+                                <Text as="label" variant="label">
                                     {dict.courseCodePlaceholder} *
-                                </label>
-                                <input
+                                </Text>
+                                <Input
                                     type="text"
                                     value={code}
                                     onChange={(e) => setCode(e.target.value)}
                                     placeholder="ex: INF101"
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                            </Stack>
+                            <Stack gap="xs">
+                                <Text as="label" variant="label">
                                     {dict.courseNamePlaceholder} *
-                                </label>
-                                <input
+                                </Text>
+                                <Input
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
                                     placeholder="ex: Introduction a l'informatique"
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                                 />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                            </Stack>
+                            <Stack gap="xs">
+                                <Text as="label" variant="label">
                                     Description (optionnel)
-                                </label>
-                                <textarea
+                                </Text>
+                                <Textarea
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={3}
                                     placeholder="Description du cours..."
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900 resize-none"
                                 />
-                            </div>
-                        </div>
+                            </Stack>
+                        </Stack>
                     )}
 
                     {/* Sections Tab */}
                     {activeTab === 'sections' && (
-                        <div className="space-y-4">
-                            <p className="text-sm text-gray-600">
+                        <Stack gap="md">
+                            <Text variant="caption">
                                 {editCourse
                                     ? 'Gerez les sections (groupes) de ce cours.'
                                     : 'Ajoutez des sections (groupes) pour organiser les etudiants du cours. Une section par defaut sera creee automatiquement.'
                                 }
-                            </p>
+                            </Text>
 
                             {/* Add section input */}
-                            <div className="flex gap-2">
-                                <input
+                            <Inline gap="sm">
+                                <Input
                                     type="text"
                                     value={newSectionName}
                                     onChange={(e) => setNewSectionName(e.target.value)}
@@ -1171,25 +1173,24 @@ export default function CourseFormModal({
                                         }
                                     }}
                                     placeholder="Nom de la section (ex: Groupe A, TD1...)"
-                                    className="flex-1 rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
+                                    className="flex-1"
                                 />
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="primary"
                                     onClick={addSection}
                                     disabled={!newSectionName.trim()}
-                                    className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand-900 text-white rounded-lg hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
                                 >
                                     <Plus className="w-4 h-4" />
                                     Ajouter
-                                </button>
-                            </div>
+                                </Button>
+                            </Inline>
 
                             {/* Existing sections (edit mode only) */}
                             {editCourse && courseExistingSections.length > 0 && (
-                                <div>
-                                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                                <Stack gap="sm">
+                                    <Text variant="overline">
                                         Sections existantes
-                                    </h4>
+                                    </Text>
                                     <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
                                         {courseExistingSections.map((section) => {
                                             const { teacherCount, studentCount } = getExistingSectionCounts(section)
@@ -1218,8 +1219,8 @@ export default function CourseFormModal({
                                                                 <Layers className="w-3 h-3" />
                                                             </span>
                                                             {isEditing ? (
-                                                                <div className="flex items-center gap-2 flex-1" onClick={(e) => e.stopPropagation()}>
-                                                                    <input
+                                                                <Inline gap="sm" className="flex-1" onClick={(e) => e.stopPropagation()}>
+                                                                    <Input
                                                                         type="text"
                                                                         value={editingSectionName}
                                                                         onChange={(e) => setEditingSectionName(e.target.value)}
@@ -1227,34 +1228,36 @@ export default function CourseFormModal({
                                                                             if (e.key === 'Enter') saveEditingSection()
                                                                             if (e.key === 'Escape') cancelEditingSection()
                                                                         }}
-                                                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:border-brand-900 focus:outline-none"
+                                                                        className="flex-1"
                                                                         autoFocus
+                                                                        size="sm"
                                                                     />
-                                                                    <button
-                                                                        type="button"
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="xs"
                                                                         onClick={saveEditingSection}
-                                                                        className="p-1 text-green-600 hover:bg-green-50 rounded"
+                                                                        className="text-green-600 hover:bg-green-50"
                                                                     >
                                                                         <Check className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="xs"
                                                                         onClick={cancelEditingSection}
-                                                                        className="p-1 text-gray-400 hover:bg-gray-100 rounded"
                                                                     >
                                                                         <X className="w-4 h-4" />
-                                                                    </button>
-                                                                </div>
+                                                                    </Button>
+                                                                </Inline>
                                                             ) : (
                                                                 <>
                                                                     <span className="font-medium text-gray-900 truncate">
                                                                         {displayName}
                                                                     </span>
                                                                     {isRenamed && (
-                                                                        <span className="text-xs text-amber-600 flex-shrink-0">modifie</span>
+                                                                        <Badge variant="warning">modifie</Badge>
                                                                     )}
                                                                     {hasChanges && (
-                                                                        <span className="text-xs text-blue-600 flex-shrink-0">inscriptions modifiees</span>
+                                                                        <Badge variant="info">inscriptions modifiees</Badge>
                                                                     )}
                                                                 </>
                                                             )}
@@ -1264,22 +1267,24 @@ export default function CourseFormModal({
                                                                 <span className="text-xs text-gray-500 flex-shrink-0">
                                                                     {teacherCount} prof · {studentCount} etud.
                                                                 </span>
-                                                                <button
-                                                                    type="button"
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="xs"
                                                                     onClick={() => startEditingSection(section.id, displayName)}
-                                                                    className="p-1.5 text-gray-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
                                                                     title="Renommer"
+                                                                    className="hover:text-brand-600 hover:bg-brand-50"
                                                                 >
                                                                     <Pencil className="w-3.5 h-3.5" />
-                                                                </button>
-                                                                <button
-                                                                    type="button"
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="xs"
                                                                     onClick={() => askDeleteExistingSection(section.id, displayName)}
-                                                                    className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                                     title="Supprimer"
+                                                                    className="hover:text-red-600 hover:bg-red-50"
                                                                 >
                                                                     <Trash2 className="w-3.5 h-3.5" />
-                                                                </button>
+                                                                </Button>
                                                             </div>
                                                         )}
                                                     </div>
@@ -1339,8 +1344,8 @@ export default function CourseFormModal({
                                                                 {/* CSV imported students for existing section */}
                                                                 {changes && changes.csvStudents.length > 0 && (
                                                                     <div className="mb-2">
-                                                                        <div className="flex items-center justify-between mb-1">
-                                                                            <span className="text-xs text-gray-500">
+                                                                        <Inline gap="sm" align="between">
+                                                                            <Text variant="xsMuted">
                                                                                 {changes.csvStudents.filter(s => s.status === 'new').length} nouveaux,{' '}
                                                                                 {changes.csvStudents.filter(s => s.status === 'exists').length} existants
                                                                                 {changes.csvStudents.filter(s => s.status === 'invalid').length > 0 && (
@@ -1348,15 +1353,16 @@ export default function CourseFormModal({
                                                                                         , {changes.csvStudents.filter(s => s.status === 'invalid').length} invalides
                                                                                     </span>
                                                                                 )}
-                                                                            </span>
-                                                                            <button
-                                                                                type="button"
+                                                                            </Text>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="xs"
                                                                                 onClick={() => clearExistingSectionCsvStudents(section.id)}
-                                                                                className="text-xs text-gray-400 hover:text-red-600"
+                                                                                className="hover:text-red-600"
                                                                             >
                                                                                 Effacer
-                                                                            </button>
-                                                                        </div>
+                                                                            </Button>
+                                                                        </Inline>
                                                                         <div className="border border-gray-200 rounded-lg max-h-24 overflow-y-auto divide-y divide-gray-100 bg-white">
                                                                             {changes.csvStudents.map(csvStudent => (
                                                                                 <div
@@ -1368,21 +1374,24 @@ export default function CourseFormModal({
                                                                                 >
                                                                                     <span className="truncate flex-1">{csvStudent.email}</span>
                                                                                     <div className="flex items-center gap-1.5 ml-2">
-                                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                                                                            csvStudent.status === 'invalid' ? 'bg-red-100 text-red-600' :
-                                                                                            csvStudent.status === 'new' ? 'bg-green-100 text-green-600' :
-                                                                                            'bg-blue-100 text-blue-600'
-                                                                                        }`}>
+                                                                                        <Badge
+                                                                                            variant={
+                                                                                                csvStudent.status === 'invalid' ? 'warning' :
+                                                                                                csvStudent.status === 'new' ? 'success' : 'info'
+                                                                                            }
+                                                                                            className="text-[10px]"
+                                                                                        >
                                                                                             {csvStudent.status === 'new' ? 'nouveau' :
                                                                                              csvStudent.status === 'exists' ? 'existant' : 'invalide'}
-                                                                                        </span>
-                                                                                        <button
-                                                                                            type="button"
+                                                                                        </Badge>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="xs"
                                                                                             onClick={() => removeExistingSectionCsvStudent(section.id, csvStudent.email)}
-                                                                                            className="text-gray-400 hover:text-red-600"
+                                                                                            className="hover:text-red-600 p-0"
                                                                                         >
                                                                                             <X className="w-3 h-3" />
-                                                                                        </button>
+                                                                                        </Button>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
@@ -1434,15 +1443,15 @@ export default function CourseFormModal({
                                             )
                                         })}
                                     </div>
-                                </div>
+                                </Stack>
                             )}
 
                             {/* New sections to create */}
                             {sectionsToCreate.length > 0 && (
-                                <div>
-                                    <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">
+                                <Stack gap="sm">
+                                    <Text variant="overline">
                                         Nouvelles sections
-                                    </h4>
+                                    </Text>
                                     <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
                                         {sectionsToCreate.map((section, index) => {
                                             const isExpanded = expandedSectionId === section.id
@@ -1460,25 +1469,24 @@ export default function CourseFormModal({
                                                             <span className="font-medium text-gray-900">
                                                                 {section.name}
                                                             </span>
-                                                            <span className="text-xs text-green-600">nouveau</span>
+                                                            <Badge variant="success">nouveau</Badge>
                                                             {(section.teacherIds.length > 0 || section.studentIds.length > 0 || section.csvStudents.length > 0) && (
                                                                 <span className="text-xs text-gray-500">
                                                                     ({section.teacherIds.length} prof, {section.studentIds.length + section.csvStudents.filter(s => s.status !== 'invalid').length} etud.)
                                                                 </span>
                                                             )}
                                                         </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation()
-                                                                    removeSection(section.id)
-                                                                }}
-                                                                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="xs"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation()
+                                                                removeSection(section.id)
+                                                            }}
+                                                            className="hover:text-red-600 hover:bg-red-50"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </Button>
                                                     </div>
 
                                                     {/* Expanded enrollment panel */}
@@ -1532,8 +1540,8 @@ export default function CourseFormModal({
                                                                 {/* CSV imported students */}
                                                                 {section.csvStudents.length > 0 && (
                                                                     <div className="mb-2">
-                                                                        <div className="flex items-center justify-between mb-1">
-                                                                            <span className="text-xs text-gray-500">
+                                                                        <Inline gap="sm" align="between">
+                                                                            <Text variant="xsMuted">
                                                                                 {section.csvStudents.filter(s => s.status === 'new').length} nouveaux,{' '}
                                                                                 {section.csvStudents.filter(s => s.status === 'exists').length} existants
                                                                                 {section.csvStudents.filter(s => s.status === 'invalid').length > 0 && (
@@ -1541,15 +1549,16 @@ export default function CourseFormModal({
                                                                                         , {section.csvStudents.filter(s => s.status === 'invalid').length} invalides
                                                                                     </span>
                                                                                 )}
-                                                                            </span>
-                                                                            <button
-                                                                                type="button"
+                                                                            </Text>
+                                                                            <Button
+                                                                                variant="ghost"
+                                                                                size="xs"
                                                                                 onClick={() => clearSectionCsvStudents(section.id)}
-                                                                                className="text-xs text-gray-400 hover:text-red-600"
+                                                                                className="hover:text-red-600"
                                                                             >
                                                                                 Effacer
-                                                                            </button>
-                                                                        </div>
+                                                                            </Button>
+                                                                        </Inline>
                                                                         <div className="border border-gray-200 rounded-lg max-h-24 overflow-y-auto divide-y divide-gray-100">
                                                                             {section.csvStudents.map(csvStudent => (
                                                                                 <div
@@ -1561,21 +1570,24 @@ export default function CourseFormModal({
                                                                                 >
                                                                                     <span className="truncate flex-1">{csvStudent.email}</span>
                                                                                     <div className="flex items-center gap-1.5 ml-2">
-                                                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                                                                            csvStudent.status === 'invalid' ? 'bg-red-100 text-red-600' :
-                                                                                            csvStudent.status === 'new' ? 'bg-green-100 text-green-600' :
-                                                                                            'bg-blue-100 text-blue-600'
-                                                                                        }`}>
+                                                                                        <Badge
+                                                                                            variant={
+                                                                                                csvStudent.status === 'invalid' ? 'warning' :
+                                                                                                csvStudent.status === 'new' ? 'success' : 'info'
+                                                                                            }
+                                                                                            className="text-[10px]"
+                                                                                        >
                                                                                             {csvStudent.status === 'new' ? 'nouveau' :
                                                                                              csvStudent.status === 'exists' ? 'existant' : 'invalide'}
-                                                                                        </span>
-                                                                                        <button
-                                                                                            type="button"
+                                                                                        </Badge>
+                                                                                        <Button
+                                                                                            variant="ghost"
+                                                                                            size="xs"
                                                                                             onClick={() => removeSectionCsvStudent(section.id, csvStudent.email)}
-                                                                                            className="text-gray-400 hover:text-red-600"
+                                                                                            className="hover:text-red-600 p-0"
                                                                                         >
                                                                                             <X className="w-3 h-3" />
-                                                                                        </button>
+                                                                                        </Button>
                                                                                     </div>
                                                                                 </div>
                                                                             ))}
@@ -1620,7 +1632,7 @@ export default function CourseFormModal({
                                             )
                                         })}
                                     </div>
-                                </div>
+                                </Stack>
                             )}
 
                             {/* Empty state */}
@@ -1637,21 +1649,18 @@ export default function CourseFormModal({
                                     Utilisez le champ ci-dessus pour en ajouter.
                                 </div>
                             )}
-                        </div>
+                        </Stack>
                     )}
 
                     {/* Teachers Tab */}
                     {activeTab === 'teachers' && (
-                        <div className="space-y-4">
-                            <div>
-                                <input
-                                    type="text"
-                                    value={teacherSearch}
-                                    onChange={(e) => setTeacherSearch(e.target.value)}
-                                    placeholder="Rechercher un professeur..."
-                                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                />
-                            </div>
+                        <Stack gap="md">
+                            <Input
+                                type="text"
+                                value={teacherSearch}
+                                onChange={(e) => setTeacherSearch(e.target.value)}
+                                placeholder="Rechercher un professeur..."
+                            />
 
                             {filteredTeachers.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">
@@ -1688,12 +1697,12 @@ export default function CourseFormModal({
                                     {selectedTeacherIds.size} professeur{selectedTeacherIds.size > 1 ? 's' : ''} selectionne{selectedTeacherIds.size > 1 ? 's' : ''}
                                 </div>
                             )}
-                        </div>
+                        </Stack>
                     )}
 
                     {/* Students Tab */}
                     {activeTab === 'students' && (
-                        <div className="space-y-4">
+                        <Stack gap="md">
                             {/* CSV Upload */}
                             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-brand-400 transition-colors">
                                 <input
@@ -1704,20 +1713,19 @@ export default function CourseFormModal({
                                     className="hidden"
                                 />
                                 <FileSpreadsheet className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-                                <button
-                                    type="button"
+                                <Button
+                                    variant="primary"
                                     onClick={() => fileInputRef.current?.click()}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-brand-900 text-white rounded-lg hover:bg-brand-800 font-medium text-sm"
                                 >
                                     <Upload className="w-4 h-4" />
                                     Importer un fichier CSV
-                                </button>
-                                <p className="text-xs text-gray-500 mt-3">
+                                </Button>
+                                <Text variant="caption" className="mt-3">
                                     Format attendu: email,nom (une ligne par etudiant)
-                                </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                </Text>
+                                <Text variant="xsMuted" className="mt-1">
                                     Separateur: virgule ou point-virgule
-                                </p>
+                                </Text>
                             </div>
 
                             {csvError && (
@@ -1773,37 +1781,39 @@ export default function CourseFormModal({
                                                         </div>
                                                     )}
                                                 </div>
-                                                <div className="flex items-center gap-2 ml-2">
-                                                    <span className={`text-xs font-medium px-2 py-0.5 rounded ${
-                                                        student.status === 'invalid' ? 'bg-red-100 text-red-700' :
-                                                        student.status === 'exists' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-green-100 text-green-700'
-                                                    }`}>
+                                                <Inline gap="sm" className="ml-2">
+                                                    <Badge
+                                                        variant={
+                                                            student.status === 'invalid' ? 'warning' :
+                                                            student.status === 'exists' ? 'info' : 'success'
+                                                        }
+                                                    >
                                                         {student.status === 'invalid' ? 'Invalide' :
                                                          student.status === 'exists' ? 'Existant' : 'Nouveau'}
-                                                    </span>
-                                                    <button
-                                                        type="button"
+                                                    </Badge>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="xs"
                                                         onClick={() => removeStudent(student.email)}
-                                                        className="p-1 text-gray-400 hover:text-red-600"
+                                                        className="hover:text-red-600 p-1"
                                                     >
                                                         <X className="w-4 h-4" />
-                                                    </button>
-                                                </div>
+                                                    </Button>
+                                                </Inline>
                                             </div>
                                         ))}
                                     </div>
 
-                                    <button
-                                        type="button"
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => setCsvStudents([])}
-                                        className="text-sm text-gray-500 hover:text-gray-700"
                                     >
                                         Effacer la liste
-                                    </button>
+                                    </Button>
                                 </>
                             )}
-                        </div>
+                        </Stack>
                     )}
                 </div>
 
@@ -1818,21 +1828,19 @@ export default function CourseFormModal({
 
                 {/* Footer */}
                 <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-                    <button
-                        type="button"
+                    <Button
+                        variant="secondary"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
                     >
                         {dict.cancelArchiveButton}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={handleSave}
                         disabled={saving}
-                        className="px-6 py-2 text-sm font-medium text-white bg-brand-900 rounded-lg hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {saving ? 'Enregistrement...' : (editCourse ? (dict.saveButton || 'Enregistrer') : dict.createCourseButton)}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
