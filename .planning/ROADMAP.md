@@ -225,6 +225,35 @@ Plans:
 
 ---
 
+## Phase 8: PDF Exam Import
+
+**Goal:** Teachers can upload an existing exam PDF, which is analyzed by AI to automatically create a structured exam with questions, point allocations, and correction guidelines — landing the teacher directly in the exam editor with pre-filled questions ready for review and modification.
+
+**Dependencies:** Phase 2 (exam editor), Phase 4 (OpenAI integration)
+
+**Requirements:**
+- IMPORT-01: PDF upload in exam creation flow (drag-and-drop or file picker)
+- IMPORT-02: AI analysis of PDF to extract questions, point values, and structure
+- IMPORT-03: Automatic question type detection (open question vs MCQ)
+- IMPORT-04: Auto-generated correction guidelines from extracted rubric/answer key
+- IMPORT-05: Seamless landing in existing exam editor with pre-filled questions (teacher can modify freely)
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Extraction schemas, GPT-4o extractor, BullMQ queue + worker
+- [ ] 08-02-PLAN.md — Upload API route + job status polling endpoint
+- [ ] 08-03-PLAN.md — PDF upload UI with react-dropzone + exam creation flow integration
+
+**Success Criteria:**
+1. Teacher can upload a PDF exam and see a progress indicator during AI analysis
+2. AI correctly identifies and separates individual questions from the PDF
+3. Point values are extracted or intelligently assigned based on PDF content
+4. Teacher lands in the standard exam editor with all questions pre-created
+5. Teacher can modify, reorder, delete, or add questions after import — full editor functionality preserved
+
+---
+
 ## Progress
 
 | Phase | Goal | Requirements | Status |
@@ -236,6 +265,7 @@ Plans:
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Complete |
 | 6 - UI Kit Integration | Consistent UI components across all pages | UIKIT-01 through UIKIT-06 | Complete |
 | 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | Complete |
+| 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
 
 ---
 
@@ -256,8 +286,9 @@ Plans:
 - Phase 3: Research found 80% of infrastructure exists; 3 focused extension plans instead of 5
 - Phase 5: MathJax used for PDF (produces SVG), KaTeX used for web (produces HTML)
 - Phase 7: Webcam is deterrent ONLY (no recording, no snapshots, no AI Vision). Uses native getUserMedia, not react-webcam. Focus loss pattern analysis is the core intelligence.
+- Phase 8: Uses GPT-4o native PDF support (no pdf-parse). BullMQ async processing. react-dropzone for upload UI. All other infrastructure already exists.
 
 ---
 
 *Roadmap created: 2026-01-18*
-*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements*
+*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements*
