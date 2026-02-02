@@ -21,9 +21,9 @@
 ## Current Position
 
 **Phase:** 7 of 7 (Intelligent Proctoring)
-**Plan:** 1 of 3
+**Plan:** 2 of 3
 **Status:** In progress
-**Last activity:** 2026-02-02 - Completed 07-01-PLAN.md
+**Last activity:** 2026-02-02 - Completed 07-02-PLAN.md
 
 **Progress:**
 ```
@@ -33,10 +33,10 @@ Phase 3: Organization             [==========] 3/3 plans complete
 Phase 4: AI Correction            [==========] 4/4 plans complete
 Phase 5: Export                   [==========] 3/3 plans complete
 Phase 6: UI Kit Integration       [==========] 8/8 plans complete
-Phase 7: Intelligent Proctoring   [███░░░░░░░] 1/3 plans complete
+Phase 7: Intelligent Proctoring   [██████░░░░] 2/3 plans complete
 ```
 
-**Overall:** 26/28 plans complete (93%)
+**Overall:** 27/28 plans complete (96%)
 
 ---
 
@@ -110,6 +110,10 @@ Phase 7: Intelligent Proctoring   [███░░░░░░░] 1/3 plans com
 | Two independent proctoring flags | Separate webcamDeterrent and browserLockdown for granular control | 7 |
 | Immediate persistence for proctoring config | High-stakes settings save immediately, no debounce | 7 |
 | Optimistic UI updates for toggles | Instant feedback, revert on API error | 7 |
+| Threshold-based suspicion flags | 50% = SUSPICIOUS, 75% = HIGHLY_SUSPICIOUS for focus loss patterns | 7 |
+| External paste penalty +5 | External pastes scored higher than internal clipboard operations | 7 |
+| 5-second focus regain grace period | Allow brief window after answer save for focus regain detection | 7 |
+| Node.js test runner (not vitest) | Project uses tsx --test, consistent with existing test infrastructure | 7 |
 | Surface with custom bg- for colored stat boxes | UI Kit doesn't provide colored Surface variants, className override works | 6 |
 | Badge for status indicators | Compact visual indicators for Q numbers and AI/Human-modified | 6 |
 
@@ -156,6 +160,9 @@ Phase 7: Intelligent Proctoring   [███░░░░░░░] 1/3 plans com
 - **Modal headers:** Inline with Text pageTitle + Button ghost for close
 - **Grading sections:** Surface with Stack/Inline for form layout
 - **Button groups:** Inline with Button variants for action sets
+- **Pure function pattern analysis:** All proctoring analysis functions are pure (no side effects, deterministic)
+- **Event correlation analysis:** Correlate event streams by time window to detect patterns
+- **Threshold-based pattern detection:** Graduated confidence levels (NONE/SUSPICIOUS/HIGHLY_SUSPICIOUS)
 
 ### Known Issues
 
@@ -191,6 +198,7 @@ Phase 7: Intelligent Proctoring   [███░░░░░░░] 1/3 plans com
 - [x] Complete 06-07: Small Grading Modals + Export Modal Migration
 - [x] Complete 06-08: CourseFormModal Migration
 - [x] Complete 07-01: Proctoring Configuration UI
+- [x] Complete 07-02: Pattern Analysis Engine
 
 ### Blockers
 
@@ -203,18 +211,18 @@ Phase 7: Intelligent Proctoring   [███░░░░░░░] 1/3 plans com
 ### Resumption Prompt
 
 ```
-Correcta - Phase 7 In Progress (26/28 plans complete).
-All 6 prior phases delivered. Phase 7: Intelligent Proctoring (1/3 plans complete).
+Correcta - Phase 7 In Progress (27/28 plans complete).
+All 6 prior phases delivered. Phase 7: Intelligent Proctoring (2/3 plans complete).
 Phase 1: Math Foundation (3 plans) ✓
 Phase 2: Exam Creation (4 plans) ✓
 Phase 3: Organization (3 plans) ✓
 Phase 4: AI Correction (4 plans) ✓
 Phase 5: Export (3 plans) ✓
 Phase 6: UI Kit Integration (8 plans) ✓
-Phase 7: Intelligent Proctoring (1/3 plans) - In progress
+Phase 7: Intelligent Proctoring (2/3 plans) - In progress
 
-Latest: 07-01 (Proctoring Configuration UI) complete.
-Next: 07-02 (Event Detection) or 07-03 (Anti-Cheat Analytics).
+Latest: 07-02 (Pattern Analysis Engine) complete with TDD.
+Next: 07-03 (Teacher Dashboard Integration).
 ```
 
 ### Context Files
@@ -243,9 +251,10 @@ Next: 07-02 (Event Detection) or 07-03 (Anti-Cheat Analytics).
 - `.planning/phases/06-ui-kit-integration/06-01-SUMMARY.md` - UI Kit Component Integration summary
 - `.planning/phases/06-ui-kit-integration/06-06-SUMMARY.md` - Large Grading Components Migration summary
 - `.planning/phases/07-intelligent-proctoring/07-01-SUMMARY.md` - Proctoring Configuration UI summary
+- `.planning/phases/07-intelligent-proctoring/07-02-SUMMARY.md` - Pattern Analysis Engine summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-02 - Completed 07-01 (Proctoring Configuration UI)*
+*Last execution: 2026-02-02 - Completed 07-02 (Pattern Analysis Engine)*
 *Phase 7 in progress: 1/3 plans complete*
