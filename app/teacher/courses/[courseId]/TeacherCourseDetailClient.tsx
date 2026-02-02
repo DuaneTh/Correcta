@@ -6,8 +6,13 @@ import { getCsrfToken } from '@/lib/csrfClient'
 import { ArrowLeft, Plus, Users, Layers, FileText, Download, Trash2 } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
-import { ExamStatusBadge } from '@/components/teacher/ExamStatusBadge'
 import { getExamEndAt } from '@/lib/exam-time'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { StatusBadge } from '@/components/ui/StatusBadge'
+import { TextLink } from '@/components/ui/TextLink'
 
 type Exam = {
     id: string
@@ -170,122 +175,115 @@ export default function TeacherCourseDetailClient({
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
             {/* Back Link */}
-            <button
-                onClick={() => router.push('/teacher/courses')}
-                className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
-            >
+            <TextLink href="/teacher/courses">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 {dict.backToCourses}
-            </button>
+            </TextLink>
 
             {/* Main Card */}
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+            <Card>
                 {/* Header */}
-                <div className="px-6 py-5 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div className="flex items-center gap-3">
-                        <CourseCodeBadge code={courseCode} />
-                        <h1 className="text-2xl font-bold text-gray-900">{courseName}</h1>
-                    </div>
-                    <button
-                        onClick={() => router.push(`/teacher/exams/new?courseId=${courseId}`)}
-                        className="inline-flex items-center gap-2 rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2 transition-colors"
-                    >
-                        <Plus className="h-4 w-4" />
-                        {dict.createExamButton}
-                    </button>
+                <div className="px-6 py-5 border-b border-gray-200">
+                    <Inline align="between" gap="md">
+                        <Inline align="start" gap="sm">
+                            <CourseCodeBadge code={courseCode} />
+                            <Text as="h1" variant="pageTitle">{courseName}</Text>
+                        </Inline>
+                        <Button
+                            onClick={() => router.push(`/teacher/exams/new?courseId=${courseId}`)}
+                            size="sm"
+                        >
+                            <Plus className="h-4 w-4" />
+                            {dict.createExamButton}
+                        </Button>
+                    </Inline>
                 </div>
 
                 {/* Tabs */}
                 <div className="px-6 pt-4 pb-4 flex items-center justify-between">
                     <div className="flex gap-3 overflow-x-auto">
-                        <button
-                            type="button"
+                        <Button
+                            variant={activeTab === 'exams' ? 'primary' : 'secondary'}
+                            size="xs"
                             onClick={() => setActiveTab('exams')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors flex items-center gap-2 ${activeTab === 'exams'
-                                ? 'bg-brand-900 text-white border-brand-900'
-                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                }`}
                         >
                             <FileText className="h-4 w-4" />
                             {dict.tabs.exams}
-                        </button>
+                        </Button>
                         {hasMultipleSections && (
-                            <button
-                                type="button"
+                            <Button
+                                variant={activeTab === 'sections' ? 'primary' : 'secondary'}
+                                size="xs"
                                 onClick={() => setActiveTab('sections')}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors flex items-center gap-2 ${activeTab === 'sections'
-                                    ? 'bg-brand-900 text-white border-brand-900'
-                                    : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                    }`}
                             >
                                 <Layers className="h-4 w-4" />
                                 {dict.tabs.sections}
-                            </button>
+                            </Button>
                         )}
-                        <button
-                            type="button"
+                        <Button
+                            variant={activeTab === 'students' ? 'primary' : 'secondary'}
+                            size="xs"
                             onClick={() => setActiveTab('students')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded-full border transition-colors flex items-center gap-2 ${activeTab === 'students'
-                                ? 'bg-brand-900 text-white border-brand-900'
-                                : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                                }`}
                         >
                             <Users className="h-4 w-4" />
                             {dict.tabs.students}
-                        </button>
+                        </Button>
                     </div>
 
                     {activeTab === 'students' && students.length > 0 && (
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
+                            size="xs"
                             onClick={handleExportStudents}
-                            className="inline-flex items-center gap-1 rounded-full border border-brand-900/40 bg-white px-3 py-1.5 text-xs font-medium text-brand-900 hover:bg-brand-50 focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2 transition-colors"
                         >
                             <Download className="h-4 w-4" />
                             {dict.studentsExportButton}
-                        </button>
+                        </Button>
                     )}
                 </div>
 
                 {/* Content */}
-                <div className="p-6">
+                <CardBody padding="lg">
                     {/* Exams Tab */}
                     {activeTab === 'exams' && (
-                        <div className="space-y-4">
+                        <Stack gap="md">
                             {sortedExams.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8 italic">{dict.noExams}</p>
+                                <Text variant="muted" className="text-center py-8 italic">{dict.noExams}</Text>
                             ) : (
-                                <div className="space-y-3">
+                                <Stack gap="sm">
                                     {sortedExams.map((exam) => {
                                         const now = new Date()
                                         const startAt = exam.startAt ? new Date(exam.startAt) : null
                                         const endAt = startAt ? getExamEndAt(startAt, exam.durationMinutes, exam.endAt) : null
 
-                                        let statusLabel: string = coursesDict.examPublishedBadge
-                                        let statusClassName = "border-brand-900/20 bg-brand-50 text-brand-900"
-                                        const draftStatusClass = "border-amber-200 bg-amber-50 text-amber-700"
-                                        const endedStatusClass = "border-gray-200 bg-gray-100 text-gray-600"
+                                        let statusVariant: 'draft' | 'scheduled' | 'published' = 'published'
 
                                         if (exam.status === 'DRAFT') {
-                                            statusLabel = coursesDict.examDraftBadge
-                                            statusClassName = draftStatusClass
+                                            statusVariant = 'draft'
                                         } else if (!startAt) {
-                                            statusLabel = coursesDict.examPublishedBadge
-                                            statusClassName = "border-brand-900/20 bg-brand-50 text-brand-900"
+                                            statusVariant = 'published'
                                         } else if (now < startAt) {
-                                            statusLabel = coursesDict.examScheduledBadge
-                                            statusClassName = "border-brand-900/20 bg-brand-50 text-brand-900"
+                                            statusVariant = 'scheduled'
                                         } else if (endAt && now > endAt) {
-                                            statusLabel = coursesDict.examEndedBadge
-                                            statusClassName = endedStatusClass
+                                            statusVariant = 'published'
                                         } else {
-                                            statusLabel = coursesDict.examInProgressBadge
-                                            statusClassName = "border-brand-900/20 bg-brand-50 text-brand-900"
+                                            statusVariant = 'published'
                                         }
 
+                                        const statusLabel = exam.status === 'DRAFT'
+                                            ? coursesDict.examDraftBadge
+                                            : !startAt
+                                                ? coursesDict.examPublishedBadge
+                                                : now < startAt
+                                                    ? coursesDict.examScheduledBadge
+                                                    : endAt && now > endAt
+                                                        ? coursesDict.examEndedBadge
+                                                        : coursesDict.examInProgressBadge
+
                                         return (
-                                        <div
+                                        <Card
                                             key={exam.id}
+                                            interactive="subtle"
                                             onClick={(e) => {
                                                 // Don't navigate if clicking on buttons
                                                 const target = e.target as HTMLElement
@@ -304,7 +302,6 @@ export default function TeacherCourseDetailClient({
                                                 // Focus the div for keyboard navigation
                                                 e.currentTarget.focus()
                                             }}
-                                            className="group block p-4 rounded-lg border border-gray-200 bg-white hover:border-brand-300 hover:bg-brand-50/30 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2"
                                             tabIndex={0}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -313,114 +310,122 @@ export default function TeacherCourseDetailClient({
                                                 }
                                             }}
                                         >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex flex-col flex-1">
-                                                    <span className="text-lg font-medium text-brand-900 group-hover:text-brand-700">
-                                                        {exam.title}
-                                                    </span>
-                                                    <span className="text-xs text-gray-500 mt-1">
-                                                        {exam.startAt
-                                                            ? new Date(exam.startAt).toLocaleString()
-                                                            : dict.notScheduled}
-                                                    </span>
-                                                    {exam.className && (
-                                                        <span className="text-xs text-gray-500 mt-1">
-                                                            {dict.tabs.sections}: {exam.className}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                                <div 
-                                                    className="flex items-center gap-3"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                >
-                                                    <ExamStatusBadge label={statusLabel} className={statusClassName} />
-                                                    <div className="relative inline-block">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                if (examIdPendingDelete !== exam.id) {
-                                                                    handleDeleteClick(exam.id, e)
-                                                                }
-                                                            }}
-                                                            className={`inline-flex items-center h-9 rounded-md border border-red-200 px-3 text-sm font-medium text-red-600 hover:bg-red-50 ${examIdPendingDelete === exam.id ? 'invisible' : ''}`}
-                                                        >
-                                                            <Trash2 className="w-4 h-4 mr-1" />
-                                                            {dictionary.teacher.examsPage.actions.delete}
-                                                        </button>
-                                                        {examIdPendingDelete === exam.id && (
-                                                            <div ref={examDeleteConfirmRef} className="absolute right-0 top-1/2 -translate-y-1/2 z-10 inline-flex items-center gap-3 border border-red-200 rounded-md px-3 bg-red-50 whitespace-nowrap h-9 shadow-lg">
-                                                                <span className="text-sm text-red-700 font-medium">
-                                                                    {examBuilderDict.confirmDeleteQuestion}
-                                                                </span>
-                                                                <button
-                                                                    onClick={(e) => handleConfirmDelete(exam.id, e)}
-                                                                    disabled={isDeleting}
-                                                                    className="text-sm font-semibold text-red-700 disabled:opacity-50"
-                                                                >
-                                                                    {dictionary.teacher.examsPage.actions?.deleteConfirm ?? (isDeleting ? 'Suppression...' : 'Confirmer ?')}
-                                                                </button>
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault()
-                                                                        e.stopPropagation()
-                                                                        handleCancelDelete()
-                                                                    }}
-                                                                    disabled={isDeleting}
-                                                                    className="text-sm text-gray-500 disabled:opacity-50"
-                                                                >
-                                                                    {dictionary.teacher.examsPage.actions?.deleteCancel ?? 'Annuler'}
-                                                                </button>
-                                                            </div>
+                                            <CardBody padding="md">
+                                                <Inline align="between" gap="md">
+                                                    <Stack gap="xs">
+                                                        <Text variant="body" className="font-medium text-brand-900 group-hover:text-brand-700">
+                                                            {exam.title}
+                                                        </Text>
+                                                        <Text variant="xsMuted">
+                                                            {exam.startAt
+                                                                ? new Date(exam.startAt).toLocaleString()
+                                                                : dict.notScheduled}
+                                                        </Text>
+                                                        {exam.className && (
+                                                            <Text variant="xsMuted">
+                                                                {dict.tabs.sections}: {exam.className}
+                                                            </Text>
                                                         )}
+                                                    </Stack>
+                                                    <div
+                                                        className="flex items-center gap-3"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <StatusBadge label={statusLabel} variant={statusVariant} />
+                                                        <div className="relative inline-block">
+                                                            <Button
+                                                                onClick={(e) => {
+                                                                    if (examIdPendingDelete !== exam.id) {
+                                                                        handleDeleteClick(exam.id, e)
+                                                                    }
+                                                                }}
+                                                                variant="destructive"
+                                                                size="xs"
+                                                                className={examIdPendingDelete === exam.id ? 'invisible' : ''}
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                                {dictionary.teacher.examsPage.actions.delete}
+                                                            </Button>
+                                                            {examIdPendingDelete === exam.id && (
+                                                                <div ref={examDeleteConfirmRef} className="absolute right-0 top-1/2 -translate-y-1/2 z-10 inline-flex items-center gap-3 border border-red-200 rounded-md px-3 bg-red-50 whitespace-nowrap h-9 shadow-lg">
+                                                                    <Text variant="caption" className="text-red-700 font-medium">
+                                                                        {examBuilderDict.confirmDeleteQuestion}
+                                                                    </Text>
+                                                                    <Button
+                                                                        onClick={(e) => handleConfirmDelete(exam.id, e)}
+                                                                        disabled={isDeleting}
+                                                                        variant="ghost"
+                                                                        size="xs"
+                                                                        className="text-red-700 hover:bg-red-100 disabled:opacity-50"
+                                                                    >
+                                                                        {dictionary.teacher.examsPage.actions?.deleteConfirm ?? (isDeleting ? 'Suppression...' : 'Confirmer ?')}
+                                                                    </Button>
+                                                                    <Button
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault()
+                                                                            e.stopPropagation()
+                                                                            handleCancelDelete()
+                                                                        }}
+                                                                        disabled={isDeleting}
+                                                                        variant="ghost"
+                                                                        size="xs"
+                                                                        className="text-gray-500 hover:bg-gray-100 disabled:opacity-50"
+                                                                    >
+                                                                        {dictionary.teacher.examsPage.actions?.deleteCancel ?? 'Annuler'}
+                                                                    </Button>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </div>
+                                                </Inline>
+                                            </CardBody>
+                                        </Card>
                                         )
                                     })}
-                                </div>
+                                </Stack>
                             )}
-                        </div>
+                        </Stack>
                     )}
 
                     {/* Sections Tab */}
                     {activeTab === 'sections' && (
-                        <div className="space-y-4">
+                        <Stack gap="md">
                             {sections.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8 italic">{dict.noSections}</p>
+                                <Text variant="muted" className="text-center py-8 italic">{dict.noSections}</Text>
                             ) : (
                                 <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
                                     {sections.map((section) => (
                                         <li key={section.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                                            <span className="text-sm font-medium text-gray-900">{section.name}</span>
+                                            <Text variant="body" className="font-medium">{section.name}</Text>
                                             {/* Optional: Add student count per section if available */}
                                         </li>
                                     ))}
                                 </ul>
                             )}
-                        </div>
+                        </Stack>
                     )}
 
                     {/* Students Tab */}
                     {activeTab === 'students' && (
-                        <div className="space-y-4">
+                        <Stack gap="md">
                             {students.length === 0 ? (
-                                <p className="text-gray-500 text-center py-8 italic">{dict.noStudents}</p>
+                                <Text variant="muted" className="text-center py-8 italic">{dict.noStudents}</Text>
                             ) : (
                                 <ul className="divide-y divide-gray-200 border border-gray-200 rounded-md">
                                     {students.map((student) => (
                                         <li key={student.id} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                                            <div>
-                                                <p className="text-sm font-medium text-gray-900">{student.name || 'Unknown Name'}</p>
-                                                <p className="text-xs text-gray-500">{student.email}</p>
-                                            </div>
+                                            <Stack gap="xs">
+                                                <Text variant="body" className="font-medium">{student.name || 'Unknown Name'}</Text>
+                                                <Text variant="xsMuted">{student.email}</Text>
+                                            </Stack>
                                         </li>
                                     ))}
                                 </ul>
                             )}
-                        </div>
+                        </Stack>
                     )}
-                </div>
-            </div>
+                </CardBody>
+            </Card>
         </div>
     )
 }

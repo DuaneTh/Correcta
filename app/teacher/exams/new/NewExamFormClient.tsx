@@ -6,11 +6,16 @@ import { ArrowLeft, Save, ChevronDown, Check } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
-import Link from 'next/link'
 import DatePicker, { registerLocale } from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 import { fr, enUS } from 'date-fns/locale'
 import { Listbox, Transition } from '@headlessui/react'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { Input, Select } from '@/components/ui/Form'
+import { TextLink } from '@/components/ui/TextLink'
 
 registerLocale('fr', fr)
 registerLocale('en', enUS)
@@ -66,53 +71,55 @@ const CustomTimeInput = ({ date, value, onChange, onDateTimeChange, currentLocal
     const minutes = Array.from({ length: 60 }, (_, i) => i)
 
     return (
-        <div className="flex gap-2 items-center justify-center p-2 border-t border-gray-200 mt-2">
-            <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 font-medium">
+        <Inline gap="sm" className="items-center justify-center p-2 border-t border-gray-200 mt-2">
+            <Stack gap="xs">
+                <Text variant="caption" className="font-medium">
                     {currentLocale === 'fr' ? 'Heure' : 'Hour'}
-                </label>
-                <select
+                </Text>
+                <Select
                     value={String(currentHours).padStart(2, '0')}
                     onChange={(e) => handleChange('hours', e.target.value)}
-                    className="block w-20 px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-900 focus:border-brand-900"
                     onClick={(e) => e.stopPropagation()}
+                    size="sm"
+                    className="w-20"
                 >
                     {hours.map((h) => (
                         <option key={h} value={h}>
                             {h.toString().padStart(2, '0')}
                         </option>
                     ))}
-                </select>
-            </div>
-            <span className="mt-5 text-gray-400">:</span>
-            <div className="flex flex-col gap-1">
-                <label className="text-xs text-gray-500 font-medium">
+                </Select>
+            </Stack>
+            <Text variant="muted" className="mt-5">:</Text>
+            <Stack gap="xs">
+                <Text variant="caption" className="font-medium">
                     {currentLocale === 'fr' ? 'Minutes' : 'Minutes'}
-                </label>
-                <select
+                </Text>
+                <Select
                     value={String(currentMinutes).padStart(2, '0')}
                     onChange={(e) => handleChange('minutes', e.target.value)}
-                    className="block w-20 px-2 py-1 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand-900 focus:border-brand-900"
                     onClick={(e) => e.stopPropagation()}
+                    size="sm"
+                    className="w-20"
                 >
                     {minutes.map((m) => (
                         <option key={m} value={m}>
                             {m.toString().padStart(2, '0')}
                         </option>
                     ))}
-                </select>
-            </div>
-        </div>
+                </Select>
+            </Stack>
+        </Inline>
     )
 }
 
 const DateTimeInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
     (props, ref) => (
-        <input
+        <Input
             {...props}
             ref={ref}
             readOnly
-            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-brand-900 focus:border-brand-900 cursor-pointer bg-white"
+            className="cursor-pointer"
         />
     )
 )
@@ -205,7 +212,7 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
 
     const validateForm = (): string[] => {
         const errors: string[] = []
-        
+
         if (!selectedCourseId) {
             errors.push('validationMissingCourse')
         }
@@ -239,12 +246,12 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
 
     const getErrorMessage = (keys: string[]): string => {
         if (keys.length === 0) return ''
-        
+
         const messages: string[] = []
         const hasDateError = keys.includes('validationMissingDate')
         const hasDurationError = keys.includes('validationMissingDuration')
         const needsLaterOption = hasDateError || hasDurationError
-        
+
         keys.forEach(key => {
             switch (key) {
                 case 'validationMissingCourse':
@@ -270,14 +277,14 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
                     messages.push(key)
             }
         })
-        
+
         // Add the "later option" message once at the end if needed
         if (needsLaterOption) {
-            messages.push(currentLocale === 'fr' 
-                ? 'Vous pouvez cocher la case pour le faire plus tard.' 
+            messages.push(currentLocale === 'fr'
+                ? 'Vous pouvez cocher la case pour le faire plus tard.'
                 : 'You can check the box to do it later.')
         }
-        
+
         // Join with line breaks for better readability
         return messages.join('\n')
     }
@@ -343,322 +350,306 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
     if (courses.length === 0) {
         return (
             <div className="max-w-2xl mx-auto">
-                <Link
-                    href="/teacher/exams"
-                    className="inline-flex items-center text-sm text-gray-600 hover:text-gray-900 mb-6"
-                >
+                <TextLink href="/teacher/exams">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     {dict.backLabel}
-                </Link>
+                </TextLink>
 
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8 text-center">
-                    <p className="text-gray-600">{dict.emptyCoursesMessage}</p>
-                </div>
+                <Card className="mt-6">
+                    <CardBody padding="lg">
+                        <Text variant="muted" className="text-center">{dict.emptyCoursesMessage}</Text>
+                    </CardBody>
+                </Card>
             </div>
         )
     }
 
     return (
         <div className="max-w-2xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <Link
-                        href="/teacher/courses"
-                        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                    >
+            <Inline align="start" gap="md" wrap="wrap" className="mb-6">
+                <TextLink href="/teacher/courses">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    {dictionary.teacher.examBuilderPage.backToCoursesList}
+                </TextLink>
+
+                {selectedCourseId && (
+                    <TextLink href={`/teacher/courses/${selectedCourseId}`}>
                         <ArrowLeft className="h-4 w-4 mr-2" />
-                        {dictionary.teacher.examBuilderPage.backToCoursesList}
-                    </Link>
+                        {dictionary.teacher.examBuilderPage.backToThisCourse}
+                    </TextLink>
+                )}
 
-                    {selectedCourseId && (
-                        <Link
-                            href={`/teacher/courses/${selectedCourseId}`}
-                            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                        >
-                            <ArrowLeft className="h-4 w-4 mr-2" />
-                            {dictionary.teacher.examBuilderPage.backToThisCourse}
-                        </Link>
-                    )}
+                <TextLink href="/teacher/exams">
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    {dictionary.teacher.examBuilderPage.backToExams}
+                </TextLink>
+            </Inline>
 
-                    <Link
-                        href="/teacher/exams"
-                        className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 transition-colors"
-                    >
-                        <ArrowLeft className="h-4 w-4 mr-2" />
-                        {dictionary.teacher.examBuilderPage.backToExams}
-                    </Link>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <Card>
                 <div className="px-6 py-4 border-b border-gray-200">
-                    <h1 className="text-2xl font-bold text-gray-900">{dict.title}</h1>
+                    <Text as="h1" variant="pageTitle">{dict.title}</Text>
                 </div>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                    {sourceExam && (
-                        <div className="rounded-md border border-brand-200 bg-brand-50 px-4 py-3 text-sm text-brand-900">
-                            {currentLocale === 'fr'
-                                ? `Duplication de \"${sourceExam.title}\"`
-                                : `Duplicating \"${sourceExam.title}\"`}
-                        </div>
-                    )}
-                    <div>
-                        <label htmlFor="course" className="block text-sm font-medium text-gray-700 mb-2">
-                            {dict.courseLabel}
-                        </label>
-                        <Listbox value={selectedCourseId} onChange={setSelectedCourseId} disabled={isSubmitting}>
-                            <div className="relative">
-                                <Listbox.Button className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-brand-900 focus:border-brand-900 text-left bg-white">
-                                    <span className="block truncate">
-                                        {selectedCourseId
-                                            ? courses.find(c => c.id === selectedCourseId)?.code + ' - ' + courses.find(c => c.id === selectedCourseId)?.name
-                                            : `-- ${dict.courseLabel} --`
-                                        }
-                                    </span>
-                                    <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                                        <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
-                                    </span>
-                                </Listbox.Button>
-                                <Transition
-                                    as={Fragment}
-                                    leave="transition ease-in duration-100"
-                                    leaveFrom="opacity-100"
-                                    leaveTo="opacity-0"
-                                >
-                                    <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 shadow-md border border-gray-200 focus:outline-none">
-                                        <Listbox.Option
-                                            key="empty"
-                                            value=""
-                                            className={({ active }) =>
-                                                `relative cursor-pointer select-none py-2 pl-10 pr-4 ${active ? 'bg-brand-50 text-brand-900' : 'text-gray-900'
-                                                }`
-                                            }
-                                        >
-                                            {({ selected }) => (
-                                                <>
-                                                    <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                                        -- {dict.courseLabel} --
-                                                    </span>
-                                                    {selected && (
-                                                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-900">
-                                                            <Check className="h-4 w-4" aria-hidden="true" />
-                                                        </span>
-                                                    )}
-                                                </>
-                                            )}
-                                        </Listbox.Option>
-                                        {courses.map((course) => (
-                                            <Listbox.Option
-                                                key={course.id}
-                                                value={course.id}
-                                                className={({ active }) =>
-                                                    `relative cursor-pointer select-none py-2 pl-10 pr-4 ${active ? 'bg-brand-50 text-brand-900' : 'text-gray-900'
-                                                    }`
+                <form onSubmit={handleSubmit}>
+                    <CardBody padding="lg">
+                        <Stack gap="lg">
+                            {sourceExam && (
+                                <div className="rounded-md border border-brand-200 bg-brand-50 px-4 py-3">
+                                    <Text variant="caption" className="text-brand-900">
+                                        {currentLocale === 'fr'
+                                            ? `Duplication de "${sourceExam.title}"`
+                                            : `Duplicating "${sourceExam.title}"`}
+                                    </Text>
+                                </div>
+                            )}
+
+                            <Stack gap="sm">
+                                <Text as="label" htmlFor="course" variant="label">
+                                    {dict.courseLabel}
+                                </Text>
+                                <Listbox value={selectedCourseId} onChange={setSelectedCourseId} disabled={isSubmitting}>
+                                    <div className="relative">
+                                        <Listbox.Button className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-brand-900 focus:border-brand-900 text-left bg-white">
+                                            <span className="block truncate">
+                                                {selectedCourseId
+                                                    ? courses.find(c => c.id === selectedCourseId)?.code + ' - ' + courses.find(c => c.id === selectedCourseId)?.name
+                                                    : `-- ${dict.courseLabel} --`
                                                 }
-                                            >
-                                                {({ selected }) => (
-                                                    <>
-                                                        <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
-                                                            {course.code} - {course.name}
-                                                        </span>
-                                                        {selected && (
-                                                            <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-900">
-                                                                <Check className="h-4 w-4" aria-hidden="true" />
+                                            </span>
+                                            <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+                                                <ChevronDown className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                                            </span>
+                                        </Listbox.Button>
+                                        <Transition
+                                            as={Fragment}
+                                            leave="transition ease-in duration-100"
+                                            leaveFrom="opacity-100"
+                                            leaveTo="opacity-0"
+                                        >
+                                            <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg bg-white py-1 shadow-md border border-gray-200 focus:outline-none">
+                                                <Listbox.Option
+                                                    key="empty"
+                                                    value=""
+                                                    className={({ active }) =>
+                                                        `relative cursor-pointer select-none py-2 pl-10 pr-4 ${active ? 'bg-brand-50 text-brand-900' : 'text-gray-900'
+                                                        }`
+                                                    }
+                                                >
+                                                    {({ selected }) => (
+                                                        <>
+                                                            <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                                                -- {dict.courseLabel} --
                                                             </span>
+                                                            {selected && (
+                                                                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-900">
+                                                                    <Check className="h-4 w-4" aria-hidden="true" />
+                                                                </span>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </Listbox.Option>
+                                                {courses.map((course) => (
+                                                    <Listbox.Option
+                                                        key={course.id}
+                                                        value={course.id}
+                                                        className={({ active }) =>
+                                                            `relative cursor-pointer select-none py-2 pl-10 pr-4 ${active ? 'bg-brand-50 text-brand-900' : 'text-gray-900'
+                                                            }`
+                                                        }
+                                                    >
+                                                        {({ selected }) => (
+                                                            <>
+                                                                <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                                                                    {course.code} - {course.name}
+                                                                </span>
+                                                                {selected && (
+                                                                    <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-brand-900">
+                                                                        <Check className="h-4 w-4" aria-hidden="true" />
+                                                                    </span>
+                                                                )}
+                                                            </>
                                                         )}
-                                                    </>
-                                                )}
-                                            </Listbox.Option>
-                                        ))}
-                                    </Listbox.Options>
-                                </Transition>
-                            </div>
-                        </Listbox>
-                    </div>
+                                                    </Listbox.Option>
+                                                ))}
+                                            </Listbox.Options>
+                                        </Transition>
+                                    </div>
+                                </Listbox>
+                            </Stack>
 
-                                        {availableSections.length > 0 ? (
-                        <div className="space-y-3">
-                            <label className="block text-sm font-medium text-gray-700">
-                                {currentLocale === 'fr' ? 'Sections concernées' : 'Target sections'}
-                            </label>
-                            <div className="space-y-3 rounded-lg border border-gray-200 p-4">
-                                <p className="text-sm text-gray-600">
-                                    {currentLocale === 'fr'
-                                        ? "Choisissez une ou plusieurs sections."
-                                        : 'Choose one or more sections.'}
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {availableSections.map((section) => {
-                                        const checked = selectedSectionIds.includes(section.id)
-                                        return (
-                                            <label
-                                                key={section.id}
-                                                className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm cursor-pointer ${
-                                                    checked ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-gray-200 text-gray-700'
-                                                }`}
+                            {availableSections.length > 0 ? (
+                                <Stack gap="sm">
+                                    <Text variant="label">
+                                        {currentLocale === 'fr' ? 'Sections concernées' : 'Target sections'}
+                                    </Text>
+                                    <div className="space-y-3 rounded-lg border border-gray-200 p-4">
+                                        <Text variant="caption">
+                                            {currentLocale === 'fr'
+                                                ? "Choisissez une ou plusieurs sections."
+                                                : 'Choose one or more sections.'}
+                                        </Text>
+                                        <Inline gap="sm" wrap="wrap">
+                                            {availableSections.map((section) => {
+                                                const checked = selectedSectionIds.includes(section.id)
+                                                return (
+                                                    <label
+                                                        key={section.id}
+                                                        className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm cursor-pointer ${
+                                                            checked ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-gray-200 text-gray-700'
+                                                        }`}
+                                                    >
+                                                        <input
+                                                            type="checkbox"
+                                                            className="h-4 w-4 text-brand-900 border-gray-300 rounded"
+                                                            checked={checked}
+                                                            onChange={(event) => {
+                                                                setSelectedSectionIds((prev) =>
+                                                                    event.target.checked
+                                                                        ? [...prev, section.id]
+                                                                        : prev.filter((id) => id !== section.id)
+                                                                )
+                                                            }}
+                                                        />
+                                                        {section.name}
+                                                    </label>
+                                                )
+                                            })}
+                                        </Inline>
+                                        <Inline gap="sm" className="text-xs text-gray-600">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="xs"
+                                                onClick={() => setSelectedSectionIds(availableSections.map((section) => section.id))}
+                                                disabled={isSubmitting}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    className="h-4 w-4 text-brand-900 border-gray-300 rounded"
-                                                    checked={checked}
-                                                    onChange={(event) => {
-                                                        setSelectedSectionIds((prev) =>
-                                                            event.target.checked
-                                                                ? [...prev, section.id]
-                                                                : prev.filter((id) => id !== section.id)
-                                                        )
-                                                    }}
-                                                />
-                                                {section.name}
-                                            </label>
-                                        )
-                                    })}
+                                                {currentLocale === 'fr' ? 'Tout sélectionner' : 'Select all'}
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="xs"
+                                                onClick={() => setSelectedSectionIds([])}
+                                                disabled={isSubmitting}
+                                            >
+                                                {currentLocale === 'fr' ? 'Tout désélectionner' : 'Clear selection'}
+                                            </Button>
+                                        </Inline>
+                                    </div>
+                                </Stack>
+                            ) : (
+                                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                    <Text variant="caption">
+                                        {currentLocale === 'fr'
+                                            ? 'Ce cours ne contient pas de section. Lexamen sappliquera au cours entier.'
+                                            : 'This course has no sections. The exam will apply to the whole course.'}
+                                    </Text>
                                 </div>
-                                <div className="flex flex-wrap gap-2 text-xs text-gray-600">
-                                    <button
-                                        type="button"
-                                        className="underline decoration-dotted underline-offset-4 hover:text-gray-900"
-                                        onClick={() => setSelectedSectionIds(availableSections.map((section) => section.id))}
+                            )}
+
+                            <Stack gap="sm">
+                                <Text as="label" htmlFor="title" variant="label">
+                                    {dict.examTitleLabel}
+                                </Text>
+                                <Input
+                                    id="title"
+                                    type="text"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    placeholder={dict.examTitlePlaceholder}
+                                    disabled={isSubmitting}
+                                />
+                            </Stack>
+
+                            <Stack gap="xs">
+                                <Inline align="start" gap="sm">
+                                    <input
+                                        id="isDraft"
+                                        type="checkbox"
+                                        checked={isDraft}
+                                        onChange={(e) => setIsDraft(e.target.checked)}
+                                        className="h-4 w-4 text-brand-900 focus:ring-brand-900 border-gray-300 rounded"
                                         disabled={isSubmitting}
-                                    >
-                                        {currentLocale === 'fr' ? 'Tout sélectionner' : 'Select all'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="underline decoration-dotted underline-offset-4 hover:text-gray-900"
-                                        onClick={() => setSelectedSectionIds([])}
+                                    />
+                                    <Text as="label" htmlFor="isDraft" variant="body" className="font-medium">
+                                        {currentLocale === 'fr' ? 'Definir la date et la duree plus tard' : 'Set date and duration later'}
+                                    </Text>
+                                </Inline>
+                                <Text variant="caption" className="ml-6">
+                                    {currentLocale === 'fr' ? "Vous pourrez planifier l'examen apres sa creation" : 'You can schedule the exam after creation'}
+                                </Text>
+                            </Stack>
+
+                            <div className={isDraft ? 'opacity-50 pointer-events-none' : ''}>
+                                <Stack gap="sm">
+                                    <Text as="label" htmlFor="startDateTime" variant="label">
+                                        {dict.startDateTimeLabel}
+                                    </Text>
+                                    <DatePicker
+                                        id="startDateTime"
+                                        selected={startDateTime}
+                                        onChange={(date) => setStartDateTime(date)}
+                                        showTimeInput
+                                        customTimeInput={<CustomTimeInput currentLocale={currentLocale} onDateTimeChange={setStartDateTime} />}
+                                        customInput={<DateTimeInput />}
+                                        onChangeRaw={(event) => event?.preventDefault()}
+                                        dateFormat="dd/MM/yyyy HH:mm"
+                                        locale={currentLocale === 'fr' ? 'fr' : 'en'}
+                                        placeholderText={currentLocale === 'fr' ? 'jj/mm/aaaa --:--' : 'dd/mm/yyyy --:--'}
+                                        wrapperClassName="w-full"
                                         disabled={isSubmitting}
-                                    >
-                                        {currentLocale === 'fr' ? 'Tout désélectionner' : 'Clear selection'}
-                                    </button>
-                                </div>
+                                        shouldCloseOnSelect={false}
+                                    />
+                                </Stack>
                             </div>
-                        </div>
-                    ) : (
-                        <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                            {currentLocale === 'fr'
-                                ? 'Ce cours ne contient pas de section. Lexamen sappliquera au cours entier.'
-                                : 'This course has no sections. The exam will apply to the whole course.'}
-                        </div>
-                    )}
-{/* Exam Title */}
-                    <div>
-                        <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
-                            {dict.examTitleLabel}
-                        </label>
-                        <input
-                            id="title"
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder={dict.examTitlePlaceholder}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-brand-900 focus:border-brand-900"
-                            disabled={isSubmitting}
-                        />
-                    </div>
 
-                    {/* Draft Checkbox */}
-                    <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                            <input
-                                id="isDraft"
-                                type="checkbox"
-                                checked={isDraft}
-                                onChange={(e) => setIsDraft(e.target.checked)}
-                                className="h-4 w-4 text-brand-900 focus:ring-brand-900 border-gray-300 rounded"
+                            <div className={isDraft ? 'opacity-50 pointer-events-none' : ''}>
+                                <Stack gap="sm">
+                                    <Text as="label" htmlFor="duration" variant="label">
+                                        {dict.durationLabel}
+                                    </Text>
+                                    <Input
+                                        id="duration"
+                                        type="number"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        min="1"
+                                        value={durationMinutes}
+                                        onChange={(e) => setDurationMinutes(e.target.value.replace(/\D/g, ''))}
+                                        onKeyDown={(e) => {
+                                            if (['e', 'E', '+', '-', '.'].includes(e.key)) {
+                                                e.preventDefault()
+                                            }
+                                        }}
+                                        disabled={isSubmitting}
+                                    />
+                                </Stack>
+                            </div>
+
+                            {errorKeys.length > 0 && (
+                                <div className="bg-red-50 border border-red-200 rounded-md p-4">
+                                    <Text variant="caption" className="text-red-800 whitespace-pre-line">{getErrorMessage(errorKeys)}</Text>
+                                </div>
+                            )}
+
+                            <Button
+                                type="submit"
                                 disabled={isSubmitting}
-                            />
-                            <label htmlFor="isDraft" className="text-base font-medium text-gray-900">
-                                {currentLocale === 'fr' ? 'Definir la date et la duree plus tard' : 'Set date and duration later'}
-                            </label>
-                        </div>
-                        <p className="text-sm text-gray-500 ml-6">
-                            {currentLocale === 'fr' ? "Vous pourrez planifier l'examen apres sa creation" : 'You can schedule the exam after creation'}
-                        </p>
-                    </div>
-
-                    {/* Start Date & Time */}
-                    <div className={isDraft ? 'opacity-50 pointer-events-none' : ''}>
-                        <label htmlFor="startDateTime" className="block text-sm font-medium text-gray-700 mb-2">
-                            {dict.startDateTimeLabel}
-                        </label>
-                        <div className="w-full">
-                            <DatePicker
-                                id="startDateTime"
-                                selected={startDateTime}
-                                onChange={(date) => setStartDateTime(date)}
-                                showTimeInput
-                                customTimeInput={<CustomTimeInput currentLocale={currentLocale} onDateTimeChange={setStartDateTime} />}
-                                customInput={<DateTimeInput />}
-                                onChangeRaw={(event) => event?.preventDefault()}
-                                dateFormat="dd/MM/yyyy HH:mm"
-                                locale={currentLocale === 'fr' ? 'fr' : 'en'}
-                                placeholderText={currentLocale === 'fr' ? 'jj/mm/aaaa --:--' : 'dd/mm/yyyy --:--'}
-                                wrapperClassName="w-full"
-                                disabled={isSubmitting}
-                                shouldCloseOnSelect={false}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Duration */}
-                    <div className={isDraft ? 'opacity-50 pointer-events-none' : ''}>
-                        <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-2">
-                            {dict.durationLabel}
-                        </label>
-                        <input
-                            id="duration"
-                            type="number"
-                            inputMode="numeric"
-                            pattern="[0-9]*"
-                            min="1"
-                            value={durationMinutes}
-                            onChange={(e) => setDurationMinutes(e.target.value.replace(/\D/g, ''))}
-                            onKeyDown={(e) => {
-                                if (['e', 'E', '+', '-', '.'].includes(e.key)) {
-                                    e.preventDefault()
-                                }
-                            }}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm text-gray-900 focus:outline-none focus:ring-brand-900 focus:border-brand-900"
-                            disabled={isSubmitting}
-                        />
-                    </div>
-
-                    {/* Error Message */}
-                    {errorKeys.length > 0 && (
-                        <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                            <p className="text-sm text-red-800 whitespace-pre-line">{getErrorMessage(errorKeys)}</p>
-                        </div>
-                    )}
-
-                    {/* Submit Button */}
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-900 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-900 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isSubmitting ? (
-                            currentLocale === 'fr' ? 'Enregistrement...' : 'Saving...'
-                        ) : (
-                            <>
-                                <Save className="h-4 w-4 mr-2" />
-                                {dictionary.login.nextButton}
-                            </>
-                        )}
-                    </button>
+                                className="w-full"
+                            >
+                                {isSubmitting ? (
+                                    currentLocale === 'fr' ? 'Enregistrement...' : 'Saving...'
+                                ) : (
+                                    <>
+                                        <Save className="h-4 w-4" />
+                                        {dictionary.login.nextButton}
+                                    </>
+                                )}
+                            </Button>
+                        </Stack>
+                    </CardBody>
                 </form>
-            </div>
+            </Card>
         </div>
     )
 }
-
-
-
-
-
-
-
-
-
-
