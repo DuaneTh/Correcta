@@ -7,6 +7,10 @@ import SegmentedMathField from '@/components/exams/SegmentedMathField'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { ContentSegment } from '@/types/exams'
 import { stringToSegments, segmentsToLatexString } from '@/lib/content'
+import { Text } from '@/components/ui/Text'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Inline, Stack, Surface } from '@/components/ui/Layout'
 
 interface GradingData {
     attempt: {
@@ -210,35 +214,36 @@ export function AttemptDetailModal({ attemptId, isOpen, onClose, onGradeUpdated 
             {/* Modal */}
             <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl mx-4 my-8 max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header - Fixed */}
-                <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-white">
-                    <div>
+                <Inline align="between" className="p-6 border-b border-gray-200 bg-white">
+                    <Stack gap="xs">
                         {data && (
                             <>
-                                <h2 className="text-xl font-bold text-gray-900">{data.attempt.student.name}</h2>
-                                <p className="text-sm text-gray-500">{data.attempt.student.email}</p>
-                                <p className="text-sm text-gray-500 mt-1">
+                                <Text variant="pageTitle" className="text-xl">{data.attempt.student.name}</Text>
+                                <Text variant="muted">{data.attempt.student.email}</Text>
+                                <Text variant="muted">
                                     Soumis le {new Date(data.attempt.submittedAt).toLocaleString()}
-                                </p>
+                                </Text>
                             </>
                         )}
-                    </div>
-                    <div className="flex items-center gap-4">
+                    </Stack>
+                    <Inline gap="md" align="center">
                         {data && (
-                            <div className="text-right">
-                                <div className="text-2xl font-bold text-gray-900">
-                                    {totalScore % 1 === 0 ? totalScore : totalScore.toFixed(2)} <span className="text-lg text-gray-400">/ {totalMaxPoints}</span>
-                                </div>
-                                <div className="text-xs text-gray-500">Score total</div>
-                            </div>
+                            <Stack gap="xs" className="text-right">
+                                <Text as="div" className="text-2xl font-bold text-gray-900">
+                                    {totalScore % 1 === 0 ? totalScore : totalScore.toFixed(2)} <Text as="span" className="text-lg text-gray-400">/ {totalMaxPoints}</Text>
+                                </Text>
+                                <Text variant="xsMuted">Score total</Text>
+                            </Stack>
                         )}
-                        <button
+                        <Button
+                            variant="ghost"
                             onClick={onClose}
-                            className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                            className="p-2 rounded-full"
                         >
                             <X className="w-6 h-6" />
-                        </button>
-                    </div>
-                </div>
+                        </Button>
+                    </Inline>
+                </Inline>
 
                 {/* Content - Scrollable */}
                 <div className="flex-1 overflow-y-auto p-6">
@@ -253,16 +258,16 @@ export function AttemptDetailModal({ attemptId, isOpen, onClose, onGradeUpdated 
                     )}
 
                     {data && !loading && (
-                        <div className="space-y-6">
+                        <Stack gap="lg">
                             {data.exam.sections.map((section, sectionIndex) => (
-                                <div key={section.id}>
+                                <Stack gap="md" key={section.id}>
                                     {section.title?.trim() && (
-                                        <h3 className="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b">
+                                        <Text variant="sectionTitle" className="pb-2 border-b">
                                             {section.title}
-                                        </h3>
+                                        </Text>
                                     )}
 
-                                    <div className="space-y-6">
+                                    <Stack gap="lg">
                                         {section.questions.map((question, qIndex) => {
                                             const answerId = question.answer?.id
                                             if (!answerId) return null
@@ -276,46 +281,46 @@ export function AttemptDetailModal({ attemptId, isOpen, onClose, onGradeUpdated 
                                             const isHumanModified = question.grade?.isOverridden || (question.grade && question.grade.gradedByUserId !== null)
 
                                             return (
-                                                <div key={question.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                                                <Surface key={question.id} tone="subtle" className="p-4">
                                                     {/* Question header */}
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="px-2 py-1 text-xs font-semibold bg-gray-200 text-gray-700 rounded">
+                                                    <Inline align="between" className="mb-3">
+                                                        <Inline gap="sm" align="center">
+                                                            <Badge variant="neutral">
                                                                 Q{sectionIndex * 10 + qIndex + 1}
-                                                            </span>
-                                                            <span className="text-xs text-gray-500">
+                                                            </Badge>
+                                                            <Text variant="xsMuted">
                                                                 {question.maxPoints} pts
-                                                            </span>
+                                                            </Text>
                                                             {isAiGrade && (
-                                                                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                                                <Inline gap="xs" align="center">
                                                                     <Sparkles className="w-3 h-3" />
-                                                                    IA
-                                                                </span>
+                                                                    <Text variant="xsMuted">IA</Text>
+                                                                </Inline>
                                                             )}
                                                             {isHumanModified && (
-                                                                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                                                                <Inline gap="xs" align="center">
                                                                     <UserCheck className="w-3 h-3" />
-                                                                    Modifié
-                                                                </span>
+                                                                    <Text variant="xsMuted">Modifié</Text>
+                                                                </Inline>
                                                             )}
-                                                        </div>
+                                                        </Inline>
 
-                                                        <div className="flex items-center gap-2">
+                                                        <Inline gap="sm" align="center">
                                                             {/* Save indicator */}
                                                             {isSaving && <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />}
                                                             {isSaved && <Check className="w-4 h-4 text-gray-500" />}
-                                                        </div>
-                                                    </div>
+                                                        </Inline>
+                                                    </Inline>
 
                                                     {/* Question content */}
-                                                    <div className="text-sm text-gray-900 mb-3">
+                                                    <Stack gap="sm" className="mb-3">
                                                         <MathRenderer text={question.content} />
-                                                    </div>
+                                                    </Stack>
 
                                                     {/* Student answer */}
-                                                    <div className="bg-white p-3 rounded border border-gray-200 mb-3">
-                                                        <div className="text-xs font-medium text-gray-500 uppercase mb-1">Réponse</div>
-                                                        <div className="text-sm text-gray-800">
+                                                    <Surface className="bg-white p-3 mb-3">
+                                                        <Text variant="overline" className="mb-1">Réponse</Text>
+                                                        <Stack gap="xs">
                                                             {question.answer?.segments && question.answer.segments.length > 0 ? (
                                                                 question.answer.segments.map((s, i) => (
                                                                     <div key={s.id || i}>
@@ -323,51 +328,52 @@ export function AttemptDetailModal({ attemptId, isOpen, onClose, onGradeUpdated 
                                                                     </div>
                                                                 ))
                                                             ) : (
-                                                                <span className="italic text-gray-400">Aucune réponse</span>
+                                                                <Text variant="muted" className="italic">Aucune réponse</Text>
                                                             )}
-                                                        </div>
-                                                    </div>
+                                                        </Stack>
+                                                    </Surface>
 
                                                     {/* AI Rationale if present */}
                                                     {question.grade?.aiRationale && (
-                                                        <div className="bg-gray-100 p-3 rounded border border-gray-200 mb-3">
-                                                            <div className="text-xs font-medium text-gray-500 uppercase mb-1 flex items-center gap-1">
+                                                        <Surface tone="subtle" className="p-3 mb-3">
+                                                            <Inline gap="xs" align="center" className="mb-1">
                                                                 <Sparkles className="w-3 h-3" />
-                                                                Raisonnement IA
-                                                            </div>
-                                                            <div className="text-sm text-gray-600">
+                                                                <Text variant="overline">Raisonnement IA</Text>
+                                                            </Inline>
+                                                            <Text variant="muted">
                                                                 <MathRenderer text={question.grade.aiRationale} />
-                                                            </div>
-                                                        </div>
+                                                            </Text>
+                                                        </Surface>
                                                     )}
 
                                                     {/* Grading section */}
-                                                    <div className="bg-white p-4 rounded border border-gray-200 space-y-4">
-                                                        {/* Score input */}
-                                                        <div className="flex items-center gap-4">
-                                                            <label className="text-sm font-medium text-gray-700">
-                                                                Score
-                                                            </label>
-                                                            <div className="flex items-center gap-2">
-                                                                <input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    max={question.maxPoints}
-                                                                    step="0.25"
-                                                                    value={currentScore}
-                                                                    onChange={(e) => handleScoreChange(question.id, e.target.value)}
-                                                                    onBlur={() => handleScoreBlur(question.id, question.maxPoints)}
-                                                                    className="block w-20 rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-sm text-center"
-                                                                />
-                                                                <span className="text-gray-500">/ {question.maxPoints}</span>
-                                                            </div>
-                                                        </div>
+                                                    <Surface className="bg-white p-4">
+                                                        <Stack gap="md">
+                                                            {/* Score input */}
+                                                            <Inline gap="md" align="center">
+                                                                <Text variant="label">
+                                                                    Score
+                                                                </Text>
+                                                                <Inline gap="sm" align="center">
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        max={question.maxPoints}
+                                                                        step="0.25"
+                                                                        value={currentScore}
+                                                                        onChange={(e) => handleScoreChange(question.id, e.target.value)}
+                                                                        onBlur={() => handleScoreBlur(question.id, question.maxPoints)}
+                                                                        className="block w-20 rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 text-sm text-center"
+                                                                    />
+                                                                    <Text variant="muted">/ {question.maxPoints}</Text>
+                                                                </Inline>
+                                                            </Inline>
 
-                                                        {/* Feedback with SegmentedMathField */}
-                                                        <div>
-                                                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                                                                Commentaire pour l'étudiant
-                                                            </label>
+                                                            {/* Feedback with SegmentedMathField */}
+                                                            <Stack gap="sm">
+                                                                <Text variant="label">
+                                                                    Commentaire pour l'étudiant
+                                                                </Text>
                                                             <SegmentedMathField
                                                                 value={currentFeedback}
                                                                 onChange={(segments) => setFeedbackSegments(prev => ({ ...prev, [question.id]: segments }))}
@@ -382,33 +388,34 @@ export function AttemptDetailModal({ attemptId, isOpen, onClose, onGradeUpdated 
                                                                 toolbarSize="sm"
                                                                 editorSize="sm"
                                                             />
-                                                        </div>
+                                                            </Stack>
 
-                                                        {/* Save button */}
-                                                        <div className="flex items-center justify-end">
-                                                            <button
-                                                                onClick={() => saveGrade(question.id, answerId, currentScore, currentFeedback)}
-                                                                disabled={isSaving}
-                                                                className="px-4 py-2 text-sm font-medium text-white bg-gray-900 rounded-md hover:bg-gray-800 disabled:bg-gray-400 flex items-center gap-2"
-                                                            >
-                                                                {isSaving ? (
-                                                                    <>
-                                                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                                                        Enregistrement...
-                                                                    </>
-                                                                ) : (
-                                                                    'Enregistrer'
-                                                                )}
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                            {/* Save button */}
+                                                            <Inline align="end">
+                                                                <Button
+                                                                    variant="primary"
+                                                                    onClick={() => saveGrade(question.id, answerId, currentScore, currentFeedback)}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    {isSaving ? (
+                                                                        <>
+                                                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                                                            Enregistrement...
+                                                                        </>
+                                                                    ) : (
+                                                                        'Enregistrer'
+                                                                    )}
+                                                                </Button>
+                                                            </Inline>
+                                                        </Stack>
+                                                    </Surface>
+                                                </Surface>
                                             )
                                         })}
-                                    </div>
-                                </div>
+                                    </Stack>
+                                </Stack>
                             ))}
-                        </div>
+                        </Stack>
                     )}
                 </div>
             </div>

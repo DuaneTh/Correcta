@@ -5,6 +5,9 @@ import { Wand2, FileText, Loader2, RefreshCw } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { GradingProgressModal } from './GradingProgressModal'
 import { RubricReviewModal } from './RubricReviewModal'
+import { Text } from '@/components/ui/Text'
+import { Button } from '@/components/ui/Button'
+import { Inline, Stack } from '@/components/ui/Layout'
 
 interface RubricStatus {
     total: number
@@ -198,21 +201,22 @@ export function GradeAllButton({
     if (noTextQuestions) {
         return (
             <>
-                <div className="relative">
-                    <button
+                <Stack gap="xs">
+                    <Button
+                        variant="primary"
                         onClick={handleGradingClick}
                         disabled={loading || disabled}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                        className="bg-green-600 hover:bg-green-700"
                     >
                         <Wand2 className="w-4 h-4" />
                         {loading ? 'Chargement...' : gradingButtonLabel}
-                    </button>
+                    </Button>
                     {error && (
-                        <p className="absolute top-full left-0 mt-1 text-sm text-red-600 whitespace-nowrap">
+                        <Text variant="muted" className="text-red-600 whitespace-nowrap">
                             {error}
-                        </p>
+                        </Text>
                     )}
-                </div>
+                </Stack>
 
                 <GradingProgressModal
                     examId={examId}
@@ -245,55 +249,45 @@ export function GradeAllButton({
 
     return (
         <>
-            <div className="flex items-center gap-2">
+            <Inline gap="sm" align="center">
                 {/* Rubric generation button */}
-                <div className="relative">
-                    <button
-                        onClick={handleRubricClick}
-                        disabled={loading || disabled}
-                        className={`flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition-colors ${
-                            hasAnyRubric
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                        } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:border-gray-300`}
-                    >
-                        {hasAnyRubric ? (
-                            <RefreshCw className="w-4 h-4" />
-                        ) : (
-                            <FileText className="w-4 h-4" />
-                        )}
-                        {loading && activeAction === 'rubric' ? 'Chargement...' : rubricButtonLabel}
-                    </button>
-                </div>
+                <Button
+                    variant={hasAnyRubric ? "secondary" : "primary"}
+                    onClick={handleRubricClick}
+                    disabled={loading || disabled}
+                    className={hasAnyRubric ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' : ''}
+                >
+                    {hasAnyRubric ? (
+                        <RefreshCw className="w-4 h-4" />
+                    ) : (
+                        <FileText className="w-4 h-4" />
+                    )}
+                    {loading && activeAction === 'rubric' ? 'Chargement...' : rubricButtonLabel}
+                </Button>
 
                 {/* Grading button */}
-                <div className="relative">
-                    <button
-                        onClick={handleGradingClick}
-                        disabled={loading || disabled || !canGrade}
-                        title={!canGrade ? 'Le barème doit être généré avant de corriger' : undefined}
-                        className={`flex items-center gap-2 px-4 py-2 font-semibold rounded-lg transition-colors ${
-                            hasGradedAttempts
-                                ? 'bg-amber-100 text-amber-800 border border-amber-300 hover:bg-amber-200'
-                                : 'bg-green-600 text-white hover:bg-green-700'
-                        } disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed disabled:border-gray-300`}
-                    >
-                        {hasGradedAttempts ? (
-                            <RefreshCw className="w-4 h-4" />
-                        ) : (
-                            <Wand2 className="w-4 h-4" />
-                        )}
-                        {loading && activeAction === 'grading' ? 'Chargement...' : gradingButtonLabel}
-                    </button>
-                </div>
+                <Button
+                    variant={hasGradedAttempts ? "secondary" : "primary"}
+                    onClick={handleGradingClick}
+                    disabled={loading || disabled || !canGrade}
+                    title={!canGrade ? 'Le barème doit être généré avant de corriger' : undefined}
+                    className={hasGradedAttempts ? 'bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-200' : 'bg-green-600 hover:bg-green-700'}
+                >
+                    {hasGradedAttempts ? (
+                        <RefreshCw className="w-4 h-4" />
+                    ) : (
+                        <Wand2 className="w-4 h-4" />
+                    )}
+                    {loading && activeAction === 'grading' ? 'Chargement...' : gradingButtonLabel}
+                </Button>
 
                 {/* Error display */}
                 {error && (
-                    <p className="text-sm text-red-600 whitespace-nowrap">
+                    <Text variant="muted" className="text-red-600 whitespace-nowrap">
                         {error}
-                    </p>
+                    </Text>
                 )}
-            </div>
+            </Inline>
 
             {/* Step 1: Rubric review modal */}
             <RubricReviewModal
