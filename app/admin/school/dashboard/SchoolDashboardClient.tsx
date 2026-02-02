@@ -334,7 +334,7 @@ export default function SchoolDashboardClient({
                                                     <Text variant="body">{exam.title}</Text>
                                                     <Text variant="xsMuted">{exam.course}</Text>
                                                 </Stack>
-                                                <Badge variant={exam.statusVariant}>
+                                                <Badge variant={exam.statusVariant as 'neutral' | 'info' | 'success' | 'warning'}>
                                                     {exam.status}
                                                 </Badge>
                                             </Inline>

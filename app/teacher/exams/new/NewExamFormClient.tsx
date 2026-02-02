@@ -114,7 +114,7 @@ const CustomTimeInput = ({ date, value, onChange, onDateTimeChange, currentLocal
 }
 
 const DateTimeInput = forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
-    (props, ref) => (
+    ({ size: _size, ...props }, ref) => (
         <Input
             {...props}
             ref={ref}
