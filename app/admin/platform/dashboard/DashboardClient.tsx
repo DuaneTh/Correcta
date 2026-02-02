@@ -1,8 +1,13 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import Link from 'next/link'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Grid, Inline, Stack } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { TextLink } from '@/components/ui/TextLink'
+import { Badge } from '@/components/ui/Badge'
 
 type Institution = {
     id: string
@@ -104,104 +109,122 @@ export default function DashboardClient({ dictionary }: DashboardClientProps) {
     }, [institutions])
 
     return (
-        <div className="flex flex-col gap-8">
-            <div>
-                <h1 className="text-3xl font-bold text-brand-900">{dict.title}</h1>
-            </div>
+        <Stack gap="xl">
+            <Text as="h1" variant="pageTitle">
+                {dict.title}
+            </Text>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs uppercase text-gray-500">{dict.kpiInstitutions}</div>
-                    <div className="mt-2 text-3xl font-semibold text-gray-900">
-                        {metrics.institutionsTotal}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs uppercase text-gray-500">{dict.kpiSsoEnabled}</div>
-                    <div className="mt-2 text-3xl font-semibold text-gray-900">
-                        {metrics.ssoEnabledCount}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs uppercase text-gray-500">{dict.kpiSsoMissingSecret}</div>
-                    <div className="mt-2 text-3xl font-semibold text-gray-900">
-                        {metrics.ssoMissingSecretCount}
-                    </div>
-                </div>
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="text-xs uppercase text-gray-500">{dict.kpiDomainsMissing}</div>
-                    <div className="mt-2 text-3xl font-semibold text-gray-900">
-                        {metrics.domainsMissingCount}
-                    </div>
-                </div>
-            </div>
+            <Grid cols="2" gap="md">
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.kpiInstitutions}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {metrics.institutionsTotal}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.kpiSsoEnabled}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {metrics.ssoEnabledCount}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.kpiSsoMissingSecret}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {metrics.ssoMissingSecretCount}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.kpiDomainsMissing}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {metrics.domainsMissingCount}
+                        </Text>
+                    </CardBody>
+                </Card>
+            </Grid>
 
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm font-semibold text-gray-900">{dict.quickActions}</div>
-                    <div className="flex flex-wrap gap-2">
-                        <Link
-                            href="/admin/platform?mode=create"
-                            className="rounded-md bg-brand-900 px-3 py-2 text-xs font-medium text-white hover:bg-brand-800"
-                        >
-                            {dict.createInstitution}
-                        </Link>
-                        <Link
-                            href="/admin/platform"
-                            className="rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                            {dict.manageInstitutions}
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="mb-4 text-sm font-semibold text-gray-900">{dict.attentionTitle}</div>
-                {loading ? (
-                    <div className="text-sm text-gray-500">{dictionary.admin.institutions.loading}</div>
-                ) : error ? (
-                    <div className="text-sm text-red-600">{error}</div>
-                ) : attentionItems.length === 0 ? (
-                    <div className="text-sm text-gray-500">{dict.allGood}</div>
-                ) : (
-                    <div className="space-y-3">
-                        {attentionItems.map((item) => (
-                            <div
-                                key={item.id}
-                                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2"
+            <Card>
+                <CardBody padding="md">
+                    <Inline align="between" gap="sm">
+                        <Text variant="sectionTitle">{dict.quickActions}</Text>
+                        <Inline align="start" gap="sm" wrap="wrap">
+                            <Button
+                                onClick={() => window.location.href = '/admin/platform?mode=create'}
+                                size="xs"
                             >
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                    <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                                        {item.ssoEnabled && (
-                                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700">
-                                                {dictionary.admin.institutions.filterEnabled}
-                                            </span>
-                                        )}
-                                        {item.missingSecret && (
-                                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-700">
-                                                {dictionary.admin.institutions.filterNotSet}
-                                            </span>
-                                        )}
-                                        {item.noDomains && (
-                                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
-                                                {dictionary.admin.school.noDomains}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-                                <Link
-                                    href={`/admin/platform?institutionId=${item.id}`}
-                                    className="text-xs font-medium text-brand-900 hover:underline"
-                                >
-                                    {dictionary.admin.institutions.actionEdit}
-                                </Link>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
+                                {dict.createInstitution}
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = '/admin/platform'}
+                                variant="secondary"
+                                size="xs"
+                            >
+                                {dict.manageInstitutions}
+                            </Button>
+                        </Inline>
+                    </Inline>
+                </CardBody>
+            </Card>
+
+            <Card>
+                <CardBody padding="md">
+                    <Text variant="sectionTitle" className="mb-4">
+                        {dict.attentionTitle}
+                    </Text>
+                    {loading ? (
+                        <Text variant="muted">{dictionary.admin.institutions.loading}</Text>
+                    ) : error ? (
+                        <Text variant="muted" className="text-red-600">{error}</Text>
+                    ) : attentionItems.length === 0 ? (
+                        <Text variant="muted">{dict.allGood}</Text>
+                    ) : (
+                        <Stack gap="sm">
+                            {attentionItems.map((item) => (
+                                <Card key={item.id}>
+                                    <CardBody padding="sm">
+                                        <Inline align="between" gap="sm" wrap="wrap">
+                                            <Stack gap="xs">
+                                                <Text variant="body" className="font-medium">
+                                                    {item.name}
+                                                </Text>
+                                                <Inline align="start" gap="sm" wrap="wrap">
+                                                    {item.ssoEnabled && (
+                                                        <Badge variant="success">
+                                                            {dictionary.admin.institutions.filterEnabled}
+                                                        </Badge>
+                                                    )}
+                                                    {item.missingSecret && (
+                                                        <Badge variant="warning">
+                                                            {dictionary.admin.institutions.filterNotSet}
+                                                        </Badge>
+                                                    )}
+                                                    {item.noDomains && (
+                                                        <Badge variant="neutral">
+                                                            {dictionary.admin.school.noDomains}
+                                                        </Badge>
+                                                    )}
+                                                </Inline>
+                                            </Stack>
+                                            <TextLink
+                                                href={`/admin/platform?institutionId=${item.id}`}
+                                                size="xs"
+                                            >
+                                                {dictionary.admin.institutions.actionEdit}
+                                            </TextLink>
+                                        </Inline>
+                                    </CardBody>
+                                </Card>
+                            ))}
+                        </Stack>
+                    )}
+                </CardBody>
+            </Card>
+        </Stack>
     )
 }

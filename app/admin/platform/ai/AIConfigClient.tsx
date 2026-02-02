@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Bot, FileText, History, Save, RotateCcw, Loader2, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { Textarea } from '@/components/ui/Form'
+import { Text } from '@/components/ui/Text'
+import { Badge } from '@/components/ui/Badge'
 
 type Prompt = {
     id: string | null
@@ -136,37 +142,41 @@ export default function AIConfigClient() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex items-center gap-3">
+        <Stack gap="lg">
+            <Inline align="start" gap="sm">
                 <Bot className="w-8 h-8 text-brand-600" />
-                <h1 className="text-2xl font-bold text-gray-900">Configuration IA</h1>
-            </div>
+                <Text as="h1" variant="pageTitle">Configuration IA</Text>
+            </Inline>
 
             {/* Tabs */}
             <div className="border-b border-gray-200">
                 <nav className="flex gap-4">
-                    <button
+                    <Button
                         onClick={() => setActiveTab('prompts')}
-                        className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm ${
+                        variant="ghost"
+                        size="sm"
+                        className={`flex items-center gap-2 border-b-2 ${
                             activeTab === 'prompts'
                                 ? 'border-brand-600 text-brand-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                : 'border-transparent text-gray-500'
                         }`}
                     >
                         <FileText className="w-4 h-4" />
                         Prompts
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         onClick={() => setActiveTab('logs')}
-                        className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm ${
+                        variant="ghost"
+                        size="sm"
+                        className={`flex items-center gap-2 border-b-2 ${
                             activeTab === 'logs'
                                 ? 'border-brand-600 text-brand-600'
-                                : 'border-transparent text-gray-500 hover:text-gray-700'
+                                : 'border-transparent text-gray-500'
                         }`}
                     >
                         <History className="w-4 h-4" />
                         Historique ({logTotal})
-                    </button>
+                    </Button>
                 </nav>
             </div>
 
@@ -176,233 +186,243 @@ export default function AIConfigClient() {
                 </div>
             ) : activeTab === 'prompts' ? (
                 /* Prompts Tab */
-                <div className="space-y-6">
+                <Stack gap="lg">
                     {prompts.map((prompt) => (
-                        <div key={prompt.key} className="bg-white rounded-lg border border-gray-200 shadow-sm">
+                        <Card key={prompt.key}>
                             <div className="p-4 border-b border-gray-100">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h3 className="font-semibold text-gray-900">{prompt.name}</h3>
-                                        <p className="text-sm text-gray-500">{prompt.description}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
+                                <Inline align="between" gap="sm">
+                                    <Stack gap="xs">
+                                        <Text variant="body" className="font-semibold">{prompt.name}</Text>
+                                        <Text variant="muted">{prompt.description}</Text>
+                                    </Stack>
+                                    <Inline align="start" gap="sm">
                                         {prompt.isCustomized && (
-                                            <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
-                                                Personnalise
-                                            </span>
+                                            <Badge variant="warning">Personnalise</Badge>
                                         )}
-                                        <span className="text-xs text-gray-400">v{prompt.version}</span>
-                                    </div>
-                                </div>
+                                        <Text variant="xsMuted">v{prompt.version}</Text>
+                                    </Inline>
+                                </Inline>
                             </div>
 
-                            <div className="p-4">
+                            <CardBody padding="md">
                                 {editingPrompt === prompt.key ? (
-                                    <div className="space-y-3">
-                                        <textarea
+                                    <Stack gap="sm">
+                                        <Textarea
                                             value={editContent}
                                             onChange={(e) => setEditContent(e.target.value)}
                                             rows={15}
-                                            className="w-full p-3 border border-gray-300 rounded-md font-mono text-sm focus:ring-brand-500 focus:border-brand-500"
+                                            className="font-mono text-sm"
                                         />
-                                        <div className="flex items-center justify-between">
-                                            <button
+                                        <Inline align="between" gap="sm">
+                                            <Button
                                                 onClick={() => setEditContent(prompt.defaultContent)}
-                                                className="text-sm text-gray-500 hover:text-gray-700"
+                                                variant="ghost"
+                                                size="xs"
                                             >
                                                 Voir le prompt par defaut
-                                            </button>
-                                            <div className="flex gap-2">
-                                                <button
+                                            </Button>
+                                            <Inline align="start" gap="sm">
+                                                <Button
                                                     onClick={() => setEditingPrompt(null)}
-                                                    className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                                                    variant="ghost"
+                                                    size="xs"
                                                 >
                                                     Annuler
-                                                </button>
-                                                <button
+                                                </Button>
+                                                <Button
                                                     onClick={() => handleSavePrompt(prompt.key)}
                                                     disabled={saving}
-                                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-white text-sm rounded hover:bg-brand-700 disabled:opacity-50"
+                                                    size="xs"
                                                 >
                                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                                     Enregistrer
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                </Button>
+                                            </Inline>
+                                        </Inline>
+                                    </Stack>
                                 ) : (
-                                    <div className="space-y-3">
+                                    <Stack gap="sm">
                                         <pre className="p-3 bg-gray-50 rounded-md text-sm text-gray-700 whitespace-pre-wrap font-mono max-h-48 overflow-y-auto">
                                             {prompt.content}
                                         </pre>
-                                        <div className="flex items-center justify-between">
+                                        <Inline align="between" gap="sm">
                                             {prompt.updatedAt && (
-                                                <span className="text-xs text-gray-400">
+                                                <Text variant="xsMuted">
                                                     Modifie le {formatDate(prompt.updatedAt)}
-                                                </span>
+                                                </Text>
                                             )}
-                                            <div className="flex gap-2 ml-auto">
+                                            <Inline align="start" gap="sm" className="ml-auto">
                                                 {prompt.isCustomized && (
-                                                    <button
+                                                    <Button
                                                         onClick={() => handleResetPrompt(prompt.key)}
-                                                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded"
+                                                        variant="secondary"
+                                                        size="xs"
                                                     >
                                                         <RotateCcw className="w-4 h-4" />
                                                         Reinitialiser
-                                                    </button>
+                                                    </Button>
                                                 )}
-                                                <button
+                                                <Button
                                                     onClick={() => handleEditPrompt(prompt)}
-                                                    className="px-3 py-1.5 text-sm text-brand-600 hover:text-brand-700 border border-brand-300 rounded"
+                                                    variant="secondary"
+                                                    size="xs"
                                                 >
                                                     Modifier
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                                </Button>
+                                            </Inline>
+                                        </Inline>
+                                    </Stack>
                                 )}
-                            </div>
-                        </div>
+                            </CardBody>
+                        </Card>
                     ))}
-                </div>
+                </Stack>
             ) : (
                 /* Logs Tab */
-                <div className="space-y-4">
+                <Stack gap="md">
                     {logs.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            Aucune interaction IA enregistree
+                        <div className="text-center py-12">
+                            <Text variant="muted">Aucune interaction IA enregistree</Text>
                         </div>
                     ) : (
                         <>
                             {logs.map((log) => (
-                                <div key={log.id} className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
+                                <Card key={log.id} overflow="hidden">
                                     <button
                                         onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)}
                                         className="w-full p-4 flex items-center justify-between hover:bg-gray-50"
                                     >
-                                        <div className="flex items-center gap-4">
+                                        <Inline align="start" gap="md">
                                             {log.success ? (
                                                 <CheckCircle className="w-5 h-5 text-green-500" />
                                             ) : (
                                                 <AlertCircle className="w-5 h-5 text-red-500" />
                                             )}
-                                            <div className="text-left">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="font-medium text-gray-900">{log.operation}</span>
-                                                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
-                                                        {log.model}
-                                                    </span>
-                                                </div>
-                                                <div className="text-sm text-gray-500">
+                                            <Stack gap="xs">
+                                                <Inline align="start" gap="sm">
+                                                    <Text variant="body" className="font-medium">{log.operation}</Text>
+                                                    <Badge variant="neutral">{log.model}</Badge>
+                                                </Inline>
+                                                <Text variant="xsMuted">
                                                     {formatDate(log.createdAt)}
                                                     {log.durationMs && ` • ${log.durationMs}ms`}
                                                     {log.tokensInput && log.tokensOutput && ` • ${log.tokensInput + log.tokensOutput} tokens`}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-4">
+                                                </Text>
+                                            </Stack>
+                                        </Inline>
+                                        <Inline align="start" gap="md">
                                             {log.score !== null && (
-                                                <span className="text-lg font-semibold text-brand-600">
+                                                <Text className="text-lg font-semibold text-brand-600">
                                                     {log.score} pts
-                                                </span>
+                                                </Text>
                                             )}
                                             {expandedLog === log.id ? (
                                                 <ChevronUp className="w-5 h-5 text-gray-400" />
                                             ) : (
                                                 <ChevronDown className="w-5 h-5 text-gray-400" />
                                             )}
-                                        </div>
+                                        </Inline>
                                     </button>
 
                                     {expandedLog === log.id && (
-                                        <div className="border-t border-gray-200 p-4 space-y-4 bg-gray-50">
-                                            {/* System Prompt */}
-                                            <div>
-                                                <h4 className="text-sm font-medium text-gray-700 mb-1">Prompt Systeme</h4>
-                                                <pre className="p-3 bg-white border border-gray-200 rounded text-xs text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
-                                                    {log.systemPrompt}
-                                                </pre>
-                                            </div>
-
-                                            {/* User Prompt */}
-                                            <div>
-                                                <h4 className="text-sm font-medium text-gray-700 mb-1">Prompt Utilisateur</h4>
-                                                <pre className="p-3 bg-white border border-gray-200 rounded text-xs text-gray-600 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                                                    {log.userPrompt}
-                                                </pre>
-                                            </div>
-
-                                            {/* Response */}
-                                            {log.success ? (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    {log.feedback && (
-                                                        <div>
-                                                            <h4 className="text-sm font-medium text-gray-700 mb-1">Feedback etudiant</h4>
-                                                            <div className="p-3 bg-white border border-gray-200 rounded text-sm text-gray-700">
-                                                                {log.feedback}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {log.aiRationale && (
-                                                        <div>
-                                                            <h4 className="text-sm font-medium text-gray-700 mb-1">Raisonnement IA</h4>
-                                                            <div className="p-3 bg-white border border-gray-200 rounded text-sm text-gray-700">
-                                                                {log.aiRationale}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    <h4 className="text-sm font-medium text-red-700 mb-1">Erreur</h4>
-                                                    <div className="p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                                                        {log.error}
-                                                    </div>
-                                                </div>
-                                            )}
-
-                                            {/* Raw Response (collapsible) */}
-                                            {log.rawResponse && (
-                                                <details className="text-xs">
-                                                    <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                                                        Voir la reponse brute
-                                                    </summary>
-                                                    <pre className="mt-2 p-3 bg-white border border-gray-200 rounded text-gray-600 whitespace-pre-wrap overflow-x-auto">
-                                                        {JSON.stringify(JSON.parse(log.rawResponse), null, 2)}
+                                        <div className="border-t border-gray-200 p-4 bg-gray-50">
+                                            <Stack gap="md">
+                                                {/* System Prompt */}
+                                                <Stack gap="xs">
+                                                    <Text variant="label">Prompt Systeme</Text>
+                                                    <pre className="p-3 bg-white border border-gray-200 rounded text-xs text-gray-600 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                                                        {log.systemPrompt}
                                                     </pre>
-                                                </details>
-                                            )}
+                                                </Stack>
+
+                                                {/* User Prompt */}
+                                                <Stack gap="xs">
+                                                    <Text variant="label">Prompt Utilisateur</Text>
+                                                    <pre className="p-3 bg-white border border-gray-200 rounded text-xs text-gray-600 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                                                        {log.userPrompt}
+                                                    </pre>
+                                                </Stack>
+
+                                                {/* Response */}
+                                                {log.success ? (
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        {log.feedback && (
+                                                            <Stack gap="xs">
+                                                                <Text variant="label">Feedback etudiant</Text>
+                                                                <Card>
+                                                                    <CardBody padding="sm">
+                                                                        <Text variant="body">{log.feedback}</Text>
+                                                                    </CardBody>
+                                                                </Card>
+                                                            </Stack>
+                                                        )}
+                                                        {log.aiRationale && (
+                                                            <Stack gap="xs">
+                                                                <Text variant="label">Raisonnement IA</Text>
+                                                                <Card>
+                                                                    <CardBody padding="sm">
+                                                                        <Text variant="body">{log.aiRationale}</Text>
+                                                                    </CardBody>
+                                                                </Card>
+                                                            </Stack>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <Stack gap="xs">
+                                                        <Text variant="label" className="text-red-700">Erreur</Text>
+                                                        <Card className="bg-red-50 border-red-200">
+                                                            <CardBody padding="sm">
+                                                                <Text variant="body" className="text-red-700">{log.error}</Text>
+                                                            </CardBody>
+                                                        </Card>
+                                                    </Stack>
+                                                )}
+
+                                                {/* Raw Response (collapsible) */}
+                                                {log.rawResponse && (
+                                                    <details className="text-xs">
+                                                        <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                                                            Voir la reponse brute
+                                                        </summary>
+                                                        <pre className="mt-2 p-3 bg-white border border-gray-200 rounded text-gray-600 whitespace-pre-wrap overflow-x-auto">
+                                                            {JSON.stringify(JSON.parse(log.rawResponse), null, 2)}
+                                                        </pre>
+                                                    </details>
+                                                )}
+                                            </Stack>
                                         </div>
                                     )}
-                                </div>
+                                </Card>
                             ))}
 
                             {/* Pagination */}
                             {logTotal > 20 && (
-                                <div className="flex items-center justify-center gap-2 pt-4">
-                                    <button
+                                <Inline align="center" gap="sm" className="pt-4">
+                                    <Button
                                         onClick={() => setLogPage(p => Math.max(1, p - 1))}
                                         disabled={logPage === 1}
-                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded disabled:opacity-50"
+                                        variant="secondary"
+                                        size="xs"
                                     >
                                         Precedent
-                                    </button>
-                                    <span className="text-sm text-gray-500">
+                                    </Button>
+                                    <Text variant="muted">
                                         Page {logPage} / {Math.ceil(logTotal / 20)}
-                                    </span>
-                                    <button
+                                    </Text>
+                                    <Button
                                         onClick={() => setLogPage(p => p + 1)}
                                         disabled={logPage >= Math.ceil(logTotal / 20)}
-                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded disabled:opacity-50"
+                                        variant="secondary"
+                                        size="xs"
                                     >
                                         Suivant
-                                    </button>
-                                </div>
+                                    </Button>
+                                </Inline>
                             )}
                         </>
                     )}
-                </div>
+                </Stack>
             )}
-        </div>
+        </Stack>
     )
 }

@@ -1,11 +1,15 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
+import { Stack, Inline } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { TextLink } from '@/components/ui/TextLink'
+import { Badge } from '@/components/ui/Badge'
+import { cn } from '@/components/ui/cn'
 
 type PlatformAdminLayoutProps = {
     children: React.ReactNode
@@ -33,41 +37,43 @@ export default function PlatformAdminLayout({
     return (
         <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
             <aside className="w-64 border-r border-gray-200 bg-white p-6">
-                <div className="mb-6 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <Text variant="overline" className="mb-6 text-gray-500">
                     {dictionary.common.adminNav}
-                </div>
+                </Text>
                 <nav className="space-y-2 text-sm">
                     {links.map((link) => {
                         const active = link.isActive(pathname)
                         return (
-                            <Link
+                            <TextLink
                                 key={`${link.href}-${link.label}`}
                                 href={link.href}
-                                className={`block rounded-md px-3 py-2 transition ${active
-                                    ? 'bg-brand-50 text-brand-900'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                                    }`}
+                                className={cn(
+                                    'block rounded-md px-3 py-2 text-sm transition',
+                                    active
+                                        ? 'bg-brand-50 text-brand-900 font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                )}
                             >
                                 {link.label}
-                            </Link>
+                            </TextLink>
                         )
                     })}
                 </nav>
-                <div className="mt-8 text-xs text-gray-500">
-                    <div className="uppercase tracking-wide">User</div>
-                    <div className="mt-1 truncate text-sm text-gray-700">{userName}</div>
-                </div>
+                <Stack gap="xs" className="mt-8">
+                    <Text variant="overline" className="text-gray-500">User</Text>
+                    <Text variant="body" className="truncate text-sm">
+                        {userName}
+                    </Text>
+                </Stack>
             </aside>
 
             <div className="flex-1">
                 <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-                    <div>
-                        <div className="text-sm font-semibold text-gray-900">Platform Admin</div>
-                        <div className="text-xs text-gray-500">{currentLocale.toUpperCase()}</div>
-                    </div>
-                    <div className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
-                        {userName}
-                    </div>
+                    <Stack gap="xs">
+                        <Text variant="body" className="font-semibold">Platform Admin</Text>
+                        <Text variant="xsMuted">{currentLocale.toUpperCase()}</Text>
+                    </Stack>
+                    <Badge variant="neutral">{userName}</Badge>
                 </div>
                 <div className="p-6">
                     {children}

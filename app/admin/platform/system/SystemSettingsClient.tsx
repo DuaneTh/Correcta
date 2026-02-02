@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react'
 import { Eye, EyeOff, Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { Input } from '@/components/ui/Form'
+import { Text } from '@/components/ui/Text'
+import { TextLink } from '@/components/ui/TextLink'
 
 type SettingStatus = {
     value: string
@@ -124,113 +130,118 @@ export default function SystemSettingsClient({ locale = 'fr' }: SystemSettingsCl
     }
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900">{dict.title}</h1>
+        <Stack gap="lg">
+            <Text as="h1" variant="pageTitle">{dict.title}</Text>
 
-            <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <Card>
                 <div className="p-6 border-b border-gray-200">
-                    <h2 className="text-lg font-semibold text-gray-900">{dict.apiSection}</h2>
-                    <p className="mt-1 text-sm text-gray-600">{dict.apiDescription}</p>
+                    <Stack gap="xs">
+                        <Text variant="sectionTitle">{dict.apiSection}</Text>
+                        <Text variant="muted">{dict.apiDescription}</Text>
+                    </Stack>
                 </div>
 
-                <div className="p-6 space-y-4">
-                    {/* Current status */}
-                    <div className="flex items-center gap-2">
-                        {openaiSetting?.isSet ? (
-                            <>
-                                <CheckCircle className="w-5 h-5 text-green-500" />
-                                <span className="text-sm font-medium text-green-700">{dict.configured}</span>
-                                <span className="text-sm text-gray-500">-</span>
-                                <code className="text-sm text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
-                                    {openaiSetting.value}
-                                </code>
-                            </>
-                        ) : (
-                            <>
-                                <AlertCircle className="w-5 h-5 text-amber-500" />
-                                <span className="text-sm font-medium text-amber-700">{dict.notConfigured}</span>
-                            </>
+                <CardBody padding="lg">
+                    <Stack gap="md">
+                        {/* Current status */}
+                        <Inline align="start" gap="sm">
+                            {openaiSetting?.isSet ? (
+                                <>
+                                    <CheckCircle className="w-5 h-5 text-green-500" />
+                                    <Text variant="body" className="font-medium text-green-700">{dict.configured}</Text>
+                                    <Text variant="muted">-</Text>
+                                    <code className="text-sm text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+                                        {openaiSetting.value}
+                                    </code>
+                                </>
+                            ) : (
+                                <>
+                                    <AlertCircle className="w-5 h-5 text-amber-500" />
+                                    <Text variant="body" className="font-medium text-amber-700">{dict.notConfigured}</Text>
+                                </>
+                            )}
+                        </Inline>
+
+                        {openaiSetting?.updatedAt && (
+                            <Text variant="xsMuted">
+                                {dict.lastUpdated}: {new Date(openaiSetting.updatedAt).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')}
+                            </Text>
                         )}
-                    </div>
 
-                    {openaiSetting?.updatedAt && (
-                        <p className="text-xs text-gray-500">
-                            {dict.lastUpdated}: {new Date(openaiSetting.updatedAt).toLocaleString(locale === 'fr' ? 'fr-FR' : 'en-US')}
-                        </p>
-                    )}
-
-                    {/* Input for new key */}
-                    <div className="space-y-2">
-                        <label className="block text-sm font-medium text-gray-700">
-                            {openaiSetting?.isSet
-                                ? (locale === 'fr' ? 'Nouvelle cle (laissez vide pour conserver l\'actuelle)' : 'New key (leave empty to keep current)')
-                                : (locale === 'fr' ? 'Cle API' : 'API Key')}
-                        </label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input
-                                    type={showKey ? 'text' : 'password'}
-                                    value={apiKey}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    placeholder={dict.placeholder}
-                                    className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-md focus:ring-brand-500 focus:border-brand-500 font-mono text-sm"
-                                />
-                                <button
+                        {/* Input for new key */}
+                        <Stack gap="sm">
+                            <Text variant="label">
+                                {openaiSetting?.isSet
+                                    ? (locale === 'fr' ? 'Nouvelle cle (laissez vide pour conserver l\'actuelle)' : 'New key (leave empty to keep current)')
+                                    : (locale === 'fr' ? 'Cle API' : 'API Key')}
+                            </Text>
+                            <Inline align="start" gap="sm">
+                                <div className="relative flex-1">
+                                    <Input
+                                        type={showKey ? 'text' : 'password'}
+                                        value={apiKey}
+                                        onChange={(e) => setApiKey(e.target.value)}
+                                        placeholder={dict.placeholder}
+                                        className="pr-10 font-mono text-sm"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowKey(!showKey)}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    >
+                                        {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                <Button
                                     type="button"
-                                    onClick={() => setShowKey(!showKey)}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                    onClick={handleSave}
+                                    disabled={saving || !apiKey.trim()}
                                 >
-                                    {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                            <button
+                                    {saving ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : saveStatus === 'success' ? (
+                                        <CheckCircle className="w-4 h-4" />
+                                    ) : (
+                                        <Save className="w-4 h-4" />
+                                    )}
+                                    {saving ? dict.saving : saveStatus === 'success' ? dict.saved : dict.save}
+                                </Button>
+                            </Inline>
+
+                            {saveStatus === 'error' && errorMessage && (
+                                <Text variant="muted" className="text-red-600">{errorMessage}</Text>
+                            )}
+                        </Stack>
+
+                        {/* Clear button */}
+                        {openaiSetting?.isSet && !openaiSetting.value.includes('(env)') && (
+                            <Button
                                 type="button"
-                                onClick={handleSave}
-                                disabled={saving || !apiKey.trim()}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-900 text-white rounded-md hover:bg-brand-800 disabled:opacity-50 disabled:cursor-not-allowed"
+                                onClick={handleClear}
+                                disabled={saving}
+                                variant="ghost"
+                                size="xs"
+                                className="text-red-600 hover:text-red-700"
                             >
-                                {saving ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : saveStatus === 'success' ? (
-                                    <CheckCircle className="w-4 h-4" />
-                                ) : (
-                                    <Save className="w-4 h-4" />
-                                )}
-                                {saving ? dict.saving : saveStatus === 'success' ? dict.saved : dict.save}
-                            </button>
-                        </div>
-
-                        {saveStatus === 'error' && errorMessage && (
-                            <p className="text-sm text-red-600">{errorMessage}</p>
+                                {dict.clearKey}
+                            </Button>
                         )}
-                    </div>
 
-                    {/* Clear button */}
-                    {openaiSetting?.isSet && !openaiSetting.value.includes('(env)') && (
-                        <button
-                            type="button"
-                            onClick={handleClear}
-                            disabled={saving}
-                            className="text-sm text-red-600 hover:text-red-700 underline"
-                        >
-                            {dict.clearKey}
-                        </button>
-                    )}
-
-                    {/* Help link */}
-                    <div className="pt-4 border-t border-gray-100">
-                        <a
-                            href="https://platform.openai.com/api-keys"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-brand-600 hover:text-brand-700 underline"
-                        >
-                            {dict.getKey} &rarr;
-                        </a>
-                        <p className="mt-2 text-xs text-gray-500">{dict.envNote}</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+                        {/* Help link */}
+                        <div className="pt-4 border-t border-gray-100">
+                            <TextLink
+                                href="https://platform.openai.com/api-keys"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                size="sm"
+                            >
+                                {dict.getKey} &rarr;
+                            </TextLink>
+                            <Text variant="xsMuted" className="mt-2">{dict.envNote}</Text>
+                        </div>
+                    </Stack>
+                </CardBody>
+            </Card>
+        </Stack>
     )
 }
