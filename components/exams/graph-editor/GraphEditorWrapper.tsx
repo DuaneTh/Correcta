@@ -13,6 +13,7 @@ interface GraphEditorWrapperProps {
     onCancel?: () => void
     onDelete?: () => void
     locale?: string
+    initialMode?: EditorMode
 }
 
 /**
@@ -33,8 +34,9 @@ export const GraphEditorWrapper: React.FC<GraphEditorWrapperProps> = ({
     onCancel,
     onDelete,
     locale = 'fr',
+    initialMode = 'simple',
 }) => {
-    const [mode, setMode] = useState<EditorMode>('simple')
+    const [mode, setMode] = useState<EditorMode>(initialMode)
     const isFrench = locale === 'fr'
 
     return (
