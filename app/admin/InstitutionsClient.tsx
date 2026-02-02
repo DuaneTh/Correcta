@@ -6,6 +6,14 @@ import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Drawer from '@/components/ui/Drawer'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Stack, Inline, Surface } from '@/components/ui/Layout'
+import { Badge } from '@/components/ui/Badge'
+import { Input, Select, Textarea } from '@/components/ui/Form'
+import { SearchField } from '@/components/ui/SearchField'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 type InstitutionRecord = {
     id: string
@@ -485,73 +493,78 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
     ])
 
     return (
-        <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-brand-900">{dict.title}</h1>
-                        <p className="text-sm text-gray-500">{dict.selectHint}</p>
-                    </div>
+        <Surface>
+            <Stack gap="xl">
+                <Inline align="between" gap="md">
+                    <Stack gap="xs">
+                        <Text as="h1" variant="pageTitle">{dict.title}</Text>
+                        <Text variant="muted">{dict.selectHint}</Text>
+                    </Stack>
                     {canCreate && (
-                        <button
-                            type="button"
+                        <Button
                             onClick={(event) =>
                                 handleCreate(event.currentTarget, { updateUrl: true })
                             }
-                            className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+                            variant="primary"
                         >
                             {dict.createButton}
-                        </button>
+                        </Button>
                     )}
-                </div>
+                </Inline>
 
-                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                        <label className="flex w-full flex-col gap-1 text-sm text-gray-700 md:max-w-xs">
-                            <span className="font-medium">{dict.searchPlaceholder}</span>
-                            <input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder={dict.searchPlaceholder}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                            />
-                        </label>
-                        <div className="flex flex-wrap items-end gap-3 text-sm text-gray-700">
-                            <label className="flex flex-col gap-1">
-                                <span className="font-medium">{dict.filterSsoLabel}</span>
-                                <select
-                                    value={ssoFilter}
-                                    onChange={(e) => setSsoFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
-                                    className="rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                >
-                                    <option value="all">{dict.filterAll}</option>
-                                    <option value="enabled">{dict.filterEnabled}</option>
-                                    <option value="disabled">{dict.filterDisabled}</option>
-                                </select>
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className="font-medium">{dict.filterSecretLabel}</span>
-                                <select
-                                    value={secretFilter}
-                                    onChange={(e) => setSecretFilter(e.target.value as 'all' | 'set' | 'not_set')}
-                                    className="rounded-md border border-gray-300 px-2 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                                >
-                                    <option value="all">{dict.filterAll}</option>
-                                    <option value="set">{dict.filterSet}</option>
-                                    <option value="not_set">{dict.filterNotSet}</option>
-                                </select>
-                            </label>
-                        </div>
-                    </div>
-                </div>
+                <Card>
+                    <CardBody padding="md">
+                        <Inline align="between" gap="md" wrap="wrap">
+                            <Stack gap="xs" className="flex-1 md:max-w-xs">
+                                <Text variant="label">{dict.searchPlaceholder}</Text>
+                                <SearchField
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    placeholder={dict.searchPlaceholder}
+                                />
+                            </Stack>
+                            <Inline align="end" gap="sm" wrap="wrap">
+                                <Stack gap="xs">
+                                    <Text variant="label">{dict.filterSsoLabel}</Text>
+                                    <Select
+                                        value={ssoFilter}
+                                        onChange={(e) => setSsoFilter(e.target.value as 'all' | 'enabled' | 'disabled')}
+                                        size="sm"
+                                    >
+                                        <option value="all">{dict.filterAll}</option>
+                                        <option value="enabled">{dict.filterEnabled}</option>
+                                        <option value="disabled">{dict.filterDisabled}</option>
+                                    </Select>
+                                </Stack>
+                                <Stack gap="xs">
+                                    <Text variant="label">{dict.filterSecretLabel}</Text>
+                                    <Select
+                                        value={secretFilter}
+                                        onChange={(e) => setSecretFilter(e.target.value as 'all' | 'set' | 'not_set')}
+                                        size="sm"
+                                    >
+                                        <option value="all">{dict.filterAll}</option>
+                                        <option value="set">{dict.filterSet}</option>
+                                        <option value="not_set">{dict.filterNotSet}</option>
+                                    </Select>
+                                </Stack>
+                            </Inline>
+                        </Inline>
+                    </CardBody>
+                </Card>
 
-                <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+                <Card>
                     {loading ? (
-                        <div className="p-4 text-sm text-gray-500">{dict.loading}</div>
+                        <CardBody padding="md">
+                            <Text variant="muted">{dict.loading}</Text>
+                        </CardBody>
                     ) : filteredInstitutions.length === 0 ? (
-                        <div className="p-4 text-sm text-gray-500">
-                            {institutions.length === 0 ? dict.emptyState : dict.noMatches}
-                        </div>
+                        <CardBody padding="md">
+                            <EmptyState
+                                title={institutions.length === 0 ? dict.emptyState : dict.noMatches}
+                                size="compact"
+                            />
+                        </CardBody>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="min-w-full text-left text-sm">
@@ -587,44 +600,38 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                                                     )}
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ssoEnabled
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-gray-100 text-gray-600'
-                                                        }`}>
+                                                    <Badge variant={ssoEnabled ? 'success' : 'neutral'}>
                                                         {ssoEnabled ? dict.filterEnabled : dict.filterDisabled}
-                                                    </span>
+                                                    </Badge>
                                                 </td>
                                                 <td className="px-4 py-3">
-                                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${secretSet
-                                                        ? 'bg-blue-100 text-blue-700'
-                                                        : 'bg-gray-100 text-gray-600'
-                                                        }`}>
+                                                    <Badge variant={secretSet ? 'info' : 'neutral'}>
                                                         {secretSet ? dict.filterSet : dict.filterNotSet}
-                                                    </span>
+                                                    </Badge>
                                                 </td>
                                                 <td className="px-4 py-3 text-right">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <button
-                                                            type="button"
+                                                    <Inline align="end" gap="xs">
+                                                        <Button
                                                             onClick={(event) =>
                                                                 handleSelect(institution.id, event.currentTarget, {
                                                                     updateUrl: true,
                                                                 })
                                                             }
-                                                            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                                                            variant="secondary"
+                                                            size="xs"
                                                         >
                                                             {dict.actionEdit}
-                                                        </button>
-                                                        <button
-                                                            type="button"
+                                                        </Button>
+                                                        <Button
                                                             onClick={() => handleCopyLink(institution.id)}
-                                                            className="rounded-md border border-gray-200 px-3 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                                                            variant="ghost"
+                                                            size="xs"
                                                         >
                                                             {copiedId === institution.id
                                                                 ? dict.actionCopied
                                                                 : dict.actionCopyLink}
-                                                        </button>
-                                                    </div>
+                                                        </Button>
+                                                    </Inline>
                                                 </td>
                                             </tr>
                                         )
@@ -633,7 +640,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                             </table>
                         </div>
                     )}
-                </div>
+                </Card>
 
                 <Drawer
                     open={drawerOpen}
@@ -641,133 +648,127 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     title={editingMode === 'create' ? dict.createTitle : dict.editTitle}
                     returnFocusRef={drawerReturnFocusRef}
                 >
-                    <div className="grid grid-cols-1 gap-4">
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.nameLabel}</span>
-                            <input
+                    <Stack gap="md">
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.nameLabel}</Text>
+                            <Input
                                 value={form.name}
                                 onChange={(e) => handleChange('name', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.domainsLabel}</span>
-                            <input
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.domainsLabel}</Text>
+                            <Input
                                 value={form.domains}
                                 onChange={(e) => handleChange('domains', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                    </div>
+                        </Stack>
+                    </Stack>
 
-                    <div className="mt-6 grid grid-cols-1 gap-4">
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.ssoTypeLabel}</span>
-                            <select
+                    <Stack gap="md" className="mt-6">
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.ssoTypeLabel}</Text>
+                            <Select
                                 value={form.ssoType}
                                 onChange={(e) => handleChange('ssoType', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             >
                                 <option value="none">{dict.ssoTypeNone}</option>
                                 <option value="oidc">{dict.ssoTypeOidc}</option>
                                 <option value="saml">{dict.ssoTypeSaml}</option>
-                            </select>
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                            </Select>
+                        </Stack>
+                        <label className="flex items-center gap-2">
                             <input
                                 type="checkbox"
                                 checked={form.enabled}
                                 onChange={(e) => handleChange('enabled', e.target.checked)}
                                 className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
                             />
-                            {dict.enabledLabel}
+                            <Text variant="body">{dict.enabledLabel}</Text>
                         </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.issuerLabel}</span>
-                            <input
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.issuerLabel}</Text>
+                            <Input
                                 value={form.issuer}
                                 onChange={(e) => handleChange('issuer', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.clientIdLabel}</span>
-                            <input
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.clientIdLabel}</Text>
+                            <Input
                                 value={form.clientId}
                                 onChange={(e) => handleChange('clientId', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.clientSecretLabel}</span>
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.clientSecretLabel}</Text>
                             {selectedInstitution?.hasClientSecret && !setNewSecret && (
-                                <span className="text-xs text-gray-500">{dict.secretSetLabel}</span>
+                                <Text variant="caption">{dict.secretSetLabel}</Text>
                             )}
-                            <input
+                            <Input
                                 type="password"
                                 value={clientSecretInput}
                                 onChange={(e) => setClientSecretInput(e.target.value)}
                                 disabled={!setNewSecret}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                            <label className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+                            <label className="mt-2 flex items-center gap-2">
                                 <input
                                     type="checkbox"
                                     checked={setNewSecret}
                                     onChange={(e) => setSetNewSecret(e.target.checked)}
                                     className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
                                 />
-                                {dict.setNewSecretLabel}
+                                <Text variant="caption">{dict.setNewSecretLabel}</Text>
                             </label>
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.roleClaimLabel}</span>
-                            <input
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.roleClaimLabel}</Text>
+                            <Input
                                 value={form.roleClaim}
                                 onChange={(e) => handleChange('roleClaim', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.defaultRoleLabel}</span>
-                            <select
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.defaultRoleLabel}</Text>
+                            <Select
                                 value={form.defaultRole}
                                 onChange={(e) => handleChange('defaultRole', e.target.value)}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             >
                                 <option value="STUDENT">STUDENT</option>
                                 <option value="TEACHER">TEACHER</option>
                                 <option value="SCHOOL_ADMIN">SCHOOL_ADMIN</option>
-                            </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm text-gray-700">
-                            <span className="font-medium">{dict.roleMappingLabel}</span>
-                            <textarea
+                            </Select>
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="label">{dict.roleMappingLabel}</Text>
+                            <Textarea
                                 value={form.roleMapping}
                                 onChange={(e) => handleChange('roleMapping', e.target.value)}
                                 rows={6}
-                                className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                             />
-                        </label>
-                    </div>
+                        </Stack>
+                    </Stack>
 
                     {error && (
-                        <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                            {error}
-                        </div>
+                        <Card className="mt-4">
+                            <CardBody padding="sm">
+                                <Text variant="body" className="text-red-700">
+                                    {error}
+                                </Text>
+                            </CardBody>
+                        </Card>
                     )}
 
-                    <div className="mt-6 flex justify-end">
-                        <button
+                    <Inline align="end" gap="sm" className="mt-6">
+                        <Button
                             ref={saveButtonRef}
-                            type="button"
                             onClick={handleSave}
                             disabled={saving}
-                            className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
+                            variant="primary"
                         >
                             {dict.updateButton}
-                        </button>
-                    </div>
+                        </Button>
+                    </Inline>
                 </Drawer>
                 <ConfirmModal
                     open={confirmOpen}
@@ -789,7 +790,7 @@ export default function InstitutionsClient({ dictionary, canCreate }: Institutio
                     onCancel={() => setDiscardConfirmOpen(false)}
                     returnFocusRef={drawerReturnFocusRef}
                 />
-            </div>
-        </div>
+            </Stack>
+        </Surface>
     )
 }
