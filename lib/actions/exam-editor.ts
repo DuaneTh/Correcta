@@ -8,6 +8,8 @@ import { revalidatePath } from 'next/cache'
 import { parseContent } from '@/lib/content'
 import { getExamPermissions } from '@/lib/exam-permissions'
 import type { StudentToolsConfig } from '@/types/exams'
+import type { AntiCheatConfig } from '@/lib/proctoring/types'
+import { DEFAULT_ANTI_CHEAT_CONFIG } from '@/lib/proctoring/types'
 
 /**
  * Creates a new draft exam for the specified course.
@@ -146,6 +148,7 @@ export async function getExamForEditor(examId: string) {
     startAt: exam.startAt?.toISOString() ?? null,
     endAt: exam.endAt?.toISOString() ?? null,
     author: exam.author,
+    antiCheatConfig: (exam.antiCheatConfig as AntiCheatConfig | null) || DEFAULT_ANTI_CHEAT_CONFIG,
     sections: exam.sections.map(section => ({
       id: section.id,
       title: section.title,
