@@ -6,6 +6,7 @@ import { ArrowLeft, Save, ChevronDown, Check } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
+import PDFImportUploader from '@/components/exam-import/PDFImportUploader'
 import DatePicker, { registerLocale } from 'react-datepicker'
 import "react-datepicker/dist/react-datepicker.css"
 import { fr, enUS } from 'date-fns/locale'
@@ -146,6 +147,7 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
     // UI state
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [errorKeys, setErrorKeys] = useState<string[]>([])
+    const [showPdfImport, setShowPdfImport] = useState(false)
 
     // Pre-select course if courseId in URL and exists in courses list
     useEffect(() => {
@@ -358,6 +360,64 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
                 <Card className="mt-6">
                     <CardBody padding="lg">
                         <Text variant="muted" className="text-center">{dict.emptyCoursesMessage}</Text>
+                    </CardBody>
+                </Card>
+            </div>
+        )
+    }
+
+    if (showPdfImport) {
+        return (
+            <div className="max-w-2xl mx-auto">
+                <Inline align="start" gap="md" wrap="wrap" className="mb-6">
+                    <Button variant="ghost" onClick={() => setShowPdfImport(false)}>
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        {currentLocale === 'fr' ? 'Retour' : 'Back'}
+                    </Button>
+                </Inline>
+
+                <Text as="h1" variant="pageTitle" className="mb-6">
+                    {currentLocale === 'fr' ? 'Importer un examen depuis un PDF' : 'Import exam from PDF'}
+                </Text>
+
+                <Card>
+                    <CardBody padding="lg">
+                        <Stack gap="lg">
+                            <Stack gap="sm">
+                                <Text as="label" variant="label">
+                                    {dict.courseLabel}
+                                </Text>
+                                <select
+                                    value={selectedCourseId}
+                                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                                    className="w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 p-2 border"
+                                >
+                                    <option value="">-- {dict.courseLabel} --</option>
+                                    {courses.map((c) => (
+                                        <option key={c.id} value={c.id}>
+                                            {c.code} - {c.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </Stack>
+
+                            {selectedCourseId ? (
+                                <PDFImportUploader
+                                    courseId={selectedCourseId}
+                                    onCancel={() => setShowPdfImport(false)}
+                                />
+                            ) : (
+                                <Card className="border-dashed border-2 border-gray-300">
+                                    <CardBody padding="lg" className="text-center">
+                                        <Text variant="muted">
+                                            {currentLocale === 'fr'
+                                                ? 'Selectionnez un cours pour importer un PDF'
+                                                : 'Select a course to import a PDF'}
+                                        </Text>
+                                    </CardBody>
+                                </Card>
+                            )}
+                        </Stack>
                     </CardBody>
                 </Card>
             </div>
@@ -625,6 +685,27 @@ export default function NewExamFormClient({ courses, dictionary, currentLocale }
                                     />
                                 </Stack>
                             </div>
+
+                            {/* PDF Import option */}
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <div className="w-full border-t border-gray-200" />
+                                </div>
+                                <div className="relative flex justify-center text-sm">
+                                    <span className="px-2 bg-white text-gray-500">
+                                        {currentLocale === 'fr' ? 'ou' : 'or'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => setShowPdfImport(true)}
+                                className="w-full"
+                            >
+                                {currentLocale === 'fr' ? 'Importer depuis un PDF existant' : 'Import from existing PDF'}
+                            </Button>
 
                             {errorKeys.length > 0 && (
                                 <div className="bg-red-50 border border-red-200 rounded-md p-4">
