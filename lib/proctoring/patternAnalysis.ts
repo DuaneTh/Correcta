@@ -8,6 +8,14 @@
 
 import { computeAntiCheatScore, type AntiCheatScoreParams, type CopyPasteAnalysis } from '../antiCheat'
 
+// Pattern analysis thresholds and scoring constants
+const FOCUS_REGAIN_GRACE_PERIOD_MS = 5000 // Allow 5 seconds after answer for focus regain
+const SUSPICIOUS_THRESHOLD = 0.5 // More than 50% of answers preceded by focus loss
+const HIGHLY_SUSPICIOUS_THRESHOLD = 0.75 // More than 75% of answers preceded by focus loss
+const SUSPICIOUS_PATTERN_BONUS = 15
+const HIGHLY_SUSPICIOUS_PATTERN_BONUS = 30
+const EXTERNAL_PASTE_PENALTY = 5
+
 export interface ProctorEventData {
   type: string
   timestamp: Date
@@ -86,10 +94,10 @@ export function analyzeFocusLossPatterns(
         const focusGainedTime = nextEvent.timestamp.getTime()
 
         // Check if focus loss is within window before answer
-        // and focus was regained before or shortly after answer (within 5 seconds)
+        // and focus was regained before or shortly after answer
         if (focusLostTime >= windowStart && focusLostTime <= answerTime) {
           // Focus loss happened within the window
-          if (focusGainedTime <= answerTime + 5000) {
+          if (focusGainedTime <= answerTime + FOCUS_REGAIN_GRACE_PERIOD_MS) {
             // Focus regained before or shortly after answer
             foundSuspiciousPair = true
             break
@@ -106,9 +114,9 @@ export function analyzeFocusLossPatterns(
   const ratio = suspiciousPairs / answerTimestamps.length
   let flag: 'NONE' | 'SUSPICIOUS' | 'HIGHLY_SUSPICIOUS' = 'NONE'
 
-  if (ratio > 0.75) {
+  if (ratio > HIGHLY_SUSPICIOUS_THRESHOLD) {
     flag = 'HIGHLY_SUSPICIOUS'
-  } else if (ratio > 0.5) {
+  } else if (ratio > SUSPICIOUS_THRESHOLD) {
     flag = 'SUSPICIOUS'
   }
 
@@ -180,13 +188,13 @@ export function computeEnhancedAntiCheatScore(params: EnhancedAntiCheatScorePara
   // Add focus pattern bonus
   let patternBonus = 0
   if (focusLossPattern.flag === 'HIGHLY_SUSPICIOUS') {
-    patternBonus = 30
+    patternBonus = HIGHLY_SUSPICIOUS_PATTERN_BONUS
   } else if (focusLossPattern.flag === 'SUSPICIOUS') {
-    patternBonus = 15
+    patternBonus = SUSPICIOUS_PATTERN_BONUS
   }
 
   // Add external paste bonus
-  const externalPasteBonus = externalPasteAnalysis.externalPastes * 5
+  const externalPasteBonus = externalPasteAnalysis.externalPastes * EXTERNAL_PASTE_PENALTY
 
   return baseScore + patternBonus + externalPasteBonus
 }
