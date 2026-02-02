@@ -1,6 +1,6 @@
 # State: Correcta
 
-**Last Updated:** 2026-01-20
+**Last Updated:** 2026-02-02
 
 ---
 
@@ -20,9 +20,10 @@
 
 ## Current Position
 
-**Phase:** 5 of 5 (Export)
-**Plan:** 3 of 3 complete
-**Status:** COMPLETE
+**Phase:** 6 of 6 (UI Kit Integration)
+**Plan:** 1 of 8
+**Status:** In progress
+**Last activity:** 2026-02-02 - Completed 06-01-PLAN.md
 
 **Progress:**
 ```
@@ -31,9 +32,10 @@ Phase 2: Exam Creation       [==========] 4/4 plans complete
 Phase 3: Organization        [==========] 3/3 plans complete
 Phase 4: AI Correction       [==========] 4/4 plans complete
 Phase 5: Export              [==========] 3/3 plans complete
+Phase 6: UI Kit Integration  [██░░░░░░░░] 1/8 plans complete
 ```
 
-**Overall:** 17/17 plans complete - PROJECT COMPLETE
+**Overall:** 18/25 plans complete (72%)
 
 ---
 
@@ -41,9 +43,9 @@ Phase 5: Export              [==========] 3/3 plans complete
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 17 | 01-01 through 05-03 |
-| Success rate | 100% | 17/17 plans succeeded |
-| Avg duration | 10 min | Consistent execution time |
+| Plans completed | 18 | 01-01 through 06-01 |
+| Success rate | 100% | 18/18 plans succeeded |
+| Avg duration | 8 min | Consistent execution time |
 
 ---
 
@@ -99,6 +101,10 @@ Phase 5: Export              [==========] 3/3 plans complete
 | File-based PDF storage | Simple, no S3 needed, auto-cleaned by job retention | 5 |
 | Polling vs SSE for export status | Simpler implementation, works across all browsers | 5 |
 | Max 2 concurrent exports | PDF generation is CPU-intensive | 5 |
+| Omit native size prop in Form components | Prevents type conflicts between HTML number size and UI Kit string literals | 6 |
+| Extract files via git show (not cherry-pick) | Avoids bringing unrelated changes from kourpat1 branch | 6 |
+| Strip UTF-8 BOM from extracted files | Ensures consistent encoding and prevents parser issues | 6 |
+| Preserve existing DateInput/DateTimePicker | Keeps working current versions, avoids breaking changes | 6 |
 
 ### Technical Patterns
 
@@ -136,10 +142,13 @@ Phase 5: Export              [==========] 3/3 plans complete
 - **PDF document:** ExportDocument for multi-student, StudentReportDocument for single
 - **Export worker:** BullMQ worker with progress phases for large PDF exports
 - **Export status:** Poll endpoint returns progress, phase, and download URL on completion
+- **UI Kit components:** Component variants with literal union types, composition pattern
+- **Class name merging:** cn() utility for conditional Tailwind classes
+- **Component migration:** Import from @/components/ui/*, use variants for styling
 
 ### Known Issues
 
-(None - project complete)
+(None)
 
 ### TODOs
 
@@ -162,10 +171,12 @@ Phase 5: Export              [==========] 3/3 plans complete
 - [x] Complete 05-01: CSV Export
 - [x] Complete 05-02: PDF Infrastructure with Math Rendering
 - [x] Complete 05-03: PDF Export API
+- [x] Complete 06-01: UI Kit Component Integration
+- [ ] Complete 06-02: Remaining UI migrations (plans 02-08)
 
 ### Blockers
 
-(None - project complete)
+(None)
 
 ---
 
@@ -174,15 +185,14 @@ Phase 5: Export              [==========] 3/3 plans complete
 ### Resumption Prompt
 
 ```
-Correcta project COMPLETE.
-All 5 phases finished:
-- Phase 1 (Math Foundation): 3/3 plans
-- Phase 2 (Exam Creation): 4/4 plans
-- Phase 3 (Organization): 3/3 plans
-- Phase 4 (AI Correction): 4/4 plans
-- Phase 5 (Export): 3/3 plans
+Correcta Phase 6 (UI Kit Integration) in progress.
+Completed phases 1-5 (17 plans).
+Phase 6: 1/8 plans complete
+- Plan 06-01: UI Kit components integrated ✓
+- Plans 06-02 to 06-08: UI migrations pending
 
-Total: 17/17 plans complete
+Current: Ready for plan 06-02 (next UI migration)
+Total: 18/25 plans complete (72%)
 ```
 
 ### Context Files
@@ -208,9 +218,10 @@ Total: 17/17 plans complete
 - `.planning/phases/05-export/05-01-SUMMARY.md` - CSV Export summary
 - `.planning/phases/05-export/05-02-SUMMARY.md` - PDF Infrastructure summary
 - `.planning/phases/05-export/05-03-SUMMARY.md` - PDF Export API summary
+- `.planning/phases/06-ui-kit-integration/06-01-SUMMARY.md` - UI Kit Component Integration summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-01-20 - Completed 05-03-PLAN.md (PDF Export API)*
-*PROJECT COMPLETE: All 17 plans executed successfully*
+*Last execution: 2026-02-02 - Completed 06-01-PLAN.md (UI Kit Component Integration)*
+*Phase 6 in progress: 1/8 plans complete*
