@@ -2,7 +2,7 @@
 
 **Created:** 2026-01-18
 **Core Value:** Teachers create exams, AI corrects with personalized feedback
-**Depth:** Standard (5 phases)
+**Depth:** Standard (6 phases)
 
 ---
 
@@ -158,6 +158,41 @@ Plans:
 
 ---
 
+## Phase 6: UI Kit Integration
+
+**Goal:** All application pages use a consistent UI Kit (components from feat/kourpat1), replacing raw HTML/Tailwind with typed, reusable components.
+
+**Dependencies:** Phase 1-5 (all pages exist and are functional)
+
+**Requirements:**
+- UIKIT-01: cn() utility and base design tokens (already delivered by kourpat1)
+- UIKIT-02: Migrate admin pages (school admin, platform admin) to UI Kit components
+- UIKIT-03: Migrate teacher pages (courses, exams, grading) to UI Kit components
+- UIKIT-04: Migrate student pages (courses, exams, results) to UI Kit components
+- UIKIT-05: Consolidate modals (grading, export, confirm) using UI Kit patterns
+- UIKIT-06: UI Kit showcase page at /internal/ui-kit (already delivered by kourpat1)
+
+**Plans:** 8 plans
+
+Plans:
+- [ ] 06-01-PLAN.md — Cherry-pick UI Kit components from kourpat1 branch
+- [ ] 06-02-PLAN.md — Migrate large admin pages (Institutions, Classes, Users)
+- [ ] 06-03-PLAN.md — Migrate small admin pages + platform admin + layouts
+- [ ] 06-04-PLAN.md — Migrate teacher pages + grading pages
+- [ ] 06-05-PLAN.md — Migrate student pages
+- [ ] 06-06-PLAN.md — Migrate large grading components (Distribution, AttemptDetail, Rubric, GradeAll)
+- [ ] 06-07-PLAN.md — Migrate small grading modals + export modal
+- [ ] 06-08-PLAN.md — Migrate CourseFormModal (1840 lines)
+
+**Success Criteria:**
+1. All pages use Button, Card, Text, Layout components instead of raw HTML
+2. No raw `className` strings for common patterns (badges, cards, buttons) outside UI Kit components
+3. Consistent visual language across admin, teacher, and student interfaces
+4. /internal/ui-kit page showcases all available components with variants
+5. TeacherCoursesClient serves as reference implementation for migration pattern
+
+---
+
 ## Progress
 
 | Phase | Goal | Requirements | Status |
@@ -167,6 +202,7 @@ Plans:
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Complete |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Complete |
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Complete |
+| 6 - UI Kit Integration | Consistent UI components across all pages | UIKIT-01 through UIKIT-06 | Planned |
 
 ---
 
