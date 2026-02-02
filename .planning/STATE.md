@@ -20,10 +20,10 @@
 
 ## Current Position
 
-**Phase:** 7 of 7 (Intelligent Proctoring)
-**Plan:** 4 of 4
-**Status:** Phase complete
-**Last activity:** 2026-02-02 - Completed 07-04-PLAN.md
+**Phase:** 8 of 8 (PDF Exam Import)
+**Plan:** 1 of ?
+**Status:** In progress
+**Last activity:** 2026-02-02 - Completed 08-01-PLAN.md
 
 **Progress:**
 ```
@@ -34,9 +34,10 @@ Phase 4: AI Correction            [==========] 4/4 plans complete
 Phase 5: Export                   [==========] 3/3 plans complete
 Phase 6: UI Kit Integration       [==========] 8/8 plans complete
 Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
+Phase 8: PDF Exam Import          [██░░░░░░░░] 1/? plans complete
 ```
 
-**Overall:** 29/29 plans complete (100%)
+**Overall:** 30 plans complete (Phases 1-7 complete, Phase 8 in progress)
 
 ---
 
@@ -44,9 +45,9 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 29 | 01-01 through 07-04 |
-| Success rate | 100% | 29/29 plans succeeded |
-| Avg duration | 7 min | Consistent execution time |
+| Plans completed | 30 | 01-01 through 08-01 |
+| Success rate | 100% | 30/30 plans succeeded |
+| Avg duration | 6 min | Consistent execution time |
 
 ---
 
@@ -119,6 +120,11 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 | Orange badge for SUSPICIOUS focus pattern | Clear visual hierarchy for pattern severity levels | 7 |
 | Purple badges for external paste counts | Distinct from other suspicion indicators in summary table | 7 |
 | Red/green borders for paste origin in timeline | Immediate visual identification of external vs internal pastes | 7 |
+| GPT-4o native PDF vision | No OCR preprocessing, better layout understanding | 8 |
+| Temperature 0.1 for PDF extraction | Allows flexibility for ambiguous layouts while maintaining consistency | 8 |
+| Concurrency 1 for PDF import queue | API/token intensive, respects rate limits | 8 |
+| Store correctionGuidelines in generatedRubric | Reuses existing field, enables AI grading | 8 |
+| TEXT type for open questions | Matches existing QuestionType enum | 8 |
 
 ### Technical Patterns
 
@@ -174,6 +180,15 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 - **Pattern column in summary:** Focus loss badges and external paste counts between Events and Score
 - **Pattern Analysis card in detail:** Dedicated section above Event Statistics for pattern insights
 - **Timeline paste indicators:** Visual borders and badges distinguish external from internal pastes
+- **PDF extraction pipeline:** Presigned MinIO URL → GPT-4o image_url → Zod structured output
+- **Worker exam creation:** Atomic transaction creates Exam + default section + questions + segments
+- **MCQ storage pattern:** Choices stored as QuestionSegments with isCorrect flag
+- **ContentSegments JSON:** Question content stored as JSON.stringify([{type, text}]) array
+
+### Roadmap Evolution
+
+- Phase 8 started: PDF Exam Import — AI-powered PDF analysis to auto-create exams from existing documents
+  - 08-01 complete: Backend extraction pipeline (GPT-4o + BullMQ + worker)
 
 ### Known Issues
 
@@ -212,6 +227,7 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 - [x] Complete 07-02: Pattern Analysis Engine
 - [x] Complete 07-03: Client-Side Proctoring Monitor
 - [x] Complete 07-04: Teacher Dashboard Intelligence
+- [x] Complete 08-01: PDF Extraction Pipeline
 
 ### Blockers
 
@@ -221,11 +237,14 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 
 ## Session Continuity
 
+**Last session:** 2026-02-02 13:45 UTC
+**Stopped at:** Completed 08-01-PLAN.md
+**Resume file:** None
+
 ### Resumption Prompt
 
 ```
-Correcta - ALL PHASES COMPLETE (29/29 plans complete).
-All 7 phases delivered!
+Correcta - 30 plans complete across 8 phases.
 Phase 1: Math Foundation (3 plans) ✓
 Phase 2: Exam Creation (4 plans) ✓
 Phase 3: Organization (3 plans) ✓
@@ -233,9 +252,10 @@ Phase 4: AI Correction (4 plans) ✓
 Phase 5: Export (3 plans) ✓
 Phase 6: UI Kit Integration (8 plans) ✓
 Phase 7: Intelligent Proctoring (4 plans) ✓
+Phase 8: PDF Exam Import (1/? plans) - IN PROGRESS
 
-Latest: 07-04 (Teacher Dashboard Intelligence) complete.
-All phases complete - ready for ESSEC pilot deployment.
+Latest: 08-01 (PDF Extraction Pipeline) complete.
+Backend extraction ready, awaiting UI and status tracking plans.
 ```
 
 ### Context Files
@@ -267,10 +287,11 @@ All phases complete - ready for ESSEC pilot deployment.
 - `.planning/phases/07-intelligent-proctoring/07-02-SUMMARY.md` - Pattern Analysis Engine summary
 - `.planning/phases/07-intelligent-proctoring/07-03-SUMMARY.md` - Client-Side Proctoring Monitor summary
 - `.planning/phases/07-intelligent-proctoring/07-04-SUMMARY.md` - Teacher Dashboard Intelligence summary
+- `.planning/phases/08-pdf-exam-import/08-01-SUMMARY.md` - PDF Extraction Pipeline summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-02 - Completed 07-04 (Teacher Dashboard Intelligence)*
-*Phase 7 complete: 4/4 plans complete*
-*ALL PHASES COMPLETE: 29/29 plans delivered*
+*Last execution: 2026-02-02 - Completed 08-01 (PDF Extraction Pipeline)*
+*Phase 8 in progress: 1/? plans complete*
+*Total: 30 plans delivered*
