@@ -7,6 +7,13 @@ import type { PersonRow, CourseRow, SectionRow } from '@/lib/school-admin-data'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import Drawer from '@/components/ui/Drawer'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Input, Select } from '@/components/ui/Form'
+import { Inline, Stack } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { Badge } from '@/components/ui/Badge'
+import { cn } from '@/components/ui/cn'
 
 type SchoolEnrollmentsClientProps = {
     dictionary: Dictionary
@@ -239,71 +246,70 @@ export default function SchoolEnrollmentsClient({
     }
 
     return (
-        <div className="flex flex-col gap-6">
+        <Stack gap="lg">
             {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-brand-900">{dict.nav.enrollments}</h1>
-                    <p className="text-sm text-gray-500">{dict.enrollments.subtitle}</p>
-                </div>
-                <button
+            <Inline align="between" gap="md" wrap="nowrap">
+                <Stack gap="xs">
+                    <Text as="h1" variant="pageTitle">
+                        {dict.nav.enrollments}
+                    </Text>
+                    <Text variant="muted">{dict.enrollments.subtitle}</Text>
+                </Stack>
+                <Button
                     type="button"
                     onClick={(e) => openAssignDrawer(e.currentTarget)}
-                    className="inline-flex items-center rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
                 >
                     {dict.assignButton}
-                </button>
-            </div>
+                </Button>
+            </Inline>
 
             {/* Filters */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                    <div className="flex gap-2">
-                        <button
-                            type="button"
-                            onClick={() => setRoleFilter('all')}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${roleFilter === 'all'
-                                ? 'bg-brand-900 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {dict.enrollments.filterAll} ({enrollments.length})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setRoleFilter('teacher')}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${roleFilter === 'teacher'
-                                ? 'bg-brand-900 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {dict.tabs.teachers} ({enrollments.filter(e => e.role === 'TEACHER').length})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setRoleFilter('student')}
-                            className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${roleFilter === 'student'
-                                ? 'bg-brand-900 text-white'
-                                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                        >
-                            {dict.tabs.students} ({enrollments.filter(e => e.role === 'STUDENT').length})
-                        </button>
-                    </div>
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder={dict.enrollments.searchPlaceholder}
-                        className="rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
-                    />
-                </div>
-            </div>
+            <Card>
+                <CardBody padding="md">
+                    <Inline align="between" gap="md">
+                        <Inline align="start" gap="sm">
+                            <Button
+                                type="button"
+                                onClick={() => setRoleFilter('all')}
+                                variant={roleFilter === 'all' ? 'primary' : 'secondary'}
+                                size="xs"
+                            >
+                                {dict.enrollments.filterAll} ({enrollments.length})
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => setRoleFilter('teacher')}
+                                variant={roleFilter === 'teacher' ? 'primary' : 'secondary'}
+                                size="xs"
+                            >
+                                {dict.tabs.teachers} ({enrollments.filter(e => e.role === 'TEACHER').length})
+                            </Button>
+                            <Button
+                                type="button"
+                                onClick={() => setRoleFilter('student')}
+                                variant={roleFilter === 'student' ? 'primary' : 'secondary'}
+                                size="xs"
+                            >
+                                {dict.tabs.students} ({enrollments.filter(e => e.role === 'STUDENT').length})
+                            </Button>
+                        </Inline>
+                        <Input
+                            type="text"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder={dict.enrollments.searchPlaceholder}
+                            size="sm"
+                        />
+                    </Inline>
+                </CardBody>
+            </Card>
 
             {/* Enrollments table */}
-            <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+            <Card>
                 {filteredEnrollments.length === 0 ? (
-                    <div className="p-4 text-sm text-gray-500">{dict.enrollments.empty}</div>
+                    <CardBody padding="md">
+                        <Text variant="muted">{dict.enrollments.empty}</Text>
+                    </CardBody>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-left text-sm">
@@ -320,27 +326,31 @@ export default function SchoolEnrollmentsClient({
                                 {filteredEnrollments.map((enrollment) => (
                                     <tr key={enrollment.id}>
                                         <td className="px-4 py-3">
-                                            <div className="font-medium text-gray-900">{enrollment.userName}</div>
-                                            <div className="text-xs text-gray-500">{enrollment.userEmail}</div>
+                                            <Stack gap="xs">
+                                                <Text variant="body">{enrollment.userName}</Text>
+                                                <Text variant="xsMuted">{enrollment.userEmail}</Text>
+                                            </Stack>
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${enrollment.role === 'TEACHER'
-                                                ? 'bg-purple-100 text-purple-700'
-                                                : 'bg-blue-100 text-blue-700'
-                                            }`}>
+                                            <Badge variant={enrollment.role === 'TEACHER' ? 'info' : 'neutral'}>
                                                 {enrollment.role === 'TEACHER' ? dict.assignTeacherLabel : dict.assignStudentLabel}
-                                            </span>
+                                            </Badge>
                                         </td>
-                                        <td className="px-4 py-3 text-gray-700">{enrollment.courseCode}</td>
-                                        <td className="px-4 py-3 text-gray-600">{enrollment.sectionName}</td>
+                                        <td className="px-4 py-3">
+                                            <Text variant="body">{enrollment.courseCode}</Text>
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <Text variant="muted">{enrollment.sectionName}</Text>
+                                        </td>
                                         <td className="px-4 py-3 text-right">
-                                            <button
+                                            <Button
                                                 type="button"
                                                 onClick={() => requestRemove(enrollment.id)}
-                                                className="rounded-md border border-red-200 px-3 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                                                variant="destructive"
+                                                size="xs"
                                             >
                                                 {dict.removeLabel}
-                                            </button>
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}
@@ -348,7 +358,7 @@ export default function SchoolEnrollmentsClient({
                         </table>
                     </div>
                 )}
-            </div>
+            </Card>
 
             {/* Assign Drawer */}
             <Drawer
@@ -357,60 +367,61 @@ export default function SchoolEnrollmentsClient({
                 title={dict.assignUserTitle}
                 returnFocusRef={drawerReturnFocusRef}
             >
-                <div className="grid grid-cols-1 gap-4">
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.enrollments.roleLabel}</span>
-                        <select
+                <Stack gap="md">
+                    <label className="flex flex-col gap-1">
+                        <Text variant="label">{dict.enrollments.roleLabel}</Text>
+                        <Select
                             value={assignForm.role}
                             onChange={(e) => setAssignForm({ ...assignForm, role: e.target.value as 'TEACHER' | 'STUDENT', userId: '' })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         >
                             <option value="STUDENT">{dict.assignStudentLabel}</option>
                             <option value="TEACHER">{dict.assignTeacherLabel}</option>
-                        </select>
+                        </Select>
                     </label>
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.selectUserPlaceholder} *</span>
-                        <select
+                    <label className="flex flex-col gap-1">
+                        <Text variant="label">{dict.selectUserPlaceholder} *</Text>
+                        <Select
                             value={assignForm.userId}
                             onChange={(e) => setAssignForm({ ...assignForm, userId: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         >
                             <option value="">{dict.selectUserPlaceholder}</option>
                             {availableUsers.map((u) => (
                                 <option key={u.id} value={u.id}>{u.name || u.email}</option>
                             ))}
-                        </select>
+                        </Select>
                     </label>
-                    <label className="flex flex-col gap-1 text-sm text-gray-700">
-                        <span className="font-medium">{dict.selectSectionPlaceholder} *</span>
-                        <select
+                    <label className="flex flex-col gap-1">
+                        <Text variant="label">{dict.selectSectionPlaceholder} *</Text>
+                        <Select
                             value={assignForm.sectionId}
                             onChange={(e) => setAssignForm({ ...assignForm, sectionId: e.target.value })}
-                            className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:border-brand-900 focus:outline-none focus:ring-1 focus:ring-brand-900"
                         >
                             <option value="">{dict.selectSectionPlaceholder}</option>
                             {availableSections.map((s) => (
                                 <option key={s.id} value={s.id}>{s.course.code} - {s.name}</option>
                             ))}
-                        </select>
+                        </Select>
                     </label>
-                </div>
+                </Stack>
 
                 {error && (
-                    <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                        {error}
-                    </div>
+                    <Card className="mt-4">
+                        <CardBody padding="sm">
+                            <Text variant="muted" className="text-red-700">
+                                {error}
+                            </Text>
+                        </CardBody>
+                    </Card>
                 )}
 
-                <div className="mt-6 flex justify-end gap-2">
-                    <button type="button" onClick={closeDrawer} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                <Inline align="end" gap="sm" className="mt-6">
+                    <Button type="button" onClick={closeDrawer} variant="secondary">
                         {dict.cancelArchiveButton}
-                    </button>
-                    <button type="button" onClick={handleAssign} disabled={saving} className="rounded-md bg-brand-900 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60">
+                    </Button>
+                    <Button type="button" onClick={handleAssign} disabled={saving}>
                         {dict.assignButton}
-                    </button>
-                </div>
+                    </Button>
+                </Inline>
             </Drawer>
 
             {/* Remove Confirm Modal */}
@@ -426,6 +437,6 @@ export default function SchoolEnrollmentsClient({
                     setPendingRemoveId('')
                 }}
             />
-        </div>
+        </Stack>
     )
 }

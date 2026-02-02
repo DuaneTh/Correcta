@@ -1,11 +1,15 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
+import { Stack, Inline } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { TextLink } from '@/components/ui/TextLink'
+import { Badge } from '@/components/ui/Badge'
+import { cn } from '@/components/ui/cn'
 
 type SchoolAdminLayoutProps = {
     children: React.ReactNode
@@ -57,53 +61,57 @@ export default function SchoolAdminLayout({
     return (
         <div className="flex min-h-[calc(100vh-64px)] bg-gray-50">
             <aside className="w-64 border-r border-gray-200 bg-white p-6">
-                <div className="mb-6">
-                    <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        {dict.titlePrefix}
-                    </div>
-                    <div className="mt-1 truncate text-sm font-medium text-gray-900">
-                        {institutionName || dict.unknownInstitution}
-                    </div>
-                </div>
+                <Stack gap="lg" className="mb-6">
+                    <Stack gap="xs">
+                        <Text variant="overline" className="text-gray-500">
+                            {dict.titlePrefix}
+                        </Text>
+                        <Text variant="body" className="truncate font-medium">
+                            {institutionName || dict.unknownInstitution}
+                        </Text>
+                    </Stack>
+                </Stack>
                 <nav className="space-y-1 text-sm">
                     {links.map((link) => {
                         const active = link.isActive(pathname)
                         return (
-                            <Link
+                            <TextLink
                                 key={link.href}
                                 href={link.href}
-                                className={`block rounded-md px-3 py-2 transition ${active
-                                    ? 'bg-brand-50 text-brand-900 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-100'
-                                }`}
+                                className={cn(
+                                    'block rounded-md px-3 py-2 text-sm transition',
+                                    active
+                                        ? 'bg-brand-50 text-brand-900 font-medium'
+                                        : 'text-gray-700 hover:bg-gray-100'
+                                )}
                             >
                                 {link.label}
-                            </Link>
+                            </TextLink>
                         )
                     })}
                 </nav>
-                <div className="mt-8 text-xs text-gray-500">
-                    <div className="uppercase tracking-wide">User</div>
-                    <div className="mt-1 truncate text-sm text-gray-700">{userName}</div>
-                </div>
+                <Stack gap="xs" className="mt-8">
+                    <Text variant="overline" className="text-gray-500">User</Text>
+                    <Text variant="body" className="truncate text-sm">
+                        {userName}
+                    </Text>
+                </Stack>
             </aside>
 
             <div className="flex-1">
                 <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-4">
-                    <div>
-                        <div className="text-sm font-semibold text-gray-900">
+                    <Stack gap="xs">
+                        <Text variant="body" className="font-semibold">
                             {dict.titlePrefix}
-                        </div>
-                        <div className="text-xs text-gray-500">
+                        </Text>
+                        <Text variant="xsMuted">
                             {institutionName || dict.unknownInstitution}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-gray-500">{currentLocale.toUpperCase()}</span>
-                        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
-                            {userName}
-                        </span>
-                    </div>
+                        </Text>
+                    </Stack>
+                    <Inline align="start" gap="sm">
+                        <Text variant="xsMuted">{currentLocale.toUpperCase()}</Text>
+                        <Badge variant="neutral">{userName}</Badge>
+                    </Inline>
                 </div>
                 <div className="p-6">
                     {children}
