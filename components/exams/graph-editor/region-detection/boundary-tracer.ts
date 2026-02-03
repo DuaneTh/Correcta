@@ -16,7 +16,7 @@ export function sampleFunctionInDomain(
   maxX: number,
   numSamples: number
 ): Array<{ x: number; y: number }> {
-  const compiled = compileExpression(func.expr)
+  const compiled = compileExpression(func.expression)
   if (!compiled) {
     return []
   }
@@ -152,7 +152,7 @@ export function generatePolygonBoundedByElements(
     const func = functions[0].element
 
     // Find where function intersects y-axis (x=0)
-    const compiled = compileExpression(func.expr)
+    const compiled = compileExpression(func.expression)
     if (!compiled) {
       return []
     }
@@ -208,7 +208,7 @@ export function generatePolygonBoundedByElements(
         }
 
         // Find y-values at vertical line
-        const compiled = compileExpression(func.expr)
+        const compiled = compileExpression(func.expression)
         if (!compiled) {
           return funcSamples
         }

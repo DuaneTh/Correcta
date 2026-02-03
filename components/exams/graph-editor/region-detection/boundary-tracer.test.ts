@@ -7,11 +7,11 @@ describe('Feature 4: generatePolygonBetweenCurves - Between Functions', () => {
   test('generates polygon between x^2 and x from 0 to 1', () => {
     const func1: GraphFunction = {
       id: 'f1',
-      expr: 'x^2'
+      expression: 'x^2'
     }
     const func2: GraphFunction = {
       id: 'f2',
-      expr: 'x'
+      expression: 'x'
     }
     const polygon = generatePolygonBetweenCurves(func1, func2, 0, 1, 60)
 
@@ -36,13 +36,13 @@ describe('Feature 4: generatePolygonBetweenCurves - Between Functions', () => {
   test('handles function with transformations (offsetX, offsetY, scaleY)', () => {
     const func1: GraphFunction = {
       id: 'f1',
-      expr: 'x^2',
+      expression: 'x^2',
       offsetY: 1, // Shift up by 1
       scaleY: 2   // Stretch vertically by 2
     }
     const func2: GraphFunction = {
       id: 'f2',
-      expr: '0' // Constant function y=0
+      expression: '0' // Constant function y=0
     }
     const polygon = generatePolygonBetweenCurves(func1, func2, 0, 1, 30)
 
@@ -57,11 +57,11 @@ describe('Feature 4: generatePolygonBetweenCurves - Between Functions', () => {
   test('returns empty array for invalid expressions', () => {
     const func1: GraphFunction = {
       id: 'f1',
-      expr: 'invalid$$'
+      expression: 'invalid$$'
     }
     const func2: GraphFunction = {
       id: 'f2',
-      expr: 'x'
+      expression: 'x'
     }
     const polygon = generatePolygonBetweenCurves(func1, func2, 0, 1, 30)
 
@@ -81,7 +81,7 @@ describe('Feature 5: generatePolygonBoundedByElements - Mixed Elements with Axis
     const boundaries = [
       {
         type: 'function' as const,
-        element: { id: 'f1', expr: 'x^2' } as GraphFunction
+        element: { id: 'f1', expression: 'x^2' } as GraphFunction
       },
       {
         type: 'axis' as const,
@@ -115,7 +115,7 @@ describe('Feature 5: generatePolygonBoundedByElements - Mixed Elements with Axis
     const boundaries = [
       {
         type: 'function' as const,
-        element: { id: 'f1', expr: 'x^2 + 2' } as GraphFunction
+        element: { id: 'f1', expression: 'x^2 + 2' } as GraphFunction
       },
       {
         type: 'axis' as const,
@@ -144,7 +144,7 @@ describe('Feature 5: generatePolygonBoundedByElements - Mixed Elements with Axis
     const boundaries = [
       {
         type: 'function' as const,
-        element: { id: 'f1', expr: 'x^2' } as GraphFunction
+        element: { id: 'f1', expression: 'x^2' } as GraphFunction
       },
       {
         type: 'axis' as const,
@@ -181,7 +181,7 @@ describe('Feature 5: generatePolygonBoundedByElements - Mixed Elements with Axis
     const boundaries = [
       {
         type: 'function' as const,
-        element: { id: 'f1', expr: 'x^2' } as GraphFunction
+        element: { id: 'f1', expression: 'x^2' } as GraphFunction
       },
       {
         type: 'line' as const,
