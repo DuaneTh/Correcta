@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useCallback, useMemo, useState } from 'react'
-import { Line, Group, Circle } from 'react-konva'
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
+import { Line, Group, Circle, Rect, Text as KonvaText } from 'react-konva'
 import { GraphArea, GraphAxes, GraphAnchor, GraphFunction, GraphLine } from '@/types/exams'
 import { graphToPixel, pixelToGraph } from '../../coordinate-utils'
 import { compileExpression } from '@/components/exams/graph-utils'
@@ -726,6 +726,203 @@ export const EditableArea = React.memo<EditableAreaProps>(({
     const fillColor = area.fill?.color || '#8b5cf6'
     const fillOpacity = area.fill?.opacity ?? 0.35
 
+    // Calculate boundary button positions (only when selected)
+    const boundaryButtons = useMemo(() => {
+        if (!isSelected || !area.boundaryIds || area.boundaryIds.length === 0) return []
+
+        const buttons: Array<{
+            id: string
+            x: number
+            y: number
+            isExtended: boolean
+            label: string
+        }> = []
+
+        const centroid = outline.length > 0
+            ? outline.reduce((acc, pt) => ({ x: acc.x + pt.x / outline.length, y: acc.y + pt.y / outline.length }), { x: 0, y: 0 })
+            : controlPoint
+
+        // For each boundary, find a position on the edge of the polygon
+        for (const boundaryId of area.boundaryIds) {
+            const isExtended = area.ignoredBoundaries?.includes(boundaryId) || false
+
+            // Find the corresponding element
+            const func = functions.find(f => f.id === boundaryId)
+            const line = lines.find(l => l.id === boundaryId)
+
+            let buttonPos = { x: centroid.x, y: centroid.y }
+            let label = ''
+
+            if (func) {
+                // Position button at the function curve, offset from centroid
+                const evaluator = compileExpression(func.expression)
+                if (evaluator) {
+                    const offsetX = func.offsetX ?? 0
+                    const offsetY = func.offsetY ?? 0
+                    const scaleY = func.scaleY ?? 1
+                    try {
+                        const yAtCentroid = scaleY * evaluator(centroid.x - offsetX) + offsetY
+                        if (Number.isFinite(yAtCentroid)) {
+                            // Position between centroid and curve
+                            buttonPos = {
+                                x: centroid.x,
+                                y: (centroid.y + yAtCentroid) / 2
+                            }
+                        }
+                    } catch { /* ignore */ }
+                }
+                label = func.label || `f(x)`
+            } else if (line && line.start.type === 'coord' && line.end.type === 'coord') {
+                // Position button at the midpoint of the line segment
+                const midX = (line.start.x + line.end.x) / 2
+                const midY = (line.start.y + line.end.y) / 2
+
+                // Move slightly toward centroid
+                buttonPos = {
+                    x: midX + (centroid.x - midX) * 0.3,
+                    y: midY + (centroid.y - midY) * 0.3
+                }
+                label = line.label || 'segment'
+            }
+
+            // Convert to pixels
+            const pixel = graphToPixel(buttonPos, axes, width, height)
+
+            buttons.push({
+                id: boundaryId,
+                x: pixel.x,
+                y: pixel.y,
+                isExtended,
+                label
+            })
+        }
+
+        return buttons
+    }, [isSelected, area.boundaryIds, area.ignoredBoundaries, outline, controlPoint, functions, lines, axes, width, height])
+
+    // Track if we need to re-detect after boundary toggle
+    const pendingRedetectRef = useRef<string[] | null>(null)
+
+    // Handle extend/collapse button click
+    const handleBoundaryToggle = useCallback((boundaryId: string) => {
+        const isCurrentlyExtended = area.ignoredBoundaries?.includes(boundaryId) || false
+
+        const newIgnored = isCurrentlyExtended
+            ? (area.ignoredBoundaries || []).filter(id => id !== boundaryId)
+            : [...(area.ignoredBoundaries || []), boundaryId]
+
+        // Store new ignored boundaries for re-detection
+        pendingRedetectRef.current = newIgnored
+
+        // First update ignoredBoundaries
+        onUpdate({
+            ...area,
+            ignoredBoundaries: newIgnored
+        })
+    }, [area, onUpdate])
+
+    // Re-detect area when ignoredBoundaries changes via toggle
+    useEffect(() => {
+        if (!pendingRedetectRef.current) return
+
+        const newIgnored = pendingRedetectRef.current
+        pendingRedetectRef.current = null
+
+        // Re-run detection logic with current position
+        const pos = controlPoint
+        const threshold = 3.0
+
+        // Get nearby functions
+        const nearbyFuncs = functions
+            .map(fn => {
+                const nearest = findNearestFunction({ x: pos.x, y: pos.y }, [fn])
+                return nearest ? { type: 'function' as const, element: fn, distance: nearest.distance, y: nearest.y } : null
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null)
+
+        // Get nearby lines
+        const nearbyLines = lines
+            .map(ln => {
+                const nearest = findNearestLine({ x: pos.x, y: pos.y }, [ln])
+                return nearest ? { type: 'line' as const, element: ln, distance: nearest.distance } : null
+            })
+            .filter((x): x is NonNullable<typeof x> => x !== null)
+
+        // Filter out ignored boundaries
+        const activeFuncs = nearbyFuncs.filter(b => !newIgnored.includes(b.element.id))
+        const activeLines = nearbyLines.filter(b => !newIgnored.includes(b.element.id))
+
+        const closeFuncs = activeFuncs
+            .filter(b => b.distance < threshold)
+            .slice(0, 2)
+
+        const nearbyLineElements = activeLines
+            .filter(b => b.distance < threshold)
+            .map(b => b.element)
+
+        // Re-generate polygon based on active boundaries
+        if (closeFuncs.length >= 2) {
+            const func1 = closeFuncs[0].element
+            const func2 = closeFuncs[1].element
+
+            const intersections = findFunctionIntersections(
+                func1.expression,
+                func2.expression,
+                axes.xMin,
+                axes.xMax
+            )
+
+            const nearbyVerticalLines = nearbyLineElements.filter(ln => isVerticalLine(ln))
+
+            let domainMin = axes.xMin
+            let domainMax = axes.xMax
+
+            for (const vLine of nearbyVerticalLines) {
+                const lineX = resolveAnchorX(vLine.start)
+                if (lineX < pos.x && lineX > domainMin) domainMin = lineX
+                if (lineX > pos.x && lineX < domainMax) domainMax = lineX
+            }
+
+            if (intersections.length >= 2) {
+                for (let i = 0; i < intersections.length - 1; i++) {
+                    if (pos.x >= intersections[i] && pos.x <= intersections[i + 1]) {
+                        domainMin = Math.max(domainMin, intersections[i])
+                        domainMax = Math.min(domainMax, intersections[i + 1])
+                        break
+                    }
+                }
+            }
+
+            const polygon = generatePolygonBetweenCurves(func1, func2, domainMin, domainMax, 60)
+            const clippedPolygon = clipPolygonBySegments(polygon, nearbyLineElements, pos)
+
+            if (clippedPolygon.length >= 3) {
+                const newPoints: GraphAnchor[] = clippedPolygon.map((pt: { x: number; y: number }) => ({
+                    type: 'coord' as const,
+                    x: pt.x,
+                    y: pt.y
+                }))
+
+                // Include ALL nearby boundaries (not just active ones) in boundaryIds
+                const allNearbyIds = [
+                    ...nearbyFuncs.filter(b => b.distance < threshold).map(b => b.element.id),
+                    ...nearbyLines.filter(b => b.distance < threshold).map(b => b.element.id)
+                ]
+
+                onUpdate({
+                    ...area,
+                    mode: 'between-functions',
+                    functionId: func1.id,
+                    functionId2: func2.id,
+                    boundaryIds: allNearbyIds,
+                    domain: { min: domainMin, max: domainMax },
+                    points: newPoints,
+                    ignoredBoundaries: newIgnored
+                })
+            }
+        }
+    }, [area.ignoredBoundaries])
+
     // Control point element
     const controlElement = (
         <Circle
@@ -779,6 +976,38 @@ export const EditableArea = React.memo<EditableAreaProps>(({
                     offsetY={0}
                 />
             )}
+
+            {/* Boundary extend/collapse buttons (only when selected) */}
+            {isSelected && boundaryButtons.map(btn => (
+                <Group key={btn.id} x={btn.x} y={btn.y}>
+                    {/* Button background */}
+                    <Circle
+                        radius={14}
+                        fill={btn.isExtended ? '#ef4444' : '#22c55e'}
+                        stroke="white"
+                        strokeWidth={2}
+                        shadowColor="black"
+                        shadowBlur={4}
+                        shadowOpacity={0.3}
+                        onClick={() => handleBoundaryToggle(btn.id)}
+                        onTap={() => handleBoundaryToggle(btn.id)}
+                    />
+                    {/* Plus or Minus symbol */}
+                    <KonvaText
+                        text={btn.isExtended ? '−' : '+'}
+                        fontSize={18}
+                        fontStyle="bold"
+                        fill="white"
+                        align="center"
+                        verticalAlign="middle"
+                        width={28}
+                        height={28}
+                        offsetX={14}
+                        offsetY={14}
+                        listening={false}
+                    />
+                </Group>
+            ))}
         </Group>
     )
 })
