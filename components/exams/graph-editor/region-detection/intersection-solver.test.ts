@@ -25,7 +25,8 @@ describe('Feature 1: findFunctionIntersections - Function-Function', () => {
   })
 
   test('returns empty array when no intersections exist', () => {
-    const intersections = findFunctionIntersections('x^2', 'x + 5', -5, 5)
+    // x^2 = -x - 5 has no real solutions (discriminant < 0)
+    const intersections = findFunctionIntersections('x^2', '-x - 5', -5, 5)
     assert.strictEqual(intersections.length, 0)
   })
 
@@ -52,7 +53,7 @@ describe('Feature 2: findLineFunctionIntersection - Line-Function', () => {
   test('finds intersections of horizontal line y=1 with parabola', () => {
     const line: GraphLine = {
       id: 'line2',
-      kind: 'segment',
+      kind: 'line', // Changed to 'line' to get both intersections
       start: { type: 'coord', x: 0, y: 1 },
       end: { type: 'coord', x: 2, y: 1 }
     }
