@@ -371,13 +371,17 @@ const buildCurvePath = (curve: GraphCurve, axes: GraphAxes, payload: GraphSegmen
 export const sampleFunction = (fn: GraphFunction, axes: GraphAxes): GraphCoord[] => {
     const evaluator = compileExpression(fn.expression)
     if (!evaluator) return []
+    const offsetX = fn.offsetX ?? 0
+    const offsetY = fn.offsetY ?? 0
+    const scaleY = fn.scaleY ?? 1
     const minX = typeof fn.domain?.min === 'number' ? fn.domain.min : axes.xMin
     const maxX = typeof fn.domain?.max === 'number' ? fn.domain.max : axes.xMax
     const samples = Math.max(80, Math.round((maxX - minX) * 12))
     const points: GraphCoord[] = []
     for (let i = 0; i <= samples; i++) {
         const x = minX + ((maxX - minX) * i) / samples
-        let y = evaluator(x)
+        // Apply transformations: scale, horizontal offset, vertical offset
+        let y = scaleY * evaluator(x - offsetX) + offsetY
         if (!Number.isFinite(y)) continue
         points.push({ x, y })
     }
@@ -390,6 +394,13 @@ const buildAreaPath = (
     axes: GraphAxes,
     payload: GraphSegment
 ): GraphCoord[] => {
+    // PRIORITY: If area.points exists and has valid data, use it directly
+    // This ensures the editor-calculated polygon is used in preview
+    if (area.points && area.points.length >= 3) {
+        return area.points.map((anchor) => resolveAnchor(anchor, payload))
+    }
+
+    // Fallback: Calculate polygon from mode (for backwards compatibility)
     if (area.mode === 'polygon') {
         return (area.points || []).map((anchor) => resolveAnchor(anchor, payload))
     }
@@ -411,19 +422,37 @@ const buildAreaPath = (
         ]
     }
 
-    if (area.mode === 'between-functions' && area.functionId && area.functionId2) {
-        const fn1 = functions.find((entry) => entry.id === area.functionId)
-        const fn2 = functions.find((entry) => entry.id === area.functionId2)
-        if (!fn1 || !fn2) return []
-        const samples1 = sampleFunction(fn1, axes)
-        const samples2 = sampleFunction(fn2, axes)
-        if (samples1.length === 0 || samples2.length === 0) return []
-        const minX = typeof area.domain?.min === 'number' ? area.domain.min : Math.max(samples1[0].x, samples2[0].x)
-        const maxX = typeof area.domain?.max === 'number' ? area.domain.max : Math.min(samples1[samples1.length - 1].x, samples2[samples2.length - 1].x)
-        const filtered1 = samples1.filter((pt) => pt.x >= minX && pt.x <= maxX)
-        const filtered2 = samples2.filter((pt) => pt.x >= minX && pt.x <= maxX).reverse()
-        if (filtered1.length === 0 || filtered2.length === 0) return []
-        return [...filtered1, ...filtered2]
+    if ((area.mode === 'between-functions' || area.mode === 'between-line-and-function') && area.functionId) {
+        // Handle between-functions mode
+        if (area.functionId2) {
+            const fn1 = functions.find((entry) => entry.id === area.functionId)
+            const fn2 = functions.find((entry) => entry.id === area.functionId2)
+            if (!fn1 || !fn2) return []
+            const samples1 = sampleFunction(fn1, axes)
+            const samples2 = sampleFunction(fn2, axes)
+            if (samples1.length === 0 || samples2.length === 0) return []
+            const minX = typeof area.domain?.min === 'number' ? area.domain.min : Math.max(samples1[0].x, samples2[0].x)
+            const maxX = typeof area.domain?.max === 'number' ? area.domain.max : Math.min(samples1[samples1.length - 1].x, samples2[samples2.length - 1].x)
+            const filtered1 = samples1.filter((pt) => pt.x >= minX && pt.x <= maxX)
+            const filtered2 = samples2.filter((pt) => pt.x >= minX && pt.x <= maxX).reverse()
+            if (filtered1.length === 0 || filtered2.length === 0) return []
+            return [...filtered1, ...filtered2]
+        }
+
+        // Single function with line boundary - use basic under-function fallback
+        const fn = functions.find((entry) => entry.id === area.functionId)
+        if (!fn) return []
+        const samples = sampleFunction(fn, axes)
+        if (samples.length === 0) return []
+        const minX = typeof area.domain?.min === 'number' ? area.domain.min : samples[0].x
+        const maxX = typeof area.domain?.max === 'number' ? area.domain.max : samples[samples.length - 1].x
+        const filtered = samples.filter((pt) => pt.x >= minX && pt.x <= maxX)
+        if (filtered.length === 0) return []
+        return [
+            { x: filtered[0].x, y: 0 },
+            ...filtered,
+            { x: filtered[filtered.length - 1].x, y: 0 },
+        ]
     }
 
     return []
