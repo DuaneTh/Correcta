@@ -284,6 +284,35 @@ Plans:
 
 ---
 
+## Phase 10: Area Tool Overhaul
+
+**Goal:** Refonte complète de l'outil d'aire dans l'éditeur graphique — permettre le drag-and-drop d'une aire sur une zone délimitée par plusieurs courbes, segments ou autres formes, avec détection automatique de la zone fermée et personnalisation du nom et de la couleur.
+
+**Dependencies:** Phase 9 (Graph Editor Overhaul)
+
+**Requirements:**
+- AREA-01: Drag-and-drop d'aire sur le canvas avec détection automatique de zone fermée
+- AREA-02: Support des zones délimitées par plusieurs éléments (courbes, segments, axes)
+- AREA-03: Personnalisation de l'aire (nom/label, couleur, opacité)
+- AREA-04: Gestion correcte de l'aire entre deux fonctions ou plus
+- AREA-05: Intégration seamless avec le système de formes existant
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 10-01-PLAN.md — Region detection utilities (TDD): intersection solver + boundary tracer
+- [ ] 10-02-PLAN.md — Area properties panel for color, opacity, label customization
+- [ ] 10-03-PLAN.md — Enhanced EditableArea with multi-function region detection
+
+**Success Criteria:**
+1. Teacher can drag an area tool onto the canvas and drop it inside a closed region
+2. Area automatically fills the zone bounded by surrounding curves/segments
+3. Teacher can customize area name, color, and opacity via properties panel
+4. Area between two functions (e.g., f(x) and g(x)) renders correctly
+5. Area data persists correctly in GraphPayload and renders on reload
+
+---
+
 ## Progress
 
 | Phase | Goal | Requirements | Status |
@@ -297,6 +326,7 @@ Plans:
 | 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | Complete |
 | 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
 | 9 - Graph Editor Overhaul | Dual-mode graph editor (drag-and-drop + function-based) | GRAPH-01 through GRAPH-05 | Planned |
+| 10 - Area Tool Overhaul | Drag-and-drop area tool with multi-curve boundary detection | AREA-01 through AREA-05 | Planned |
 
 ---
 
@@ -319,8 +349,9 @@ Plans:
 - Phase 7: Webcam is deterrent ONLY (no recording, no snapshots, no AI Vision). Uses native getUserMedia, not react-webcam. Focus loss pattern analysis is the core intelligence.
 - Phase 8: Uses GPT-4o native PDF support (no pdf-parse). BullMQ async processing. react-dropzone for upload UI. All other infrastructure already exists.
 - Phase 9: Uses react-konva for interactive canvas, click-to-add shape palette (not drag from palette), existing form editor extracted as Advanced mode. Builds on existing GraphSegment data model without changes.
+- Phase 10: Uses heuristic intersection detection (bisection method), point-in-polygon validation. Properties panel for area customization. Builds on existing EditableArea component.
 
 ---
 
 *Roadmap created: 2026-01-18*
-*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements*
+*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements + 5 AREA requirements*
