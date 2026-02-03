@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react'
-import { Line, Group, Circle, Rect, Text as KonvaText } from 'react-konva'
+import React, { useCallback, useMemo, useState } from 'react'
+import { Line, Group, Circle, Text as KonvaText } from 'react-konva'
 import { GraphArea, GraphAxes, GraphAnchor, GraphFunction, GraphLine } from '@/types/exams'
 import { graphToPixel, pixelToGraph } from '../../coordinate-utils'
 import { compileExpression } from '@/components/exams/graph-utils'
@@ -727,25 +727,30 @@ export const EditableArea = React.memo<EditableAreaProps>(({
     const fillOpacity = area.fill?.opacity ?? 0.35
 
     // Calculate boundary button positions (only when selected)
-    // Shows buttons for ALL nearby functions and lines, not just those in boundaryIds
+    // Shows small buttons at the edge of the polygon, pointing toward nearby boundaries
     const boundaryButtons = useMemo(() => {
-        if (!isSelected) return []
+        if (!isSelected || outline.length < 3) return []
 
         const buttons: Array<{
             id: string
             x: number
             y: number
             isExtended: boolean
-            label: string
         }> = []
 
-        const centroid = outline.length > 0
-            ? outline.reduce((acc, pt) => ({ x: acc.x + pt.x / outline.length, y: acc.y + pt.y / outline.length }), { x: 0, y: 0 })
-            : controlPoint
+        // Find polygon centroid
+        const centroid = outline.reduce(
+            (acc, pt) => ({ x: acc.x + pt.x / outline.length, y: acc.y + pt.y / outline.length }),
+            { x: 0, y: 0 }
+        )
 
-        const threshold = 5.0 // Distance threshold for showing buttons
+        // Find polygon bounding box
+        const minX = Math.min(...outline.map(p => p.x))
+        const maxX = Math.max(...outline.map(p => p.x))
+        const minY = Math.min(...outline.map(p => p.y))
+        const maxY = Math.max(...outline.map(p => p.y))
 
-        // Add buttons for all nearby functions
+        // Add buttons for nearby functions (at top/bottom edge of polygon)
         for (const func of functions) {
             const evaluator = compileExpression(func.expression)
             if (!evaluator) continue
@@ -755,68 +760,78 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             const scaleY = func.scaleY ?? 1
 
             try {
-                const yAtCentroid = scaleY * evaluator(centroid.x - offsetX) + offsetY
-                if (!Number.isFinite(yAtCentroid)) continue
+                const yAtCenter = scaleY * evaluator(centroid.x - offsetX) + offsetY
+                if (!Number.isFinite(yAtCenter)) continue
 
-                const distance = Math.abs(centroid.y - yAtCentroid)
-                if (distance > threshold) continue
+                // Check if function is near the polygon
+                const isAbove = yAtCenter > centroid.y
+                const edgeY = isAbove ? maxY : minY
+                const distToEdge = Math.abs(yAtCenter - edgeY)
+
+                if (distToEdge > 2) continue // Too far
 
                 const isExtended = area.ignoredBoundaries?.includes(func.id) || false
 
-                // Position button between centroid and curve
-                const buttonPos = {
-                    x: centroid.x,
-                    y: (centroid.y + yAtCentroid) / 2
-                }
+                // Position button at polygon edge
+                const buttonPos = { x: centroid.x, y: edgeY }
                 const pixel = graphToPixel(buttonPos, axes, width, height)
 
                 buttons.push({
                     id: func.id,
                     x: pixel.x,
-                    y: pixel.y,
-                    isExtended,
-                    label: func.label || `f(x)`
+                    y: pixel.y + (isAbove ? -12 : 12), // Offset outside polygon
+                    isExtended
                 })
             } catch { /* ignore */ }
         }
 
-        // Add buttons for all nearby lines
+        // Add buttons for nearby lines (at left/right edge or on the line)
         for (const line of lines) {
             if (line.start.type !== 'coord' || line.end.type !== 'coord') continue
 
-            const midX = (line.start.x + line.end.x) / 2
-            const midY = (line.start.y + line.end.y) / 2
+            const lx1 = line.start.x, ly1 = line.start.y
+            const lx2 = line.end.x, ly2 = line.end.y
 
-            const distance = Math.sqrt(
-                Math.pow(centroid.x - midX, 2) + Math.pow(centroid.y - midY, 2)
-            )
-            if (distance > threshold * 2) continue
+            // Check if vertical line
+            if (Math.abs(lx1 - lx2) < 0.1) {
+                const lineX = (lx1 + lx2) / 2
+                if (lineX < minX - 1 || lineX > maxX + 1) continue
 
-            const isExtended = area.ignoredBoundaries?.includes(line.id) || false
+                const isExtended = area.ignoredBoundaries?.includes(line.id) || false
+                const isLeft = lineX < centroid.x
+                const buttonPos = { x: lineX, y: centroid.y }
+                const pixel = graphToPixel(buttonPos, axes, width, height)
 
-            // Position button toward centroid from line midpoint
-            const buttonPos = {
-                x: midX + (centroid.x - midX) * 0.3,
-                y: midY + (centroid.y - midY) * 0.3
+                buttons.push({
+                    id: line.id,
+                    x: pixel.x + (isLeft ? -12 : 12),
+                    y: pixel.y,
+                    isExtended
+                })
             }
-            const pixel = graphToPixel(buttonPos, axes, width, height)
+            // Check if horizontal line
+            else if (Math.abs(ly1 - ly2) < 0.1) {
+                const lineY = (ly1 + ly2) / 2
+                if (lineY < minY - 1 || lineY > maxY + 1) continue
 
-            buttons.push({
-                id: line.id,
-                x: pixel.x,
-                y: pixel.y,
-                isExtended,
-                label: line.label || 'segment'
-            })
+                const isExtended = area.ignoredBoundaries?.includes(line.id) || false
+                const isBelow = lineY < centroid.y
+                const buttonPos = { x: centroid.x, y: lineY }
+                const pixel = graphToPixel(buttonPos, axes, width, height)
+
+                buttons.push({
+                    id: line.id,
+                    x: pixel.x,
+                    y: pixel.y + (isBelow ? 12 : -12),
+                    isExtended
+                })
+            }
         }
 
         return buttons
-    }, [isSelected, area.ignoredBoundaries, outline, controlPoint, functions, lines, axes, width, height])
+    }, [isSelected, area.ignoredBoundaries, outline, functions, lines, axes, width, height])
 
-    // Track if we need to re-detect after boundary toggle
-    const pendingRedetectRef = useRef<string[] | null>(null)
-
-    // Handle extend/collapse button click
+    // Handle extend/collapse button click - toggle boundary and recalculate area
     const handleBoundaryToggle = useCallback((boundaryId: string) => {
         const isCurrentlyExtended = area.ignoredBoundaries?.includes(boundaryId) || false
 
@@ -824,59 +839,35 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             ? (area.ignoredBoundaries || []).filter(id => id !== boundaryId)
             : [...(area.ignoredBoundaries || []), boundaryId]
 
-        // Store new ignored boundaries for re-detection
-        pendingRedetectRef.current = newIgnored
-
-        // First update ignoredBoundaries
-        onUpdate({
-            ...area,
-            ignoredBoundaries: newIgnored
-        })
-    }, [area, onUpdate])
-
-    // Re-detect area when ignoredBoundaries changes via toggle
-    useEffect(() => {
-        if (!pendingRedetectRef.current) return
-
-        const newIgnored = pendingRedetectRef.current
-        pendingRedetectRef.current = null
-
-        // Re-run detection logic with current position
+        // Recalculate area with new ignored boundaries
         const pos = controlPoint
         const threshold = 3.0
 
-        // Get nearby functions
-        const nearbyFuncs = functions
+        // Get nearby functions (excluding newly ignored ones)
+        const activeFuncs = functions
+            .filter(fn => !newIgnored.includes(fn.id))
             .map(fn => {
                 const nearest = findNearestFunction({ x: pos.x, y: pos.y }, [fn])
-                return nearest ? { type: 'function' as const, element: fn, distance: nearest.distance, y: nearest.y } : null
+                return nearest ? { element: fn, distance: nearest.distance } : null
             })
             .filter((x): x is NonNullable<typeof x> => x !== null)
+            .filter(b => b.distance < threshold)
 
-        // Get nearby lines
-        const nearbyLines = lines
+        // Get nearby lines (excluding newly ignored ones)
+        const activeLines = lines
+            .filter(ln => !newIgnored.includes(ln.id))
             .map(ln => {
                 const nearest = findNearestLine({ x: pos.x, y: pos.y }, [ln])
-                return nearest ? { type: 'line' as const, element: ln, distance: nearest.distance } : null
+                return nearest ? { element: ln, distance: nearest.distance } : null
             })
             .filter((x): x is NonNullable<typeof x> => x !== null)
-
-        // Filter out ignored boundaries
-        const activeFuncs = nearbyFuncs.filter(b => !newIgnored.includes(b.element.id))
-        const activeLines = nearbyLines.filter(b => !newIgnored.includes(b.element.id))
-
-        const closeFuncs = activeFuncs
-            .filter(b => b.distance < threshold)
-            .slice(0, 2)
-
-        const nearbyLineElements = activeLines
             .filter(b => b.distance < threshold)
             .map(b => b.element)
 
-        // Re-generate polygon based on active boundaries
-        if (closeFuncs.length >= 2) {
-            const func1 = closeFuncs[0].element
-            const func2 = closeFuncs[1].element
+        // Try to regenerate polygon with two functions
+        if (activeFuncs.length >= 2) {
+            const func1 = activeFuncs[0].element
+            const func2 = activeFuncs[1].element
 
             const intersections = findFunctionIntersections(
                 func1.expression,
@@ -885,12 +876,11 @@ export const EditableArea = React.memo<EditableAreaProps>(({
                 axes.xMax
             )
 
-            const nearbyVerticalLines = nearbyLineElements.filter(ln => isVerticalLine(ln))
-
             let domainMin = axes.xMin
             let domainMax = axes.xMax
 
-            for (const vLine of nearbyVerticalLines) {
+            // Apply vertical line constraints
+            for (const vLine of activeLines.filter(ln => isVerticalLine(ln))) {
                 const lineX = resolveAnchorX(vLine.start)
                 if (lineX < pos.x && lineX > domainMin) domainMin = lineX
                 if (lineX > pos.x && lineX < domainMax) domainMax = lineX
@@ -907,34 +897,34 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             }
 
             const polygon = generatePolygonBetweenCurves(func1, func2, domainMin, domainMax, 60)
-            const clippedPolygon = clipPolygonBySegments(polygon, nearbyLineElements, pos)
+            const clippedPolygon = clipPolygonBySegments(polygon, activeLines, pos)
 
             if (clippedPolygon.length >= 3) {
-                const newPoints: GraphAnchor[] = clippedPolygon.map((pt: { x: number; y: number }) => ({
+                const newPoints: GraphAnchor[] = clippedPolygon.map(pt => ({
                     type: 'coord' as const,
                     x: pt.x,
                     y: pt.y
                 }))
-
-                // Include ALL nearby boundaries (not just active ones) in boundaryIds
-                const allNearbyIds = [
-                    ...nearbyFuncs.filter(b => b.distance < threshold).map(b => b.element.id),
-                    ...nearbyLines.filter(b => b.distance < threshold).map(b => b.element.id)
-                ]
 
                 onUpdate({
                     ...area,
                     mode: 'between-functions',
                     functionId: func1.id,
                     functionId2: func2.id,
-                    boundaryIds: allNearbyIds,
                     domain: { min: domainMin, max: domainMax },
                     points: newPoints,
                     ignoredBoundaries: newIgnored
                 })
+                return
             }
         }
-    }, [area.ignoredBoundaries])
+
+        // Fallback: just update ignoredBoundaries without recalculating
+        onUpdate({
+            ...area,
+            ignoredBoundaries: newIgnored
+        })
+    }, [area, controlPoint, functions, lines, axes, onUpdate])
 
     // Control point element
     const controlElement = (
@@ -992,31 +982,38 @@ export const EditableArea = React.memo<EditableAreaProps>(({
 
             {/* Boundary extend/collapse buttons (only when selected) */}
             {isSelected && boundaryButtons.map(btn => (
-                <Group key={btn.id} x={btn.x} y={btn.y}>
+                <Group
+                    key={btn.id}
+                    x={btn.x}
+                    y={btn.y}
+                    onClick={(e) => {
+                        e.cancelBubble = true
+                        handleBoundaryToggle(btn.id)
+                    }}
+                    onTap={(e) => {
+                        e.cancelBubble = true
+                        handleBoundaryToggle(btn.id)
+                    }}
+                >
                     {/* Button background */}
                     <Circle
-                        radius={14}
-                        fill={btn.isExtended ? '#ef4444' : '#22c55e'}
+                        radius={9}
+                        fill={btn.isExtended ? '#dc2626' : '#16a34a'}
                         stroke="white"
-                        strokeWidth={2}
-                        shadowColor="black"
-                        shadowBlur={4}
-                        shadowOpacity={0.3}
-                        onClick={() => handleBoundaryToggle(btn.id)}
-                        onTap={() => handleBoundaryToggle(btn.id)}
+                        strokeWidth={1.5}
                     />
                     {/* Plus or Minus symbol */}
                     <KonvaText
                         text={btn.isExtended ? '−' : '+'}
-                        fontSize={18}
+                        fontSize={14}
                         fontStyle="bold"
                         fill="white"
+                        width={18}
+                        height={18}
+                        offsetX={9}
+                        offsetY={9}
                         align="center"
                         verticalAlign="middle"
-                        width={28}
-                        height={28}
-                        offsetX={14}
-                        offsetY={14}
                         listening={false}
                     />
                 </Group>
