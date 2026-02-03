@@ -23,7 +23,7 @@
 **Phase:** 10 of 10 (Area Tool Overhaul)
 **Plan:** 1 of 3
 **Status:** In progress
-**Last activity:** 2026-02-03 - Completed 10-02-PLAN.md
+**Last activity:** 2026-02-03 - Completed 10-01-PLAN.md
 
 **Progress:**
 ```
@@ -144,6 +144,11 @@ Phase 10: Area Tool Overhaul      [███░░░░░░░] 1/3 plans com
 | Opacity slider with 5% step increments | Fine enough control for most cases, prevents overwhelming precision | 10 |
 | Area gets dedicated properties panel | Areas have more customizable properties than other shapes | 10 |
 | Inline localization for properties panel | Simple two-language support, consistent with existing graph editor pattern | 10 |
+| Bisection method for intersection detection | More robust than Newton's for discontinuous functions | 10 |
+| 200+ sample points for sign change detection | Ensures all intersections found in domain | 10 |
+| Axis visibility detection | x-axis at y=0 only boundary if yMin ≤ 0 ≤ yMax | 10 |
+| Function transformations in sampler | offsetX shifts domain, offsetY/scaleY transform range | 10 |
+| Parametric line intersection | Standard t/u approach handles segment/line/ray cleanly | 10 |
 
 ### Technical Patterns
 
@@ -222,11 +227,13 @@ Phase 10: Area Tool Overhaul      [███░░░░░░░] 1/3 plans com
   - 08-01 complete: Backend extraction pipeline (GPT-4o + BullMQ + worker)
   - 08-02 complete: API routes for upload and status polling
   - 08-03 complete: PDF import UI integration
-- Phase 9 started: Graph Editor Overhaul — dual-mode graph editor (drag-and-drop + function-based)
+- Phase 9 complete: Graph Editor Overhaul — dual-mode graph editor (drag-and-drop + function-based)
   - 09-01 complete: Foundation infrastructure (types, utils, deps, AdvancedGraphEditor extracted)
   - 09-02 complete: Interactive canvas with editable shapes (react-konva)
   - 09-03 complete: Simple mode editor and dual-mode wrapper (ShapePalette, SimpleGraphEditor, GraphEditorWrapper)
-- Phase 10 added: Area Tool Overhaul — refonte de l'outil d'aire avec drag-and-drop et détection multi-courbes
+  - 09-04 complete: Integration and export of dual-mode graph editor
+- Phase 10 started: Area Tool Overhaul — refonte de l'outil d'aire avec drag-and-drop et détection multi-courbes
+  - 10-01 complete: Region detection utilities (intersection solver + boundary tracer with TDD)
 
 ### Known Issues
 
@@ -282,8 +289,8 @@ Phase 10: Area Tool Overhaul      [███░░░░░░░] 1/3 plans com
 
 ## Session Continuity
 
-**Last session:** 2026-02-03 20:23 UTC
-**Stopped at:** Completed 10-02-PLAN.md
+**Last session:** 2026-02-03 20:28 UTC
+**Stopped at:** Completed 10-01-PLAN.md
 **Resume file:** None
 
 ### Resumption Prompt
@@ -301,8 +308,8 @@ Phase 8: PDF Exam Import (3 plans) ✓
 Phase 9: Graph Editor Overhaul (4 plans) ✓
 Phase 10: Area Tool Overhaul (1/3 plans) - IN PROGRESS
 
-Latest: 10-02 (Area Properties Panel) complete.
-Area customization UI ready: color presets, opacity slider, label controls integrated into SimpleGraphEditor.
+Latest: 10-01 (Region Detection Utilities) complete.
+TDD-driven intersection solver and boundary tracer ready: bisection-based algorithm, axis support, 20 tests passing.
 ```
 
 ### Context Files
@@ -340,11 +347,11 @@ Area customization UI ready: color presets, opacity slider, label controls integ
 - `.planning/phases/09-graph-editor-overhaul/09-01-SUMMARY.md` - Graph Editor Foundation Infrastructure summary
 - `.planning/phases/09-graph-editor-overhaul/09-02-SUMMARY.md` - Interactive Canvas with Editable Shapes summary
 - `.planning/phases/09-graph-editor-overhaul/09-03-SUMMARY.md` - Simple Mode Editor and Dual-Mode Wrapper summary
-- `.planning/phases/10-area-tool-overhaul/10-02-SUMMARY.md` - Area Properties Panel summary
+- `.planning/phases/10-area-tool-overhaul/10-01-SUMMARY.md` - Region Detection Utilities summary
 
 ---
 
 *State initialized: 2026-01-18*
-*Last execution: 2026-02-03 - Completed 10-02 (Area Properties Panel)*
+*Last execution: 2026-02-03 - Completed 10-01 (Region Detection Utilities)*
 *Phase 10 in progress: 1/3 plans complete*
 *Total: 37 plans delivered*
