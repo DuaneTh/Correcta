@@ -356,25 +356,8 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
             })
         })
 
-        // Add visible axes
-        const axes = value.axes
-        // X-axis (y=0) is visible if yMin <= 0 <= yMax
-        if (axes.yMin <= 0 && axes.yMax >= 0) {
-            boundaries.push({
-                id: 'x-axis',
-                label: isFrench ? 'Axe X (y=0)' : 'X-axis (y=0)',
-                type: 'axis'
-            })
-        }
-
-        // Y-axis (x=0) is visible if xMin <= 0 <= xMax
-        if (axes.xMin <= 0 && axes.xMax >= 0) {
-            boundaries.push({
-                id: 'y-axis',
-                label: isFrench ? 'Axe Y (x=0)' : 'Y-axis (x=0)',
-                type: 'axis'
-            })
-        }
+        // Note: Axes are NOT included as automatic boundaries
+        // Users must use explicit line segments if they want axis-like boundaries
 
         return boundaries
     }, [selectedArea, value.functions, value.lines, value.axes, isFrench])

@@ -168,22 +168,153 @@ function isVerticalLine(line: GraphLine): boolean {
 }
 
 /**
- * Get visible axes as boundary elements
+ * Get visible axes as boundary elements.
+ * Note: Axes are NOT automatically treated as boundaries.
+ * They only become boundaries when explicitly included in boundaryIds or when
+ * using "under-function" mode (which implies x-axis as floor).
  */
 function getVisibleAxes(axes: GraphAxes): Array<{ type: 'axis'; axis: 'x' | 'y'; value: number }> {
-    const result: Array<{ type: 'axis'; axis: 'x' | 'y'; value: number }> = []
+    // Return empty - axes are no longer automatic boundaries
+    // Users can add them explicitly via the extend panel if needed
+    return []
+}
 
-    // X-axis (y=0) is visible if yMin <= 0 <= yMax
-    if (axes.yMin <= 0 && axes.yMax >= 0) {
-        result.push({ type: 'axis', axis: 'x', value: 0 })
+/**
+ * Check if a line (segment) is horizontal
+ */
+function isHorizontalLine(line: GraphLine): boolean {
+    if (line.start.type !== 'coord' || line.end.type !== 'coord') return false
+    return Math.abs(line.start.y - line.end.y) < 0.001
+}
+
+/**
+ * Get line Y value at a given X (for non-vertical lines)
+ */
+function getLineYAtX(line: GraphLine, x: number): number | null {
+    if (line.start.type !== 'coord' || line.end.type !== 'coord') return null
+    const { x: x1, y: y1 } = line.start
+    const { x: x2, y: y2 } = line.end
+
+    const dx = x2 - x1
+    if (Math.abs(dx) < 0.001) return null // Vertical line
+
+    const t = (x - x1) / dx
+
+    // Check if x is within segment bounds (with small tolerance)
+    if (line.kind === 'segment' && (t < -0.01 || t > 1.01)) return null
+    if (line.kind === 'ray' && t < -0.01) return null
+
+    return y1 + t * (y2 - y1)
+}
+
+/**
+ * Check if a point is inside a line segment's bounding box (with margin)
+ */
+function isPointNearSegment(point: { x: number; y: number }, line: GraphLine, margin: number = 0.5): boolean {
+    if (line.start.type !== 'coord' || line.end.type !== 'coord') return false
+    const minX = Math.min(line.start.x, line.end.x) - margin
+    const maxX = Math.max(line.start.x, line.end.x) + margin
+    const minY = Math.min(line.start.y, line.end.y) - margin
+    const maxY = Math.max(line.start.y, line.end.y) + margin
+    return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+}
+
+/**
+ * Determine which side of a line a point is on.
+ * Returns positive if point is on the "left" side, negative if on "right", 0 if on line.
+ */
+function pointLineSide(point: { x: number; y: number }, lineStart: { x: number; y: number }, lineEnd: { x: number; y: number }): number {
+    return (lineEnd.x - lineStart.x) * (point.y - lineStart.y) - (lineEnd.y - lineStart.y) * (point.x - lineStart.x)
+}
+
+/**
+ * Find intersection point of two line segments
+ */
+function segmentIntersection(
+    p1: { x: number; y: number }, p2: { x: number; y: number },
+    p3: { x: number; y: number }, p4: { x: number; y: number }
+): { x: number; y: number } | null {
+    const d1x = p2.x - p1.x
+    const d1y = p2.y - p1.y
+    const d2x = p4.x - p3.x
+    const d2y = p4.y - p3.y
+
+    const denom = d1x * d2y - d1y * d2x
+    if (Math.abs(denom) < 0.0001) return null // Parallel
+
+    const t = ((p3.x - p1.x) * d2y - (p3.y - p1.y) * d2x) / denom
+    const u = ((p3.x - p1.x) * d1y - (p3.y - p1.y) * d1x) / denom
+
+    // Check if intersection is within both segments
+    if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
+        return {
+            x: p1.x + t * d1x,
+            y: p1.y + t * d1y
+        }
+    }
+    return null
+}
+
+/**
+ * Clip a polygon by line segments - keeps the portion containing dropPoint.
+ * Uses Sutherland-Hodgman-like algorithm for each segment.
+ */
+function clipPolygonBySegments(
+    polygon: Array<{ x: number; y: number }>,
+    segments: GraphLine[],
+    dropPoint: { x: number; y: number }
+): Array<{ x: number; y: number }> {
+    if (polygon.length < 3) return polygon
+
+    let currentPolygon = [...polygon]
+
+    for (const segment of segments) {
+        if (segment.start.type !== 'coord' || segment.end.type !== 'coord') continue
+        if (isVerticalLine(segment)) continue // Vertical lines are handled separately
+
+        const lineStart = { x: segment.start.x, y: segment.start.y }
+        const lineEnd = { x: segment.end.x, y: segment.end.y }
+
+        // Determine which side the drop point is on
+        const dropSide = pointLineSide(dropPoint, lineStart, lineEnd)
+        if (Math.abs(dropSide) < 0.01) continue // Point is on the line, skip
+
+        // Clip polygon to keep only the side containing dropPoint
+        const clipped: Array<{ x: number; y: number }> = []
+
+        for (let i = 0; i < currentPolygon.length; i++) {
+            const current = currentPolygon[i]
+            const next = currentPolygon[(i + 1) % currentPolygon.length]
+
+            const currentSide = pointLineSide(current, lineStart, lineEnd)
+            const nextSide = pointLineSide(next, lineStart, lineEnd)
+
+            const currentInside = (currentSide >= 0) === (dropSide >= 0) || Math.abs(currentSide) < 0.01
+            const nextInside = (nextSide >= 0) === (dropSide >= 0) || Math.abs(nextSide) < 0.01
+
+            if (currentInside) {
+                clipped.push(current)
+            }
+
+            // Check for intersection if crossing the line
+            if ((currentInside && !nextInside) || (!currentInside && nextInside)) {
+                // Find intersection with the clip line (extended as infinite line)
+                const intersection = segmentIntersection(current, next, lineStart, lineEnd)
+                if (intersection) {
+                    clipped.push(intersection)
+                }
+            }
+        }
+
+        if (clipped.length < 3) {
+            // Clipping removed everything, return original polygon
+            return polygon
+        }
+
+        currentPolygon = clipped
     }
 
-    // Y-axis (x=0) is visible if xMin <= 0 <= xMax
-    if (axes.xMin <= 0 && axes.xMax >= 0) {
-        result.push({ type: 'axis', axis: 'y', value: 0 })
-    }
-
-    return result
+    return currentPolygon
 }
 
 /**
@@ -379,6 +510,11 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             .filter((b): b is Extract<typeof b, { type: 'function' }> => b.type === 'function' && b.distance < threshold)
             .slice(0, 2)
 
+        // Get ALL nearby lines (segments) - not just vertical ones
+        const nearbyLineElements = activeBoundaries
+            .filter((b): b is Extract<typeof b, { type: 'line' }> => b.type === 'line' && b.distance < threshold)
+            .map(b => b.element)
+
         if (closeFuncs.length >= 2) {
             const func1 = closeFuncs[0].element
             const func2 = closeFuncs[1].element
@@ -391,14 +527,8 @@ export const EditableArea = React.memo<EditableAreaProps>(({
                 axes.xMax
             )
 
-            // Also check for line boundaries that might limit domain
-            const nearbyVerticalLines = activeBoundaries
-                .filter((b): b is Extract<typeof b, { type: 'line' }> => b.type === 'line' && b.distance < threshold)
-                .map(b => b.element)
-                .filter(ln => isVerticalLine(ln))
-
-            // Check for y-axis as boundary
-            const yAxisBoundary = activeBoundaries.find((b): b is Extract<typeof b, { type: 'axis' }> => b.type === 'axis' && b.axis === 'y' && b.distance < threshold)
+            // Vertical lines limit the domain
+            const nearbyVerticalLines = nearbyLineElements.filter(ln => isVerticalLine(ln))
 
             let domainMin = axes.xMin
             let domainMax = axes.xMax
@@ -408,12 +538,6 @@ export const EditableArea = React.memo<EditableAreaProps>(({
                 const lineX = resolveAnchorX(vLine.start)
                 if (lineX < newPos.x && lineX > domainMin) domainMin = lineX
                 if (lineX > newPos.x && lineX < domainMax) domainMax = lineX
-            }
-
-            // Y-axis (x=0) can also limit domain
-            if (yAxisBoundary) {
-                if (0 < newPos.x && 0 > domainMin) domainMin = 0
-                if (0 > newPos.x && 0 < domainMax) domainMax = 0
             }
 
             if (intersections.length >= 2) {
@@ -427,18 +551,20 @@ export const EditableArea = React.memo<EditableAreaProps>(({
                 }
             }
 
-            // Generate polygon
+            // Generate polygon between curves
             const polygon = generatePolygonBetweenCurves(func1, func2, domainMin, domainMax, 60)
 
-            if (polygon.length >= 3) {
-                const newPoints: GraphAnchor[] = polygon.map((pt: { x: number; y: number }) => ({
+            // Apply non-vertical segment boundaries as clipping
+            const clippedPolygon = clipPolygonBySegments(polygon, nearbyLineElements, newPos)
+
+            if (clippedPolygon.length >= 3) {
+                const newPoints: GraphAnchor[] = clippedPolygon.map((pt: { x: number; y: number }) => ({
                     type: 'coord' as const,
                     x: pt.x,
                     y: pt.y
                 }))
 
-                const boundaryIds = [func1.id, func2.id, ...nearbyVerticalLines.map(l => l.id)]
-                if (yAxisBoundary) boundaryIds.push('y-axis')
+                const boundaryIds = [func1.id, func2.id, ...nearbyLineElements.map(l => l.id)]
 
                 onUpdate({
                     ...area,
@@ -455,39 +581,87 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             }
         }
 
-        // PRIORITY 2: Function + Line(s) or Function + Axis
+        // PRIORITY 2: Function + Line segments
         const closeFunc = activeBoundaries.find((b): b is Extract<typeof b, { type: 'function' }> => b.type === 'function' && b.distance < threshold)
-        const closeLine = activeBoundaries.find((b): b is Extract<typeof b, { type: 'line' }> => b.type === 'line' && b.distance < threshold)
-        const closeAxis = activeBoundaries.find((b): b is Extract<typeof b, { type: 'axis' }> => b.type === 'axis' && b.distance < threshold)
 
-        if (closeFunc && (closeLine || closeAxis)) {
+        if (closeFunc && nearbyLineElements.length > 0) {
             const func = closeFunc.element
 
-            // Build boundary elements array for generatePolygonBoundedByElements
-            const boundaries: BoundaryElement[] = [{ type: 'function', element: func }]
+            // Check for horizontal segment as lower/upper bound
+            const horizontalLine = nearbyLineElements.find(ln => isHorizontalLine(ln))
+            const verticalLines = nearbyLineElements.filter(ln => isVerticalLine(ln))
 
-            if (closeLine) {
-                boundaries.push({ type: 'line', element: closeLine.element })
+            let polygon: Array<{ x: number; y: number }> = []
+
+            if (horizontalLine && horizontalLine.start.type === 'coord') {
+                // Area between function and horizontal line
+                const lineY = horizontalLine.start.y
+                let minX = axes.xMin
+                let maxX = axes.xMax
+
+                // Vertical lines limit domain
+                for (const vLine of verticalLines) {
+                    const lineX = resolveAnchorX(vLine.start)
+                    if (lineX < newPos.x && lineX > minX) minX = lineX
+                    if (lineX > newPos.x && lineX < maxX) maxX = lineX
+                }
+
+                // Sample function in domain
+                const samples = sampleFunctionInDomain(func, minX, maxX, 60)
+                if (samples.length >= 2) {
+                    polygon = [
+                        ...samples,
+                        { x: maxX, y: lineY },
+                        { x: minX, y: lineY }
+                    ]
+                }
+            } else if (verticalLines.length > 0) {
+                // Area bounded by function and vertical lines
+                let minX = axes.xMin
+                let maxX = axes.xMax
+
+                for (const vLine of verticalLines) {
+                    const lineX = resolveAnchorX(vLine.start)
+                    if (lineX < newPos.x && lineX > minX) minX = lineX
+                    if (lineX > newPos.x && lineX < maxX) maxX = lineX
+                }
+
+                const samples = sampleFunctionInDomain(func, minX, maxX, 60)
+                if (samples.length >= 2) {
+                    // Close with y=0 as default floor
+                    polygon = [
+                        ...samples,
+                        { x: maxX, y: 0 },
+                        { x: minX, y: 0 }
+                    ]
+                }
+            } else {
+                // Non-vertical, non-horizontal segments - clip function polygon
+                const samples = sampleFunctionInDomain(func, axes.xMin, axes.xMax, 60)
+                if (samples.length >= 2) {
+                    const minX = samples[0].x
+                    const maxX = samples[samples.length - 1].x
+                    polygon = [
+                        ...samples,
+                        { x: maxX, y: 0 },
+                        { x: minX, y: 0 }
+                    ]
+                }
             }
-            if (closeAxis) {
-                boundaries.push({ type: 'axis', axis: closeAxis.axis, value: closeAxis.value })
-            }
 
-            // Generate polygon bounded by elements (with axes parameter)
-            const polygon = generatePolygonBoundedByElements(boundaries, newPos, axes)
+            // Apply segment clipping for diagonal segments
+            const clippedPolygon = clipPolygonBySegments(polygon, nearbyLineElements, newPos)
 
-            if (polygon.length >= 3) {
-                const boundaryIds = [func.id]
-                if (closeLine) boundaryIds.push(closeLine.element.id)
-                if (closeAxis) boundaryIds.push(`${closeAxis.axis}-axis`)
+            if (clippedPolygon.length >= 3) {
+                const boundaryIds = [func.id, ...nearbyLineElements.map(l => l.id)]
 
                 onUpdate({
                     ...area,
-                    mode: closeAxis && !closeLine ? 'under-function' : 'between-line-and-function',
+                    mode: 'between-line-and-function',
                     functionId: func.id,
-                    lineId: closeLine ? closeLine.element.id : undefined,
+                    lineId: nearbyLineElements[0]?.id,
                     boundaryIds,
-                    points: polygon.map((pt: { x: number; y: number }) => ({ type: 'coord' as const, x: pt.x, y: pt.y })),
+                    points: clippedPolygon.map((pt: { x: number; y: number }) => ({ type: 'coord' as const, x: pt.x, y: pt.y })),
                     labelPos: newPos
                 })
                 setDragPos(null)
@@ -495,20 +669,32 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             }
         }
 
-        // PRIORITY 3: Under single function (fallback - use x-axis as implicit boundary when visible)
-        if (closeFunc) {
-            const func = closeFunc.element
+        // PRIORITY 3: Single function without lines - just create a local area around drop point
+        // Note: This does NOT automatically use x-axis as boundary
+        const singleFunc = activeBoundaries.find((b): b is Extract<typeof b, { type: 'function' }> => b.type === 'function' && b.distance < threshold)
+        if (singleFunc) {
+            const func = singleFunc.element
             const DOMAIN_HALF = 2.5
             const minX = newPos.x - DOMAIN_HALF
             const maxX = newPos.x + DOMAIN_HALF
-            const newPoints = generatePolygonUnderFunction(func, minX, maxX)
 
-            if (newPoints.length >= 3) {
+            // Sample the function to create a basic polygon
+            const samples = sampleFunctionInDomain(func, minX, maxX, 60)
+
+            if (samples.length >= 2) {
+                // Create a simple closed polygon (function + flat bottom at lowest point)
+                const minY = Math.min(...samples.map(s => s.y), newPos.y - 1)
+                const newPoints: GraphAnchor[] = [
+                    ...samples.map(pt => ({ type: 'coord' as const, x: pt.x, y: pt.y })),
+                    { type: 'coord' as const, x: maxX, y: minY },
+                    { type: 'coord' as const, x: minX, y: minY }
+                ]
+
                 onUpdate({
                     ...area,
                     mode: 'under-function',
                     functionId: func.id,
-                    boundaryIds: [func.id, 'x-axis'],
+                    boundaryIds: [func.id],
                     domain: { min: minX, max: maxX },
                     points: newPoints,
                     labelPos: newPos
