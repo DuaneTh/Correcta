@@ -332,6 +332,53 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
         return value.areas.find(a => a.id === selectedId) || null
     }, [selected, value.areas, selectedId])
 
+    // Compute potential boundaries for extend mode
+    const potentialBoundaries = useMemo(() => {
+        if (!selectedArea) return []
+
+        const boundaries: Array<{ id: string; label: string; type: 'function' | 'line' | 'axis' }> = []
+
+        // Add all functions
+        value.functions.forEach(fn => {
+            boundaries.push({
+                id: fn.id,
+                label: fn.label || `f(x) = ${fn.expression}`,
+                type: 'function'
+            })
+        })
+
+        // Add all lines
+        value.lines.forEach(ln => {
+            boundaries.push({
+                id: ln.id,
+                label: ln.label || `${ln.kind}`,
+                type: 'line'
+            })
+        })
+
+        // Add visible axes
+        const axes = value.axes
+        // X-axis (y=0) is visible if yMin <= 0 <= yMax
+        if (axes.yMin <= 0 && axes.yMax >= 0) {
+            boundaries.push({
+                id: 'x-axis',
+                label: isFrench ? 'Axe X (y=0)' : 'X-axis (y=0)',
+                type: 'axis'
+            })
+        }
+
+        // Y-axis (x=0) is visible if xMin <= 0 <= xMax
+        if (axes.xMin <= 0 && axes.xMax >= 0) {
+            boundaries.push({
+                id: 'y-axis',
+                label: isFrench ? 'Axe Y (x=0)' : 'Y-axis (x=0)',
+                type: 'axis'
+            })
+        }
+
+        return boundaries
+    }, [selectedArea, value.functions, value.lines, value.axes, isFrench])
+
     // Handle area update
     const handleAreaUpdate = useCallback((updatedArea: GraphArea) => {
         const updated: GraphPayload = {
@@ -391,6 +438,7 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
                                     area={selectedArea}
                                     onUpdate={handleAreaUpdate}
                                     locale={locale}
+                                    potentialBoundaries={potentialBoundaries}
                                 />
                                 <button
                                     type="button"

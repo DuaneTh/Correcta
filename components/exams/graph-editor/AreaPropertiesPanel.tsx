@@ -7,6 +7,8 @@ interface AreaPropertiesPanelProps {
   area: GraphArea
   onUpdate: (updated: GraphArea) => void
   locale?: string
+  /** All elements that could be boundaries (for extend mode) */
+  potentialBoundaries?: Array<{ id: string; label: string; type: 'function' | 'line' | 'axis' }>
 }
 
 const PRESET_COLORS = [
@@ -22,6 +24,7 @@ export const AreaPropertiesPanel = React.memo<AreaPropertiesPanelProps>(({
   area,
   onUpdate,
   locale = 'fr',
+  potentialBoundaries,
 }) => {
   const isFrench = locale === 'fr'
 
@@ -73,6 +76,13 @@ export const AreaPropertiesPanel = React.memo<AreaPropertiesPanelProps>(({
         opacity: percentage / 100,
       },
     })
+  }, [area, onUpdate])
+
+  const handleBoundaryToggle = useCallback((boundaryId: string, checked: boolean) => {
+    const newIgnored = checked
+      ? [...(area.ignoredBoundaries || []), boundaryId]
+      : (area.ignoredBoundaries || []).filter(id => id !== boundaryId)
+    onUpdate({ ...area, ignoredBoundaries: newIgnored })
   }, [area, onUpdate])
 
   return (
@@ -164,6 +174,37 @@ export const AreaPropertiesPanel = React.memo<AreaPropertiesPanelProps>(({
           <span>100%</span>
         </div>
       </div>
+
+      {/* Extend mode section */}
+      {potentialBoundaries && potentialBoundaries.length > 0 && (
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-600 uppercase">
+            {isFrench ? 'Étendre' : 'Extend'}
+          </label>
+          <p className="text-xs text-gray-500">
+            {isFrench
+              ? 'Cochez les lignes à traverser pour étendre l\'aire'
+              : 'Check lines to cross and extend the area'}
+          </p>
+          <div className="space-y-1">
+            {potentialBoundaries
+              .filter(b => area.boundaryIds?.includes(b.id))
+              .map(boundary => (
+                <label key={boundary.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={area.ignoredBoundaries?.includes(boundary.id) || false}
+                    onChange={(e) => handleBoundaryToggle(boundary.id, e.target.checked)}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="truncate">
+                    {boundary.label || `${boundary.type} ${boundary.id.slice(0, 6)}`}
+                  </span>
+                </label>
+              ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 })
