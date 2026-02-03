@@ -727,8 +727,9 @@ export const EditableArea = React.memo<EditableAreaProps>(({
     const fillOpacity = area.fill?.opacity ?? 0.35
 
     // Calculate boundary button positions (only when selected)
+    // Shows buttons for ALL nearby functions and lines, not just those in boundaryIds
     const boundaryButtons = useMemo(() => {
-        if (!isSelected || !area.boundaryIds || area.boundaryIds.length === 0) return []
+        if (!isSelected) return []
 
         const buttons: Array<{
             id: string
@@ -742,63 +743,75 @@ export const EditableArea = React.memo<EditableAreaProps>(({
             ? outline.reduce((acc, pt) => ({ x: acc.x + pt.x / outline.length, y: acc.y + pt.y / outline.length }), { x: 0, y: 0 })
             : controlPoint
 
-        // For each boundary, find a position on the edge of the polygon
-        for (const boundaryId of area.boundaryIds) {
-            const isExtended = area.ignoredBoundaries?.includes(boundaryId) || false
+        const threshold = 5.0 // Distance threshold for showing buttons
 
-            // Find the corresponding element
-            const func = functions.find(f => f.id === boundaryId)
-            const line = lines.find(l => l.id === boundaryId)
+        // Add buttons for all nearby functions
+        for (const func of functions) {
+            const evaluator = compileExpression(func.expression)
+            if (!evaluator) continue
 
-            let buttonPos = { x: centroid.x, y: centroid.y }
-            let label = ''
+            const offsetX = func.offsetX ?? 0
+            const offsetY = func.offsetY ?? 0
+            const scaleY = func.scaleY ?? 1
 
-            if (func) {
-                // Position button at the function curve, offset from centroid
-                const evaluator = compileExpression(func.expression)
-                if (evaluator) {
-                    const offsetX = func.offsetX ?? 0
-                    const offsetY = func.offsetY ?? 0
-                    const scaleY = func.scaleY ?? 1
-                    try {
-                        const yAtCentroid = scaleY * evaluator(centroid.x - offsetX) + offsetY
-                        if (Number.isFinite(yAtCentroid)) {
-                            // Position between centroid and curve
-                            buttonPos = {
-                                x: centroid.x,
-                                y: (centroid.y + yAtCentroid) / 2
-                            }
-                        }
-                    } catch { /* ignore */ }
+            try {
+                const yAtCentroid = scaleY * evaluator(centroid.x - offsetX) + offsetY
+                if (!Number.isFinite(yAtCentroid)) continue
+
+                const distance = Math.abs(centroid.y - yAtCentroid)
+                if (distance > threshold) continue
+
+                const isExtended = area.ignoredBoundaries?.includes(func.id) || false
+
+                // Position button between centroid and curve
+                const buttonPos = {
+                    x: centroid.x,
+                    y: (centroid.y + yAtCentroid) / 2
                 }
-                label = func.label || `f(x)`
-            } else if (line && line.start.type === 'coord' && line.end.type === 'coord') {
-                // Position button at the midpoint of the line segment
-                const midX = (line.start.x + line.end.x) / 2
-                const midY = (line.start.y + line.end.y) / 2
+                const pixel = graphToPixel(buttonPos, axes, width, height)
 
-                // Move slightly toward centroid
-                buttonPos = {
-                    x: midX + (centroid.x - midX) * 0.3,
-                    y: midY + (centroid.y - midY) * 0.3
-                }
-                label = line.label || 'segment'
+                buttons.push({
+                    id: func.id,
+                    x: pixel.x,
+                    y: pixel.y,
+                    isExtended,
+                    label: func.label || `f(x)`
+                })
+            } catch { /* ignore */ }
+        }
+
+        // Add buttons for all nearby lines
+        for (const line of lines) {
+            if (line.start.type !== 'coord' || line.end.type !== 'coord') continue
+
+            const midX = (line.start.x + line.end.x) / 2
+            const midY = (line.start.y + line.end.y) / 2
+
+            const distance = Math.sqrt(
+                Math.pow(centroid.x - midX, 2) + Math.pow(centroid.y - midY, 2)
+            )
+            if (distance > threshold * 2) continue
+
+            const isExtended = area.ignoredBoundaries?.includes(line.id) || false
+
+            // Position button toward centroid from line midpoint
+            const buttonPos = {
+                x: midX + (centroid.x - midX) * 0.3,
+                y: midY + (centroid.y - midY) * 0.3
             }
-
-            // Convert to pixels
             const pixel = graphToPixel(buttonPos, axes, width, height)
 
             buttons.push({
-                id: boundaryId,
+                id: line.id,
                 x: pixel.x,
                 y: pixel.y,
                 isExtended,
-                label
+                label: line.label || 'segment'
             })
         }
 
         return buttons
-    }, [isSelected, area.boundaryIds, area.ignoredBoundaries, outline, controlPoint, functions, lines, axes, width, height])
+    }, [isSelected, area.ignoredBoundaries, outline, controlPoint, functions, lines, axes, width, height])
 
     // Track if we need to re-detect after boundary toggle
     const pendingRedetectRef = useRef<string[] | null>(null)
