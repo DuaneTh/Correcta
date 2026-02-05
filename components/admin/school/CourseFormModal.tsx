@@ -26,9 +26,20 @@ type CourseFormModalProps = {
         courseCodePlaceholder: string
         courseNamePlaceholder: string
         cancelArchiveButton: string
+        confirmArchiveButton: string
         createCourseButton: string
         saveButton: string
         saveError: string
+        saving: string
+        searchTeachersPlaceholder: string
+        emptyTeachers: string
+        classes: {
+            noValidStudentsInFile: string
+            deleteSectionConfirm: string
+            emptyTeachersDropdown: string
+            noAdditionalSections: string
+            noSectionsForCourse: string
+        }
     }
 }
 
@@ -208,7 +219,7 @@ export default function CourseFormModal({
                 }
 
                 if (students.length === 0) {
-                    setCsvError('Aucun etudiant valide trouve dans le fichier')
+                    setCsvError(dict.classes.noValidStudentsInFile)
                     return
                 }
 
@@ -1002,7 +1013,7 @@ export default function CourseFormModal({
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/30">
                     <div className="bg-white rounded-lg shadow-xl p-6 max-w-sm mx-4">
                         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                            Supprimer la section ?
+                            {dict.classes.deleteSectionConfirm}
                         </h3>
                         <p className="text-sm text-gray-600 mb-4">
                             Etes-vous sur de vouloir supprimer la section <strong>{sectionToDelete.name}</strong> ?
@@ -1013,13 +1024,13 @@ export default function CourseFormModal({
                                 variant="secondary"
                                 onClick={cancelDeleteExistingSection}
                             >
-                                Annuler
+                                {dict.cancelArchiveButton}
                             </Button>
                             <Button
                                 variant="destructive"
                                 onClick={confirmDeleteExistingSection}
                             >
-                                Supprimer
+                                {dict.confirmArchiveButton}
                             </Button>
                         </Inline>
                     </div>
@@ -1280,7 +1291,7 @@ export default function CourseFormModal({
                                                                     variant="ghost"
                                                                     size="xs"
                                                                     onClick={() => askDeleteExistingSection(section.id, displayName)}
-                                                                    title="Supprimer"
+                                                                    title={dict.classes.deleteSectionConfirm}
                                                                     className="hover:text-red-600 hover:bg-red-50"
                                                                 >
                                                                     <Trash2 className="w-3.5 h-3.5" />
@@ -1299,7 +1310,7 @@ export default function CourseFormModal({
                                                                 </h5>
                                                                 <div className="border border-gray-200 rounded-lg max-h-28 overflow-y-auto bg-white">
                                                                     {teachers.length === 0 ? (
-                                                                        <p className="p-2 text-xs text-gray-400">Aucun professeur disponible</p>
+                                                                        <p className="p-2 text-xs text-gray-400">{dict.classes.emptyTeachersDropdown}</p>
                                                                     ) : (
                                                                         teachers.map(teacher => {
                                                                             const isCurrentlyEnrolled = section.enrollments.some(e => e.user.id === teacher.id && e.role === 'TEACHER')
@@ -1499,7 +1510,7 @@ export default function CourseFormModal({
                                                                 </h5>
                                                                 <div className="border border-gray-200 rounded-lg max-h-28 overflow-y-auto">
                                                                     {teachers.length === 0 ? (
-                                                                        <p className="p-2 text-xs text-gray-400">Aucun professeur disponible</p>
+                                                                        <p className="p-2 text-xs text-gray-400">{dict.classes.emptyTeachersDropdown}</p>
                                                                     ) : (
                                                                         teachers.map(teacher => (
                                                                             <label
@@ -1638,14 +1649,14 @@ export default function CourseFormModal({
                             {/* Empty state */}
                             {!editCourse && sectionsToCreate.length === 0 && (
                                 <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                                    Aucune section supplementaire.
+                                    {dict.classes.noAdditionalSections}
                                     Les professeurs et etudiants seront inscrits dans la section par defaut.
                                 </div>
                             )}
 
                             {editCourse && courseExistingSections.length === 0 && sectionsToCreate.length === 0 && (
                                 <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-8 text-center text-sm text-gray-500">
-                                    Aucune section pour ce cours.
+                                    {dict.classes.noSectionsForCourse}
                                     Utilisez le champ ci-dessus pour en ajouter.
                                 </div>
                             )}
@@ -1659,12 +1670,12 @@ export default function CourseFormModal({
                                 type="text"
                                 value={teacherSearch}
                                 onChange={(e) => setTeacherSearch(e.target.value)}
-                                placeholder="Rechercher un professeur..."
+                                placeholder={dict.searchTeachersPlaceholder}
                             />
 
                             {filteredTeachers.length === 0 ? (
                                 <div className="text-center py-8 text-gray-500">
-                                    Aucun professeur trouve
+                                    {dict.emptyTeachers}
                                 </div>
                             ) : (
                                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-200 max-h-64 overflow-y-auto">
@@ -1839,7 +1850,7 @@ export default function CourseFormModal({
                         onClick={handleSave}
                         disabled={saving}
                     >
-                        {saving ? 'Enregistrement...' : (editCourse ? (dict.saveButton || 'Enregistrer') : dict.createCourseButton)}
+                        {saving ? dict.saving : (editCourse ? dict.saveButton : dict.createCourseButton)}
                     </Button>
                 </div>
             </div>

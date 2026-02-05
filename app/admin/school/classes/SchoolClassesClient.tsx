@@ -893,9 +893,14 @@ export default function SchoolClassesClient({
                     courseCodePlaceholder: dict.courseCodePlaceholder,
                     courseNamePlaceholder: dict.courseNamePlaceholder,
                     cancelArchiveButton: dict.cancelArchiveButton,
+                    confirmArchiveButton: dict.confirmArchiveButton,
                     createCourseButton: dict.createCourseButton,
                     saveButton: dict.users.saveButton,
                     saveError: dict.saveError,
+                    saving: dict.saving,
+                    searchTeachersPlaceholder: dict.searchTeachersPlaceholder,
+                    emptyTeachers: dict.emptyTeachers,
+                    classes: dict.classes,
                 }}
             />
 

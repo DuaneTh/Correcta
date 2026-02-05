@@ -7,14 +7,16 @@ import { Card, CardBody } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
 import { cn } from '@/components/ui/cn'
+import type { Dictionary } from '@/lib/i18n/dictionaries'
 
 type NewExamMode = 'choose' | 'create' | 'import'
 
 type NewExamPageClientProps = {
     courses: { id: string; code: string; name: string }[]
+    dict: Dictionary
 }
 
-export default function NewExamPageClient({ courses }: NewExamPageClientProps) {
+export default function NewExamPageClient({ courses, dict }: NewExamPageClientProps) {
     const [mode, setMode] = useState<NewExamMode>('choose')
     const [selectedCourseId, setSelectedCourseId] = useState<string>(courses[0]?.id || '')
 
@@ -67,7 +69,7 @@ export default function NewExamPageClient({ courses }: NewExamPageClientProps) {
     // Mode: choose
     return (
         <div className="max-w-5xl mx-auto space-y-6">
-            <Text variant="pageTitle">Créer un nouvel examen</Text>
+            <Text variant="pageTitle">{dict.teacher.newExamPage.createNewTitle}</Text>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Option 1: Create from scratch */}
@@ -103,7 +105,7 @@ export default function NewExamPageClient({ courses }: NewExamPageClientProps) {
                             </div>
                         </div>
                         <div className="space-y-2">
-                            <Text variant="sectionTitle">Créer de zéro</Text>
+                            <Text variant="sectionTitle">{dict.teacher.newExamPage.createFromScratchTitle}</Text>
                             <Text variant="muted" className="text-center">
                                 Créez un examen en définissant manuellement les questions, le barème et les
                                 critères de correction
