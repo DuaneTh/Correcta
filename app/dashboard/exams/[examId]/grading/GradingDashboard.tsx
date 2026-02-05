@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/Badge'
 import { TextLink } from '@/components/ui/TextLink'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { StatPill } from '@/components/ui/StatPill'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 interface AttemptSummary {
     attemptId: string
@@ -682,12 +683,13 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                     </tbody>
                                 </table>
                             {sortedAttempts.length === 0 && (
-                                <div className="p-12 text-center">
-                                    <Text variant="muted">
-                                        {filterOption === 'all'
+                                <div className="p-12">
+                                    <EmptyState
+                                        title={filterOption === 'all'
                                             ? 'Aucune copie trouvee pour cet examen.'
                                             : `Aucune copie correspondant au filtre "${getFilterLabel(filterOption)}".`}
-                                    </Text>
+                                        size="full"
+                                    />
                                 </div>
                             )}
                         </div>

@@ -671,9 +671,9 @@ export default function SchoolUsersClient({
                                                     </div>
                                                 </div>
                                                 {enrollment.class.name !== '__DEFAULT__' && (
-                                                    <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700">
+                                                    <Badge variant="info">
                                                         {enrollment.class.name}
-                                                    </span>
+                                                    </Badge>
                                                 )}
                                             </div>
                                         </div>
