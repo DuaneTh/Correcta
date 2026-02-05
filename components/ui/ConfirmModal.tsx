@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { Button } from './Button'
 
 type ConfirmModalProps = {
     open: boolean
@@ -95,21 +96,21 @@ export default function ConfirmModal({
                 <h2 className="text-base font-semibold text-gray-900">{title}</h2>
                 <p className="mt-2 text-sm text-gray-600">{description}</p>
                 <div className="mt-6 flex justify-end gap-2">
-                    <button
+                    <Button
                         ref={cancelRef}
-                        type="button"
+                        variant="secondary"
+                        size="sm"
                         onClick={onCancel}
-                        className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
                     >
                         {cancelLabel}
-                    </button>
-                    <button
-                        type="button"
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size="sm"
                         onClick={onConfirm}
-                        className="rounded-md bg-brand-900 px-3 py-1.5 text-sm text-white hover:bg-brand-800"
                     >
                         {confirmLabel}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>
