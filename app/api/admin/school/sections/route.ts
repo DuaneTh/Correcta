@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getAuthSession, isSchoolAdmin } from '@/lib/api-auth'
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
 
@@ -49,6 +50,16 @@ export async function POST(req: NextRequest) {
 
     if (!session || !session.user || !isSchoolAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     const body = await req.json()
@@ -181,6 +192,16 @@ export async function PATCH(req: NextRequest) {
 
     if (!session || !session.user || !isSchoolAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     const body = await req.json()
@@ -331,6 +352,16 @@ export async function DELETE(req: NextRequest) {
 
     if (!session || !session.user || !isSchoolAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const csrfResult = verifyCsrf({
+        req,
+        cookieToken: getCsrfCookieToken(req),
+        headerToken: req.headers.get('x-csrf-token'),
+        allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     const body = await req.json()

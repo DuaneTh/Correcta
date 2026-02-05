@@ -6,6 +6,7 @@ import {
   isValidImageType,
   MAX_FILE_SIZE,
 } from '@/lib/storage/minio'
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 
 /**
  * POST /api/upload
@@ -41,6 +42,17 @@ export async function POST(request: NextRequest) {
         { error: 'Teacher role required to upload files' },
         { status: 403 }
       )
+    }
+
+    // Verify CSRF token
+    const csrfResult = verifyCsrf({
+      req: request,
+      cookieToken: getCsrfCookieToken(request),
+      headerToken: request.headers.get('x-csrf-token'),
+      allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+      return NextResponse.json({ error: 'CSRF' }, { status: 403 })
     }
 
     // Parse form data

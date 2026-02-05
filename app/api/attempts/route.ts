@@ -4,6 +4,7 @@ import { getAuthSession, isStudent } from "@/lib/api-auth"
 import { getExamEndAt } from "@/lib/exam-time"
 import { assertExamVariantShape, examAppliesToClassIds } from "@/lib/exam-variants"
 import { ensureAttemptNonce } from "@/lib/attemptIntegrity"
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 
 // POST /api/attempts - Start a new exam attempt
 export async function POST(req: NextRequest) {
@@ -16,6 +17,16 @@ export async function POST(req: NextRequest) {
 
         if (!isStudent(session)) {
             return NextResponse.json({ error: "Only students can start attempts" }, { status: 403 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: getCsrfCookieToken(req),
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
         const body = await req.json()
