@@ -300,9 +300,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Region detection utilities (TDD): intersection solver + boundary tracer
-- [ ] 10-02-PLAN.md — Area properties panel for color, opacity, label customization
-- [ ] 10-03-PLAN.md — Enhanced EditableArea with multi-function region detection
+- [x] 10-01-PLAN.md — Region detection utilities (TDD): intersection solver + boundary tracer
+- [x] 10-02-PLAN.md — Area properties panel for color, opacity, label customization
+- [x] 10-03-PLAN.md — Enhanced EditableArea with multi-function region detection + extend mode
 
 **Success Criteria:**
 1. Teacher can drag an area tool onto the canvas and drop it inside a closed region
@@ -310,6 +310,42 @@ Plans:
 3. Teacher can customize area name, color, and opacity via properties panel
 4. Area between two functions (e.g., f(x) and g(x)) renders correctly
 5. Area data persists correctly in GraphPayload and renders on reload
+
+---
+
+## Phase 11: Comprehensive Pre-Production Verification
+
+**Goal:** Vérification ultra complète de toutes les fonctionnalités du site avant publication — traductions, fonctionnalités, edge cases, sécurité, cohérence UI Kit sur toutes les pages.
+
+**Dependencies:** All phases (1-10)
+
+**Requirements:**
+- VERIF-01: Vérification complète des traductions FR/EN sur toutes les pages et composants
+- VERIF-02: Test de toutes les fonctionnalités utilisateur (création d'examen, correction AI, export, import PDF, graphes, proctoring)
+- VERIF-03: Détection et correction des edge cases (données vides, valeurs limites, erreurs réseau, sessions expirées)
+- VERIF-04: Audit de sécurité (CSRF, XSS, injection SQL, autorisations, validation des entrées, accès non autorisé)
+- VERIF-05: Vérification de la cohérence UI Kit (tous les composants utilisent le design system, pas de styles raw incohérents)
+- VERIF-06: Test des flux end-to-end par rôle (student, teacher, school admin, platform admin)
+- VERIF-07: Vérification de la robustesse (gestion d'erreurs, loading states, fallbacks, timeouts)
+- VERIF-08: Vérification de la performance et de l'accessibilité de base
+
+**Plans:** 6 plans
+
+Plans:
+- [ ] 11-01-PLAN.md — Translations audit: FR/EN dictionary parity and hardcoded string detection
+- [ ] 11-02-PLAN.md — Feature verification: end-to-end flows for all user roles
+- [ ] 11-03-PLAN.md — Edge cases and error handling: error boundaries, empty states, loading states
+- [ ] 11-04-PLAN.md — Security audit: CSRF, XSS, authorization, input validation
+- [ ] 11-05-PLAN.md — UI Kit consistency: design system compliance across all pages
+- [ ] 11-06-PLAN.md — Performance and accessibility baseline checks
+
+**Success Criteria:**
+1. Toutes les chaînes de traduction existent en FR et EN, aucune clé manquante
+2. Tous les flux utilisateur fonctionnent de bout en bout sans erreur pour chaque rôle
+3. Les edge cases identifiés sont traités avec des messages d'erreur appropriés
+4. Aucune vulnérabilité de sécurité critique (OWASP Top 10)
+5. 100% des pages utilisent les composants UI Kit de manière cohérente
+6. Les temps de chargement sont acceptables et les états de loading sont présents
 
 ---
 
@@ -326,7 +362,8 @@ Plans:
 | 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | Complete |
 | 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
 | 9 - Graph Editor Overhaul | Dual-mode graph editor (drag-and-drop + function-based) | GRAPH-01 through GRAPH-05 | Planned |
-| 10 - Area Tool Overhaul | Drag-and-drop area tool with multi-curve boundary detection | AREA-01 through AREA-05 | Planned |
+| 10 - Area Tool Overhaul | Drag-and-drop area tool with multi-curve boundary detection | AREA-01 through AREA-05 | Complete |
+| 11 - Pre-Production Verification | Vérification complète avant publication | VERIF-01 through VERIF-08 | Planned |
 
 ---
 
@@ -354,4 +391,4 @@ Plans:
 ---
 
 *Roadmap created: 2026-01-18*
-*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements + 5 AREA requirements*
+*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements + 5 AREA requirements + 8 VERIF requirements*
