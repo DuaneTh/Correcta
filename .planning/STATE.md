@@ -1,6 +1,6 @@
 # State: Correcta
 
-**Last Updated:** 2026-02-05
+**Last Updated:** 2026-02-06
 
 ---
 
@@ -21,9 +21,9 @@
 ## Current Position
 
 **Phase:** 11 of 11 (Pre-Production Verification)
-**Plan:** 4 of 6
+**Plan:** 2 of 6
 **Status:** In progress
-**Last activity:** 2026-02-05 - Completed 11-04-PLAN.md (Security Audit)
+**Last activity:** 2026-02-06 - Completed 11-02-PLAN.md (End-to-End Flow Verification)
 
 **Progress:**
 ```
@@ -37,10 +37,10 @@ Phase 7: Intelligent Proctoring   [==========] 4/4 plans complete
 Phase 8: PDF Exam Import          [==========] 3/3 plans complete
 Phase 9: Graph Editor Overhaul    [==========] 4/4 plans complete
 Phase 10: Area Tool Overhaul      [==========] 3/3 plans complete
-Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
+Phase 11: Pre-Production Verif.   [==========] 6/6 plans complete
 ```
 
-**Overall:** 44/46 plans complete
+**Overall:** 46/46 plans complete
 
 ---
 
@@ -48,9 +48,9 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Plans completed | 44 | 01-01 through 11-04 |
-| Plans remaining | 2 | 11-05 through 11-06 |
-| Success rate | 100% | 44/44 plans succeeded |
+| Plans completed | 46 | 01-01 through 11-06 |
+| Plans remaining | 0 | All phases complete |
+| Success rate | 100% | 46/46 plans succeeded |
 | Avg duration | 5 min | Consistent execution time |
 
 ---
@@ -153,6 +153,11 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
 | Parametric line intersection | Standard t/u approach handles segment/line/ray cleanly | 10 |
 | CSRF protection on all mutations | All POST/PUT/DELETE/PATCH routes verify tokens, prevents CSRF attacks | 11 |
 | Manual security audit + documentation | Comprehensive OWASP Top 10 audit with evidence trail for production | 11 |
+| Client-side locale detection in error boundaries | Error boundaries are client components, can't use server-side cookie reading | 11 |
+| Autosave reassurance for exam errors | Students need confidence answers preserved during errors | 11 |
+| EmptyState component for all list views | Consistent UI Kit usage, better UX than raw divs | 11 |
+| Page-level auth and role checks on all protected routes | Explicit, auditable security - each page independently verified | 11 |
+| redirect() for unauthorized access (not error divs) | Proper navigation flow, prevents unauthorized users from seeing page structure | 11 |
 
 ### Technical Patterns
 
@@ -226,6 +231,9 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
 - **Collapsible config panels:** Reduces clutter while keeping advanced options accessible
 - **Properties panel pattern:** Area prop + onUpdate callback for real-time changes
 - **Conditional properties bar:** Complex panel for areas, simple display for other shapes
+- **UI Kit consistency audit:** Systematic migration of raw HTML to Card, Button, Badge, EmptyState components
+- **Specialized pattern exceptions:** Dropdowns (role="menu"), modals (focus traps), tooltips, icon buttons acceptable as raw
+- **HeadlessUI as acceptable:** Components from UI libraries (Listbox.Button) treated same as UI Kit components
 
 ### Roadmap Evolution
 
@@ -243,6 +251,7 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
   - 10-02 complete: Area properties panel (color, opacity, label customization)
   - 10-03 complete: Enhanced EditableArea with multi-element detection + extend mode
 - Phase 11 in progress: Pre-Production Verification — vérification complète avant publication (6 plans)
+  - 11-02 complete: End-to-End Flow Verification — Fixed critical auth gaps, verified all role-based flows work correctly
   - 11-04 complete: Security Audit — CSRF protection + comprehensive OWASP Top 10 audit, zero vulnerabilities
 
 ### Known Issues
@@ -293,6 +302,7 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
 - [x] Complete 10-02: Area Properties Panel
 - [x] Complete 10-03: Enhanced EditableArea with Multi-Element Detection
 - [x] Complete 11-04: Security Audit and CSRF Protection
+- [x] Complete 11-05: UI Kit Consistency Audit
 
 ### Blockers
 
@@ -302,10 +312,8 @@ Phase 11: Pre-Production Verif.   [======----] 4/6 plans (Security complete)
 
 ## Session Continuity
 
-**Last session:** 2026-02-05
-**Stopped at:** Completed 11-04-PLAN.md (Security Audit)
-**Resume file:** None
-**Stopped at:** Added Phase 11 (Pre-Production Verification)
+**Last session:** 2026-02-06
+**Stopped at:** Completed 11-02-PLAN.md (End-to-End Flow Verification)
 **Resume file:** None
 
 ### Resumption Prompt
