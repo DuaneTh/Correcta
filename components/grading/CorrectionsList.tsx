@@ -5,6 +5,7 @@ import { Search } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { Text } from '@/components/ui/Text'
 import { Input } from '@/components/ui/Form'
 
@@ -125,9 +126,11 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
             </div>
 
             {filteredExams.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <Text variant="muted">{dict.emptyStateText}</Text>
-                </div>
+                <EmptyState
+                    title={dict.emptyStateText}
+                    description={searchQuery ? "Essayez de modifier votre recherche." : "Les examens publiés avec des soumissions apparaîtront ici."}
+                    size="full"
+                />
             ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <table className="min-w-full divide-y divide-gray-200">
