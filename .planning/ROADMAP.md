@@ -332,12 +332,12 @@ Plans:
 **Plans:** 6 plans
 
 Plans:
-- [ ] 11-01-PLAN.md — Translations audit: FR/EN dictionary parity and hardcoded string detection
-- [ ] 11-02-PLAN.md — Feature verification: end-to-end flows for all user roles
-- [ ] 11-03-PLAN.md — Edge cases and error handling: error boundaries, empty states, loading states
-- [ ] 11-04-PLAN.md — Security audit: CSRF, XSS, authorization, input validation
-- [ ] 11-05-PLAN.md — UI Kit consistency: design system compliance across all pages
-- [ ] 11-06-PLAN.md — Performance and accessibility baseline checks
+- [x] 11-01-PLAN.md — Translations audit: FR/EN dictionary parity and hardcoded string detection
+- [x] 11-02-PLAN.md — Feature verification: end-to-end flows for all user roles
+- [x] 11-03-PLAN.md — Edge cases and error handling: error boundaries, empty states, loading states
+- [x] 11-04-PLAN.md — Security audit: CSRF, XSS, authorization, input validation
+- [x] 11-05-PLAN.md — UI Kit consistency: design system compliance across all pages
+- [x] 11-06-PLAN.md — Performance and accessibility baseline checks
 
 **Success Criteria:**
 1. Toutes les chaînes de traduction existent en FR et EN, aucune clé manquante
@@ -363,7 +363,7 @@ Plans:
 | 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
 | 9 - Graph Editor Overhaul | Dual-mode graph editor (drag-and-drop + function-based) | GRAPH-01 through GRAPH-05 | Planned |
 | 10 - Area Tool Overhaul | Drag-and-drop area tool with multi-curve boundary detection | AREA-01 through AREA-05 | Complete |
-| 11 - Pre-Production Verification | Vérification complète avant publication | VERIF-01 through VERIF-08 | Planned |
+| 11 - Pre-Production Verification | Vérification complète avant publication | VERIF-01 through VERIF-08 | Complete |
 
 ---
 
