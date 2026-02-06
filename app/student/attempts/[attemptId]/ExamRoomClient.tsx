@@ -633,6 +633,7 @@ export default function ExamRoomClient({
                         </div>
                         <div className="rounded-md border border-gray-300 bg-gray-50 px-3 py-2">
                             <textarea
+                                aria-label={locale === "fr" ? "Déclaration sur l'honneur" : "Honor statement"}
                                 placeholder={locale === "fr" ? "Recopiez ici la déclaration sur l'honneur." : "Copy the honor statement here..."}
                                 className="w-full min-h-[80px] text-sm text-gray-900 placeholder-gray-400 focus:outline-none resize-none bg-transparent"
                                 value={honorText}

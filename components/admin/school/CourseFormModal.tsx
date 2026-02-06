@@ -1126,10 +1126,11 @@ export default function CourseFormModal({
                     {activeTab === 'info' && (
                         <Stack gap="md">
                             <Stack gap="xs">
-                                <Text as="label" variant="label">
+                                <Text as="label" variant="label" htmlFor="course-code">
                                     {dict.courseCodePlaceholder} *
                                 </Text>
                                 <Input
+                                    id="course-code"
                                     type="text"
                                     value={code}
                                     onChange={(e) => setCode(e.target.value)}
@@ -1137,10 +1138,11 @@ export default function CourseFormModal({
                                 />
                             </Stack>
                             <Stack gap="xs">
-                                <Text as="label" variant="label">
+                                <Text as="label" variant="label" htmlFor="course-name">
                                     {dict.courseNamePlaceholder} *
                                 </Text>
                                 <Input
+                                    id="course-name"
                                     type="text"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -1148,10 +1150,11 @@ export default function CourseFormModal({
                                 />
                             </Stack>
                             <Stack gap="xs">
-                                <Text as="label" variant="label">
+                                <Text as="label" variant="label" htmlFor="course-description">
                                     Description (optionnel)
                                 </Text>
                                 <Textarea
+                                    id="course-description"
                                     value={description}
                                     onChange={(e) => setDescription(e.target.value)}
                                     rows={3}

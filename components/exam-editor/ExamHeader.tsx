@@ -91,6 +91,7 @@ export default function ExamHeader() {
             {isEditingTitle ? (
               <input
                 type="text"
+                aria-label="Exam title"
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 onBlur={handleTitleBlur}
