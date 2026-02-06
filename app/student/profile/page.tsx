@@ -1,6 +1,5 @@
-import { getServerSession } from "next-auth"
-import { buildAuthOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { getAuthSession, isStudent } from "@/lib/api-auth"
 
 const ROLE_LABELS: Record<string, string> = {
     'STUDENT': 'ÉTUDIANT',
@@ -9,9 +8,17 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default async function StudentProfilePage() {
-    const session = await getServerSession(await buildAuthOptions())
+    const session = await getAuthSession()
 
-    if (!session) {
+    if (!session || !session.user) {
+        redirect('/login')
+    }
+
+    if (!isStudent(session)) {
+        const role = session.user.role
+        if (role === 'TEACHER' || role === 'SCHOOL_ADMIN' || role === 'PLATFORM_ADMIN') {
+            redirect('/teacher/courses')
+        }
         redirect('/login')
     }
 
