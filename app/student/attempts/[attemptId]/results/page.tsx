@@ -23,14 +23,14 @@ export default async function StudentResultsPage({
     })
 
     if (!attempt) {
-        return <div>Attempt not found</div>
+        redirect('/student/exams')
     }
 
     const isOwner = attempt.studentId === session.user.id
-    const isTeacher = session.user.role === 'TEACHER' || session.user.role === 'ADMIN'
+    const isTeacher = session.user.role === 'TEACHER' || session.user.role === 'ADMIN' || session.user.role === 'SCHOOL_ADMIN' || session.user.role === 'PLATFORM_ADMIN'
 
     if (!isOwner && !isTeacher) {
-        return <div>Unauthorized</div>
+        redirect('/student/exams')
     }
 
     const dictionary = await getDictionary()

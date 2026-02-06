@@ -1,7 +1,19 @@
+import { redirect } from "next/navigation"
+import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import CorrectionsList from "@/components/grading/CorrectionsList"
 import { getDictionary } from "@/lib/i18n/server"
 
 export default async function TeacherCorrectionsPage() {
+    const session = await getAuthSession()
+
+    if (!session || !session.user) {
+        redirect('/login')
+    }
+
+    if (!isTeacher(session)) {
+        redirect('/student/courses')
+    }
+
     const dictionary = await getDictionary()
 
     return (
