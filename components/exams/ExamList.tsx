@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
 import { ExamStatusBadge } from '@/components/teacher/ExamStatusBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Button } from '@/components/ui/Button'
 import { getExamEndAt } from '@/lib/exam-time'
 import { getCorrectionReleaseInfo } from '@/lib/correction-release'
 import { getCsrfToken } from '@/lib/csrfClient'
@@ -234,9 +236,19 @@ export default function ExamList({ dictionary }: ExamListProps) {
             </div>
 
             {filteredExams.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <p className="text-gray-500">{dict.emptyStateText}</p>
-                </div>
+                <EmptyState
+                    title={dict.emptyStateText}
+                    description={searchQuery ? "Essayez de modifier votre recherche." : undefined}
+                    action={
+                        !searchQuery ? (
+                            <Button variant="primary" size="sm" onClick={() => router.push('/teacher/exams/new')}>
+                                <Plus className="w-4 h-4" />
+                                {coursesDict.createExamButton}
+                            </Button>
+                        ) : undefined
+                    }
+                    size="full"
+                />
             ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <table className="min-w-full divide-y divide-gray-200">

@@ -1,9 +1,15 @@
 'use client'
 
 import { useMemo } from 'react'
-import Link from 'next/link'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { InstitutionInfo, PersonRow, CourseRow, SectionRow, ExamRow } from '@/lib/school-admin-data'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Grid, Inline, Stack } from '@/components/ui/Layout'
+import { StatPill } from '@/components/ui/StatPill'
+import { Text } from '@/components/ui/Text'
+import { TextLink } from '@/components/ui/TextLink'
+import { Badge } from '@/components/ui/Badge'
 
 type SchoolDashboardClientProps = {
     dictionary: Dictionary
@@ -18,62 +24,6 @@ type SchoolDashboardClientProps = {
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
 const isDefaultSection = (section: SectionRow) => section.name === DEFAULT_SECTION_NAME
 const isArchived = (value?: string | null) => Boolean(value)
-
-type StatCardProps = {
-    label: string
-    value: string | number
-    href: string
-}
-
-const StatCard = ({ label, value, href }: StatCardProps) => (
-    <Link
-        href={href}
-        className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:border-brand-200 hover:shadow-md"
-    >
-        <div className="text-xs uppercase text-gray-500">{label}</div>
-        <div className="mt-2 text-3xl font-semibold text-gray-900">{value}</div>
-    </Link>
-)
-
-type QuickActionProps = {
-    label: string
-    href: string
-    primary?: boolean
-}
-
-const QuickAction = ({ label, href, primary }: QuickActionProps) => (
-    <Link
-        href={href}
-        className={`rounded-md px-3 py-2 text-xs font-medium transition ${primary
-            ? 'bg-brand-900 text-white hover:bg-brand-800'
-            : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-        }`}
-    >
-        {label}
-    </Link>
-)
-
-type AttentionItemProps = {
-    label: string
-    count: number
-    href: string
-    type: 'warning' | 'info'
-}
-
-const AttentionItem = ({ label, count, href, type }: AttentionItemProps) => (
-    <Link
-        href={href}
-        className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 transition hover:bg-gray-100"
-    >
-        <span className="text-sm text-gray-700">{label}</span>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${type === 'warning'
-            ? 'bg-amber-100 text-amber-700'
-            : 'bg-blue-100 text-blue-700'
-        }`}>
-            {count}
-        </span>
-    </Link>
-)
 
 export default function SchoolDashboardClient({
     dictionary,
@@ -95,7 +45,7 @@ export default function SchoolDashboardClient({
     }), [teachers, students, courses, sections, exams])
 
     const attentionItems = useMemo(() => {
-        const items: AttentionItemProps[] = []
+        const items: Array<{ label: string; count: number; href: string; variant: 'warning' | 'info' }> = []
 
         // Courses without sections
         const coursesWithoutSections = courses.filter(c => {
@@ -110,7 +60,7 @@ export default function SchoolDashboardClient({
                 label: dict.dashboard.coursesWithoutSections,
                 count: coursesWithoutSections.length,
                 href: '/admin/school/classes?filter=no-sections',
-                type: 'warning',
+                variant: 'warning',
             })
         }
 
@@ -127,7 +77,7 @@ export default function SchoolDashboardClient({
                 label: dict.dashboard.sectionsWithoutStudents,
                 count: sectionsWithoutStudents.length,
                 href: '/admin/school/enrollments?filter=empty-sections',
-                type: 'warning',
+                variant: 'warning',
             })
         }
 
@@ -141,7 +91,7 @@ export default function SchoolDashboardClient({
                 label: dict.dashboard.teachersWithoutSections,
                 count: teachersWithoutSections.length,
                 href: '/admin/school/users?role=teacher&filter=unassigned',
-                type: 'info',
+                variant: 'info',
             })
         }
 
@@ -152,7 +102,7 @@ export default function SchoolDashboardClient({
                 label: dict.dashboard.draftExams,
                 count: draftExams.length,
                 href: '/admin/school/classes?tab=exams&filter=draft',
-                type: 'info',
+                variant: 'info',
             })
         }
 
@@ -167,6 +117,7 @@ export default function SchoolDashboardClient({
                 id: e.id,
                 title: e.title || dict.unknownName,
                 status: e.status === 'DRAFT' ? dict.examStatusDraft : dict.examStatusPublished,
+                statusVariant: e.status === 'DRAFT' ? 'neutral' : 'success' as const,
                 course: e.course.code,
             }))
     }, [exams, dict])
@@ -177,96 +128,247 @@ export default function SchoolDashboardClient({
     }, [institution])
 
     return (
-        <div className="flex flex-col gap-8">
-            <div>
-                <h1 className="text-3xl font-bold text-brand-900">{dict.dashboard.title}</h1>
-                <p className="mt-1 text-sm text-gray-500">
+        <Stack gap="xl">
+            <Stack gap="xs">
+                <Text as="h1" variant="pageTitle">
+                    {dict.dashboard.title}
+                </Text>
+                <Text variant="muted">
                     {institution?.name || dict.unknownInstitution}
-                </p>
-            </div>
+                </Text>
+            </Stack>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-                <StatCard label={dict.stats.teachers} value={counts.teachers} href="/admin/school/users?role=teacher" />
-                <StatCard label={dict.stats.students} value={counts.students} href="/admin/school/users?role=student" />
-                <StatCard label={dict.stats.courses} value={counts.courses} href="/admin/school/classes" />
-                <StatCard label={dict.stats.sections} value={counts.sections} href="/admin/school/classes?tab=sections" />
-                <StatCard label={dict.stats.exams} value={counts.exams} href="/admin/school/classes?tab=exams" />
-            </div>
+            <Grid cols="3" gap="md">
+                <Card
+                    role="link"
+                    tabIndex={0}
+                    interactive="subtle"
+                    onClick={() => window.location.href = '/admin/school/users?role=teacher'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            window.location.href = '/admin/school/users?role=teacher'
+                        }
+                    }}
+                >
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.stats.teachers}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {counts.teachers}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card
+                    role="link"
+                    tabIndex={0}
+                    interactive="subtle"
+                    onClick={() => window.location.href = '/admin/school/users?role=student'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            window.location.href = '/admin/school/users?role=student'
+                        }
+                    }}
+                >
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.stats.students}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {counts.students}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card
+                    role="link"
+                    tabIndex={0}
+                    interactive="subtle"
+                    onClick={() => window.location.href = '/admin/school/classes'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            window.location.href = '/admin/school/classes'
+                        }
+                    }}
+                >
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.stats.courses}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {counts.courses}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card
+                    role="link"
+                    tabIndex={0}
+                    interactive="subtle"
+                    onClick={() => window.location.href = '/admin/school/classes?tab=sections'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            window.location.href = '/admin/school/classes?tab=sections'
+                        }
+                    }}
+                >
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.stats.sections}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {counts.sections}
+                        </Text>
+                    </CardBody>
+                </Card>
+                <Card
+                    role="link"
+                    tabIndex={0}
+                    interactive="subtle"
+                    onClick={() => window.location.href = '/admin/school/classes?tab=exams'}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault()
+                            window.location.href = '/admin/school/classes?tab=exams'
+                        }
+                    }}
+                >
+                    <CardBody padding="md">
+                        <Text variant="overline">{dict.stats.exams}</Text>
+                        <Text as="div" className="mt-2 text-3xl font-semibold text-gray-900">
+                            {counts.exams}
+                        </Text>
+                    </CardBody>
+                </Card>
+            </Grid>
 
             {/* Quick Actions */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="text-sm font-semibold text-gray-900">{dict.dashboard.quickActions}</div>
-                    <div className="flex flex-wrap gap-2">
-                        <QuickAction label={dict.createTeacherButton} href="/admin/school/users?role=teacher&action=add" primary />
-                        <QuickAction label={dict.createStudentButton} href="/admin/school/users?role=student&action=add" />
-                        <QuickAction label={dict.createCourseButton} href="/admin/school/classes?action=add-course" />
-                        <QuickAction label={dict.bulk.importButton} href="/admin/school/settings?tab=import" />
-                    </div>
-                </div>
-            </div>
+            <Card>
+                <CardBody padding="md">
+                    <Inline align="between" gap="sm">
+                        <Text variant="sectionTitle">{dict.dashboard.quickActions}</Text>
+                        <Inline align="start" gap="sm" wrap="wrap">
+                            <Button
+                                onClick={() => window.location.href = '/admin/school/users?role=teacher&action=add'}
+                                size="xs"
+                            >
+                                {dict.createTeacherButton}
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = '/admin/school/users?role=student&action=add'}
+                                variant="secondary"
+                                size="xs"
+                            >
+                                {dict.createStudentButton}
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = '/admin/school/classes?action=add-course'}
+                                variant="secondary"
+                                size="xs"
+                            >
+                                {dict.createCourseButton}
+                            </Button>
+                            <Button
+                                onClick={() => window.location.href = '/admin/school/settings?tab=import'}
+                                variant="secondary"
+                                size="xs"
+                            >
+                                {dict.bulk.importButton}
+                            </Button>
+                        </Inline>
+                    </Inline>
+                </CardBody>
+            </Card>
 
             {/* Two columns: Attention & Recent */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            <Grid cols="2" gap="lg">
                 {/* Needs Attention */}
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="mb-4 text-sm font-semibold text-gray-900">{dict.dashboard.needsAttention}</div>
-                    {attentionItems.length === 0 ? (
-                        <div className="text-sm text-gray-500">{dict.dashboard.allGood}</div>
-                    ) : (
-                        <div className="space-y-2">
-                            {attentionItems.map((item, idx) => (
-                                <AttentionItem key={idx} {...item} />
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="sectionTitle" className="mb-4">
+                            {dict.dashboard.needsAttention}
+                        </Text>
+                        {attentionItems.length === 0 ? (
+                            <Text variant="muted">{dict.dashboard.allGood}</Text>
+                        ) : (
+                            <Stack gap="sm">
+                                {attentionItems.map((item, idx) => (
+                                    <Card
+                                        key={idx}
+                                        role="link"
+                                        tabIndex={0}
+                                        interactive="subtle"
+                                        onClick={() => window.location.href = item.href}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                e.preventDefault()
+                                                window.location.href = item.href
+                                            }
+                                        }}
+                                    >
+                                        <CardBody padding="sm">
+                                            <Inline align="between" gap="sm">
+                                                <Text variant="body">{item.label}</Text>
+                                                <Badge variant={item.variant}>
+                                                    {item.count}
+                                                </Badge>
+                                            </Inline>
+                                        </CardBody>
+                                    </Card>
+                                ))}
+                            </Stack>
+                        )}
+                    </CardBody>
+                </Card>
 
                 {/* Recent Exams */}
-                <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="mb-4 text-sm font-semibold text-gray-900">{dict.dashboard.recentExams}</div>
-                    {recentExams.length === 0 ? (
-                        <div className="text-sm text-gray-500">{dict.emptyExams}</div>
-                    ) : (
-                        <div className="space-y-2">
-                            {recentExams.map((exam) => (
-                                <div key={exam.id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-3 py-2">
-                                    <div>
-                                        <div className="text-sm font-medium text-gray-900">{exam.title}</div>
-                                        <div className="text-xs text-gray-500">{exam.course}</div>
-                                    </div>
-                                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${exam.status === dict.examStatusDraft
-                                        ? 'bg-gray-100 text-gray-600'
-                                        : 'bg-green-100 text-green-700'
-                                    }`}>
-                                        {exam.status}
-                                    </span>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
+                <Card>
+                    <CardBody padding="md">
+                        <Text variant="sectionTitle" className="mb-4">
+                            {dict.dashboard.recentExams}
+                        </Text>
+                        {recentExams.length === 0 ? (
+                            <Text variant="muted">{dict.emptyExams}</Text>
+                        ) : (
+                            <Stack gap="sm">
+                                {recentExams.map((exam) => (
+                                    <Card key={exam.id}>
+                                        <CardBody padding="sm">
+                                            <Inline align="between" gap="sm">
+                                                <Stack gap="xs">
+                                                    <Text variant="body">{exam.title}</Text>
+                                                    <Text variant="xsMuted">{exam.course}</Text>
+                                                </Stack>
+                                                <Badge variant={exam.statusVariant as 'neutral' | 'info' | 'success' | 'warning'}>
+                                                    {exam.status}
+                                                </Badge>
+                                            </Inline>
+                                        </CardBody>
+                                    </Card>
+                                ))}
+                            </Stack>
+                        )}
+                    </CardBody>
+                </Card>
+            </Grid>
 
             {/* Institution Info */}
-            <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                <div className="mb-4 text-sm font-semibold text-gray-900">{dict.dashboard.institutionInfo}</div>
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                        <div className="text-xs uppercase text-gray-500">{dict.domainsLabel}</div>
-                        <div className="mt-1 text-sm text-gray-900">
-                            {institution?.domains?.map(d => d.domain).join(', ') || dict.noDomains}
-                        </div>
-                    </div>
-                    <div>
-                        <div className="text-xs uppercase text-gray-500">{dict.ssoLabel}</div>
-                        <div className="mt-1 text-sm text-gray-900">
-                            {ssoEnabled ? dict.ssoEnabled : dict.ssoDisabled}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+            <Card>
+                <CardBody padding="md">
+                    <Text variant="sectionTitle" className="mb-4">
+                        {dict.dashboard.institutionInfo}
+                    </Text>
+                    <Grid cols="2" gap="md">
+                        <Stack gap="xs">
+                            <Text variant="overline">{dict.domainsLabel}</Text>
+                            <Text variant="body">
+                                {institution?.domains?.map(d => d.domain).join(', ') || dict.noDomains}
+                            </Text>
+                        </Stack>
+                        <Stack gap="xs">
+                            <Text variant="overline">{dict.ssoLabel}</Text>
+                            <Text variant="body">
+                                {ssoEnabled ? dict.ssoEnabled : dict.ssoDisabled}
+                            </Text>
+                        </Stack>
+                    </Grid>
+                </CardBody>
+            </Card>
+        </Stack>
     )
 }

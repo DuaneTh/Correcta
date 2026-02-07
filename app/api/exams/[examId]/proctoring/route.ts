@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
-import { computeAntiCheatScore, analyzeCopyPasteEvents } from "@/lib/antiCheat"
+import { analyzeCopyPasteEvents } from "@/lib/antiCheat"
 import { getExamEndAt } from "@/lib/exam-time"
+import { analyzeFocusLossPatterns, analyzeExternalPastes, computeEnhancedAntiCheatScore } from "@/lib/proctoring/patternAnalysis"
 
 // GET /api/exams/[examId]/proctoring - Get proctoring summary for an exam
 export async function GET(
@@ -36,7 +37,7 @@ export async function GET(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // Fetch all attempts for this exam with proctor events
+        // Fetch all attempts for this exam with proctor events and answer timestamps
         const attempts = await prisma.attempt.findMany({
             where: { examId },
             include: {
@@ -55,6 +56,16 @@ export async function GET(
                     },
                     orderBy: {
                         timestamp: 'asc'
+                    }
+                },
+                answers: {
+                    select: {
+                        questionId: true,
+                        segments: {
+                            select: {
+                                autosavedAt: true
+                            }
+                        }
                     }
                 }
             },
@@ -86,12 +97,30 @@ export async function GET(
                 }
             })
 
+            // Flatten answer timestamps
+            const answerTimestamps = attempt.answers.flatMap(answer =>
+                answer.segments
+                    .filter(segment => segment.autosavedAt !== null)
+                    .map(segment => ({
+                        questionId: answer.questionId,
+                        savedAt: segment.autosavedAt!
+                    }))
+            )
+
+            // Analyze focus loss patterns
+            const focusLossPattern = analyzeFocusLossPatterns(attempt.proctorEvents, answerTimestamps)
+
+            // Analyze external pastes
+            const externalPasteAnalysis = analyzeExternalPastes(attempt.proctorEvents)
+
             // Analyze COPY→PASTE pairs using shared helper for consistent scoring
             const copyPasteAnalysis = analyzeCopyPasteEvents(attempt.proctorEvents)
 
-            // Calculate antiCheatScore using shared helper with real pairing data
-            const antiCheatScore = computeAntiCheatScore({
+            // Calculate enhanced antiCheatScore with pattern analysis
+            const antiCheatScore = computeEnhancedAntiCheatScore({
                 eventCounts,
+                focusLossPattern,
+                externalPasteAnalysis,
                 copyPasteAnalysis
             })
 
@@ -116,7 +145,15 @@ export async function GET(
                 status: attemptStatus,
                 eventCounts,
                 totalEvents: attempt.proctorEvents.length,
-                antiCheatScore
+                antiCheatScore,
+                focusLossPattern: {
+                    flag: focusLossPattern.flag,
+                    ratio: focusLossPattern.ratio,
+                    suspiciousPairs: focusLossPattern.suspiciousPairs,
+                    totalAnswers: focusLossPattern.totalAnswers
+                },
+                externalPastes: externalPasteAnalysis.externalPastes,
+                internalPastes: externalPasteAnalysis.internalPastes
             }
         })
 

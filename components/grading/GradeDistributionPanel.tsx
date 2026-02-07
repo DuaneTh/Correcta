@@ -3,6 +3,12 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { BarChart3, Sliders, AlertTriangle, Check, Undo2, TrendingUp, TrendingDown, Minus, Scale } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Text } from '@/components/ui/Text'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Inline, Stack, Grid, Surface } from '@/components/ui/Layout'
+import { cn } from '@/components/ui/cn'
 
 interface GradeData {
     attemptId: string
@@ -446,38 +452,39 @@ export function GradeDistributionPanel({
 
     if (grades.length === 0) {
         return (
-            <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">Repartition des notes</h3>
-                </div>
-                <p className="text-gray-500 text-center py-8">
-                    Aucune note disponible. Corrigez d&apos;abord les copies.
-                </p>
-            </div>
+            <Card>
+                <CardBody>
+                    <Inline gap="sm" align="start">
+                        <BarChart3 className="w-5 h-5 text-indigo-600" />
+                        <Text variant="sectionTitle">Repartition des notes</Text>
+                    </Inline>
+                    <Text variant="muted" className="text-center py-8">
+                        Aucune note disponible. Corrigez d&apos;abord les copies.
+                    </Text>
+                </CardBody>
+            </Card>
         )
     }
 
     return (
-        <div className="bg-white rounded-lg shadow p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-indigo-600" />
-                    <h3 className="text-lg font-semibold text-gray-900">Repartition des notes</h3>
-                </div>
-                {preview && hasChanges && (
-                    <span className="text-sm text-amber-600 font-medium bg-amber-50 px-2 py-1 rounded">
-                        Apercu des modifications
-                    </span>
-                )}
-            </div>
+        <Card>
+            <CardBody>
+                {/* Header */}
+                <Inline gap="md" align="between" className="mb-6">
+                    <Inline gap="sm" align="start">
+                        <BarChart3 className="w-5 h-5 text-indigo-600" />
+                        <Text variant="sectionTitle">Repartition des notes</Text>
+                    </Inline>
+                    {preview && hasChanges && (
+                        <Badge variant="warning">
+                            Apercu des modifications
+                        </Badge>
+                    )}
+                </Inline>
 
             {/* Current distribution chart */}
-            <div className="mb-4">
-                <div className="text-sm font-semibold text-gray-700 mb-2">
-                    Distribution actuelle
-                </div>
+            <Stack gap="sm" className="mb-4">
+                <Text variant="label">Distribution actuelle</Text>
                 <div className="flex">
                     {/* Y-axis */}
                     <div className="flex flex-col justify-between pr-2 text-right w-8" style={{ height: '160px' }}>
@@ -567,11 +574,11 @@ export function GradeDistributionPanel({
                         </div>
                     </div>
                 </div>
-            </div>
+            </Stack>
 
             {/* Preview chart (shown when harmonization preview is active) */}
             {preview && hasChanges && (
-                <div className="mb-4">
+                <Stack gap="sm" className="mb-4">
                     {/* Movement arrows between charts */}
                     <div className="relative h-12 ml-8">
                         <svg className="absolute inset-0 w-full h-full" style={{ overflow: 'visible' }}>
@@ -631,12 +638,10 @@ export function GradeDistributionPanel({
                         </svg>
                     </div>
 
-                    <div className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
-                        <span>Apres harmonisation</span>
-                        <span className="text-xs font-normal text-amber-600 bg-amber-100 px-2 py-0.5 rounded">
-                            Apercu
-                        </span>
-                    </div>
+                    <Inline gap="sm" align="start">
+                        <Text variant="label" className="text-amber-700">Apres harmonisation</Text>
+                        <Badge variant="warning">Apercu</Badge>
+                    </Inline>
                     <div className="flex">
                         {/* Y-axis */}
                         <div className="flex flex-col justify-between pr-2 text-right w-8" style={{ height: '160px' }}>
@@ -736,81 +741,83 @@ export function GradeDistributionPanel({
                             </div>
                         </div>
                     </div>
-                </div>
+                </Stack>
             )}
 
             {/* Threshold stats */}
             {stats && (
-                <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-100 rounded-lg border border-gray-200">
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-green-700">{stats.aboveThreshold}</div>
-                        <div className="text-sm font-medium text-gray-700">
-                            Au-dessus de {thresholdValue.toFixed(1)} pts
-                        </div>
-                        <div className="text-xs text-gray-600">
-                            ({Math.round(stats.aboveThreshold / stats.total * 100)}% des copies)
-                        </div>
-                    </div>
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-red-600">{stats.belowThreshold}</div>
-                        <div className="text-sm font-medium text-gray-700">
-                            En-dessous de {thresholdValue.toFixed(1)} pts
-                        </div>
-                        <div className="text-xs text-gray-600">
-                            ({Math.round(stats.belowThreshold / stats.total * 100)}% des copies)
-                        </div>
-                    </div>
-                </div>
+                <Surface tone="subtle" className="mb-6 p-4">
+                    <Grid cols="2" gap="md">
+                        <Stack gap="xs" className="text-center">
+                            <Text as="div" className="text-2xl font-bold text-green-700">{stats.aboveThreshold}</Text>
+                            <Text variant="label">
+                                Au-dessus de {thresholdValue.toFixed(1)} pts
+                            </Text>
+                            <Text variant="xsMuted">
+                                ({Math.round(stats.aboveThreshold / stats.total * 100)}% des copies)
+                            </Text>
+                        </Stack>
+                        <Stack gap="xs" className="text-center">
+                            <Text as="div" className="text-2xl font-bold text-red-600">{stats.belowThreshold}</Text>
+                            <Text variant="label">
+                                En-dessous de {thresholdValue.toFixed(1)} pts
+                            </Text>
+                            <Text variant="xsMuted">
+                                ({Math.round(stats.belowThreshold / stats.total * 100)}% des copies)
+                            </Text>
+                        </Stack>
+                    </Grid>
+                </Surface>
             )}
 
             {/* Statistics with standard deviation */}
             {stats && (
-                <div className="grid grid-cols-4 gap-3 mb-6">
-                    <div className="text-center p-3 bg-indigo-100 rounded-lg border border-indigo-200">
-                        <div className="text-lg font-bold text-indigo-800">
+                <Grid cols="2" gap="sm" className="mb-6 sm:grid-cols-4">
+                    <Surface className="text-center p-3 bg-indigo-100 border-indigo-200">
+                        <Text as="div" className="text-lg font-bold text-indigo-800">
                             {stats.avg.toFixed(2)}
-                        </div>
-                        <div className="text-xs font-semibold text-indigo-700">Moyenne</div>
+                        </Text>
+                        <Text variant="xsMuted" className="font-semibold text-indigo-700">Moyenne</Text>
                         {preview && hasChanges && (
-                            <div className="text-xs text-indigo-600 mt-1">
+                            <Text variant="xsMuted" className="text-indigo-600 mt-1">
                                 (etait {stats.origAvg.toFixed(2)})
-                            </div>
+                            </Text>
                         )}
-                    </div>
-                    <div className="text-center p-3 bg-purple-100 rounded-lg border border-purple-200">
-                        <div className="text-lg font-bold text-purple-800">
+                    </Surface>
+                    <Surface className="text-center p-3 bg-purple-100 border-purple-200">
+                        <Text as="div" className="text-lg font-bold text-purple-800">
                             {stats.stdDev.toFixed(2)}
-                        </div>
-                        <div className="text-xs font-semibold text-purple-700">Ecart-type</div>
+                        </Text>
+                        <Text variant="xsMuted" className="font-semibold text-purple-700">Ecart-type</Text>
                         {preview && hasChanges && (
-                            <div className="text-xs text-purple-600 mt-1">
+                            <Text variant="xsMuted" className="text-purple-600 mt-1">
                                 (etait {stats.origStdDev.toFixed(2)})
-                            </div>
+                            </Text>
                         )}
-                    </div>
-                    <div className="text-center p-3 bg-red-100 rounded-lg border border-red-200">
-                        <div className="text-lg font-bold text-red-800">{stats.min.toFixed(2)}</div>
-                        <div className="text-xs font-semibold text-red-700">Minimum</div>
-                    </div>
-                    <div className="text-center p-3 bg-green-100 rounded-lg border border-green-200">
-                        <div className="text-lg font-bold text-green-800">{stats.max.toFixed(2)}</div>
-                        <div className="text-xs font-semibold text-green-700">Maximum</div>
-                    </div>
-                </div>
+                    </Surface>
+                    <Surface className="text-center p-3 bg-red-100 border-red-200">
+                        <Text as="div" className="text-lg font-bold text-red-800">{stats.min.toFixed(2)}</Text>
+                        <Text variant="xsMuted" className="font-semibold text-red-700">Minimum</Text>
+                    </Surface>
+                    <Surface className="text-center p-3 bg-green-100 border-green-200">
+                        <Text as="div" className="text-lg font-bold text-green-800">{stats.max.toFixed(2)}</Text>
+                        <Text variant="xsMuted" className="font-semibold text-green-700">Maximum</Text>
+                    </Surface>
+                </Grid>
             )}
 
             {/* Harmonization section */}
-            <div className="border-t-2 border-gray-200 pt-6">
-                <div className="flex items-center gap-2 mb-4">
+            <Stack gap="md" className="border-t-2 border-gray-200 pt-6">
+                <Inline gap="sm" align="start" className="mb-4">
                     <Sliders className="w-5 h-5 text-indigo-600" />
-                    <h4 className="text-lg font-bold text-gray-900">Harmonisation des notes</h4>
-                </div>
+                    <Text variant="sectionTitle">Harmonisation des notes</Text>
+                </Inline>
 
                 {/* Method selector */}
-                <div className="mb-4">
-                    <label className="block text-sm font-bold text-gray-800 mb-2">
+                <Stack gap="sm" className="mb-4">
+                    <Text variant="label">
                         Methode d&apos;harmonisation
-                    </label>
+                    </Text>
                     <select
                         value={selectedMethod}
                         onChange={(e) => setSelectedMethod(e.target.value as HarmonizationMethod)}
@@ -823,15 +830,15 @@ export function GradeDistributionPanel({
                         <option value="floor">{getMethodLabel('floor')}</option>
                         <option value="ceiling">{getMethodLabel('ceiling')}</option>
                     </select>
-                </div>
+                </Stack>
 
                 {/* Method-specific parameters */}
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <Surface tone="subtle" className="mb-4 p-4">
                     {selectedMethod === 'bonus' && (
                         <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                            <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                                 Points bonus a ajouter
-                            </label>
+                            </Text>
                             <input
                                 type="number"
                                 value={methodParams.bonus}
@@ -841,17 +848,17 @@ export function GradeDistributionPanel({
                                 max={maxPoints}
                                 className="w-full px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
-                            <p className="text-sm text-gray-700 mt-2">
+                            <Text variant="muted" className="mt-2">
                                 Valeur negative pour retirer des points. Exemple: +2 ajoute 2 points a toutes les notes.
-                            </p>
+                            </Text>
                         </div>
                     )}
 
                     {selectedMethod === 'linear' && (
                         <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                            <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                                 Facteur d&apos;echelle (multiplicateur)
-                            </label>
+                            </Text>
                             <input
                                 type="number"
                                 value={methodParams.scaleFactor}
@@ -861,17 +868,17 @@ export function GradeDistributionPanel({
                                 max="3"
                                 className="w-full px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
-                            <p className="text-sm text-gray-700 mt-2">
+                            <Text variant="muted" className="mt-2">
                                 1.0 = pas de changement, 1.1 = +10%, 0.9 = -10%. Chaque note est multipliee par ce facteur.
-                            </p>
+                            </Text>
                         </div>
                     )}
 
                     {selectedMethod === 'curve_average' && (
                         <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                            <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                                 Moyenne cible
-                            </label>
+                            </Text>
                             <input
                                 type="number"
                                 value={methodParams.targetAverage}
@@ -881,31 +888,31 @@ export function GradeDistributionPanel({
                                 max={maxPoints}
                                 className="w-full px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
-                            <p className="text-sm text-gray-700 mt-2">
+                            <Text variant="muted" className="mt-2">
                                 Toutes les notes seront ajustees uniformement pour atteindre cette moyenne.
                                 Moyenne actuelle: <strong>{stats?.origAvg.toFixed(2)}</strong>
-                            </p>
+                            </Text>
                         </div>
                     )}
 
                     {selectedMethod === 'sqrt' && (
-                        <div className="text-gray-800">
-                            <p className="font-medium mb-2">Transformation racine carree</p>
-                            <p className="text-sm">
+                        <Stack gap="sm" className="text-gray-800">
+                            <Text variant="label">Transformation racine carree</Text>
+                            <Text variant="muted">
                                 Cette methode compresse les notes elevees et etire les notes basses.
                                 Elle preserve l&apos;ordre des notes tout en reduisant l&apos;ecart entre les meilleurs et les moins bons.
-                            </p>
-                            <p className="text-sm mt-2">
+                            </Text>
+                            <Text variant="muted">
                                 Formule: <code className="bg-gray-200 px-1 rounded">nouvelle_note = sqrt(note/max) * max</code>
-                            </p>
-                        </div>
+                            </Text>
+                        </Stack>
                     )}
 
                     {selectedMethod === 'floor' && (
                         <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                            <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                                 Score minimum garanti
-                            </label>
+                            </Text>
                             <input
                                 type="number"
                                 value={methodParams.minScore}
@@ -915,17 +922,17 @@ export function GradeDistributionPanel({
                                 max={maxPoints}
                                 className="w-full px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
-                            <p className="text-sm text-gray-700 mt-2">
+                            <Text variant="muted" className="mt-2">
                                 Toutes les notes inferieures a cette valeur seront remontees a ce minimum.
-                            </p>
+                            </Text>
                         </div>
                     )}
 
                     {selectedMethod === 'ceiling' && (
                         <div>
-                            <label className="block text-sm font-bold text-gray-800 mb-2">
+                            <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                                 Score maximum autorise
-                            </label>
+                            </Text>
                             <input
                                 type="number"
                                 value={methodParams.maxScore}
@@ -935,57 +942,60 @@ export function GradeDistributionPanel({
                                 max={maxPoints}
                                 className="w-full px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                             />
-                            <p className="text-sm text-gray-700 mt-2">
+                            <Text variant="muted" className="mt-2">
                                 Toutes les notes superieures a cette valeur seront plafonnees a ce maximum.
-                            </p>
+                            </Text>
                         </div>
                     )}
-                </div>
+                </Surface>
 
                 {/* Preview stats */}
                 {preview && hasChanges && (
-                    <div className="mb-4 p-4 bg-amber-50 border-2 border-amber-300 rounded-lg">
-                        <div className="flex items-center gap-2 mb-3">
+                    <Surface className="mb-4 p-4 bg-amber-50 border-2 border-amber-300">
+                        <Inline gap="sm" align="start" className="mb-3">
                             <AlertTriangle className="w-5 h-5 text-amber-600" />
-                            <span className="text-sm font-bold text-amber-800">
+                            <Text variant="label" className="font-bold text-amber-800">
                                 Apercu des modifications
-                            </span>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                            <div className="bg-white p-3 rounded-lg border border-amber-200 shadow-sm">
-                                <span className="block text-gray-600 text-xs font-medium mb-1">Moyenne</span>
-                                <div className="text-gray-400 text-xs mb-1">{preview.stats.oldAvg.toFixed(2)} →</div>
+                            </Text>
+                        </Inline>
+                        <Grid cols="2" gap="sm" className="md:grid-cols-4">
+                            <Surface className="bg-white p-3 border-amber-200 shadow-sm">
+                                <Text variant="xsMuted" className="block font-medium mb-1">Moyenne</Text>
+                                <Text variant="xsMuted" className="text-gray-400 mb-1">{preview.stats.oldAvg.toFixed(2)} →</Text>
                                 <ChangeIndicator oldValue={preview.stats.oldAvg} newValue={preview.stats.newAvg} />
-                            </div>
-                            <div className="bg-white p-3 rounded-lg border border-amber-200 shadow-sm">
-                                <span className="block text-gray-600 text-xs font-medium mb-1">Ecart-type</span>
-                                <div className="text-gray-400 text-xs mb-1">{preview.stats.oldStdDev.toFixed(2)} →</div>
+                            </Surface>
+                            <Surface className="bg-white p-3 border-amber-200 shadow-sm">
+                                <Text variant="xsMuted" className="block font-medium mb-1">Ecart-type</Text>
+                                <Text variant="xsMuted" className="text-gray-400 mb-1">{preview.stats.oldStdDev.toFixed(2)} →</Text>
                                 <ChangeIndicator oldValue={preview.stats.oldStdDev} newValue={preview.stats.newStdDev} />
-                            </div>
-                            <div className="bg-white p-3 rounded-lg border border-amber-200 shadow-sm">
-                                <span className="block text-gray-600 text-xs font-medium mb-1">Minimum</span>
-                                <div className="text-gray-400 text-xs mb-1">{preview.stats.oldMin.toFixed(2)} →</div>
+                            </Surface>
+                            <Surface className="bg-white p-3 border-amber-200 shadow-sm">
+                                <Text variant="xsMuted" className="block font-medium mb-1">Minimum</Text>
+                                <Text variant="xsMuted" className="text-gray-400 mb-1">{preview.stats.oldMin.toFixed(2)} →</Text>
                                 <ChangeIndicator oldValue={preview.stats.oldMin} newValue={preview.stats.newMin} />
-                            </div>
-                            <div className="bg-white p-3 rounded-lg border border-amber-200 shadow-sm">
-                                <span className="block text-gray-600 text-xs font-medium mb-1">Maximum</span>
-                                <div className="text-gray-400 text-xs mb-1">{preview.stats.oldMax.toFixed(2)} →</div>
+                            </Surface>
+                            <Surface className="bg-white p-3 border-amber-200 shadow-sm">
+                                <Text variant="xsMuted" className="block font-medium mb-1">Maximum</Text>
+                                <Text variant="xsMuted" className="text-gray-400 mb-1">{preview.stats.oldMax.toFixed(2)} →</Text>
                                 <ChangeIndicator oldValue={preview.stats.oldMax} newValue={preview.stats.newMax} />
-                            </div>
-                        </div>
-                    </div>
+                            </Surface>
+                        </Grid>
+                    </Surface>
                 )}
 
                 {/* Error message */}
                 {error && (
-                    <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg text-red-800 font-medium text-sm">
-                        {error}
-                    </div>
+                    <Surface className="mb-4 p-3 bg-red-50 border-2 border-red-300">
+                        <Text variant="muted" className="text-red-800 font-medium">
+                            {error}
+                        </Text>
+                    </Surface>
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-3">
-                    <button
+                <Inline gap="sm" wrap="nowrap">
+                    <Button
+                        variant="secondary"
                         onClick={() => {
                             setMethodParams({
                                 bonus: 0,
@@ -995,43 +1005,39 @@ export function GradeDistributionPanel({
                                 scaleFactor: 1
                             })
                         }}
-                        className="flex items-center gap-2 px-4 py-2.5 text-gray-800 font-medium bg-gray-200 rounded-lg hover:bg-gray-300 border border-gray-300"
                     >
                         <Undo2 className="w-4 h-4" />
                         Reinitialiser
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant="primary"
                         onClick={() => setShowConfirm(true)}
                         disabled={!hasChanges || isApplying}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-lg transition-colors ${
-                            hasChanges && !isApplying
-                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
+                        className="flex-1"
                     >
                         <Check className="w-4 h-4" />
                         Appliquer l&apos;harmonisation
-                    </button>
-                </div>
-            </div>
+                    </Button>
+                </Inline>
+            </Stack>
 
             {/* Rescaling section */}
-            <div className="border-t-2 border-gray-200 pt-6">
-                <div className="flex items-center gap-2 mb-4">
+            <Stack gap="md" className="border-t-2 border-gray-200 pt-6">
+                <Inline gap="sm" align="start">
                     <Scale className="w-5 h-5 text-indigo-600" />
-                    <h4 className="text-lg font-bold text-gray-900">Changement d&apos;echelle</h4>
-                </div>
+                    <Text variant="sectionTitle">Changement d&apos;echelle</Text>
+                </Inline>
 
-                <p className="text-sm text-gray-700 mb-4">
+                <Text variant="muted">
                     Convertir les notes d&apos;une echelle a une autre par regle de trois.
                     Actuellement les notes sont sur <strong>{maxPoints}</strong> points.
-                </p>
+                </Text>
 
-                <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-bold text-gray-800 mb-2">
+                <Surface tone="subtle" className="p-4">
+                    <Text variant="label" as="label" className="block mb-2 font-bold text-gray-800">
                         Nouvelle echelle (note sur)
-                    </label>
-                    <div className="flex items-center gap-3">
+                    </Text>
+                    <Inline gap="sm" align="center">
                         <input
                             type="number"
                             value={targetScale}
@@ -1040,64 +1046,63 @@ export function GradeDistributionPanel({
                             min="1"
                             className="flex-1 px-3 py-2.5 bg-white border-2 border-gray-300 rounded-lg text-gray-900 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                         />
-                        <span className="text-gray-600 font-medium">points</span>
-                    </div>
-                    <div className="flex gap-2 mt-3">
+                        <Text variant="muted" className="font-medium">points</Text>
+                    </Inline>
+                    <Inline gap="sm" className="mt-3">
                         {[10, 20, 100].filter(v => v !== maxPoints).map(preset => (
-                            <button
+                            <Button
                                 key={preset}
+                                variant={targetScale === preset ? "primary" : "secondary"}
+                                size="sm"
                                 onClick={() => setTargetScale(preset)}
-                                className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
+                                className={cn(
                                     targetScale === preset
                                         ? 'bg-indigo-100 border-indigo-300 text-indigo-700'
-                                        : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-100'
-                                }`}
+                                        : ''
+                                )}
                             >
                                 /{preset}
-                            </button>
+                            </Button>
                         ))}
-                    </div>
-                </div>
+                    </Inline>
+                </Surface>
 
                 {/* Rescale preview */}
                 {rescalePreview && (
-                    <div className="mb-4 p-4 bg-blue-50 border-2 border-blue-300 rounded-lg">
-                        <div className="text-sm font-bold text-blue-800 mb-3">
+                    <Surface className="p-4 bg-blue-50 border-2 border-blue-300">
+                        <Text variant="label" className="font-bold text-blue-800 mb-3">
                             Apercu: {maxPoints} pts → {targetScale} pts
-                        </div>
-                        <div className="grid grid-cols-3 gap-3 text-sm">
-                            <div className="bg-white p-2 rounded-lg border border-blue-200 text-center">
-                                <span className="block text-gray-600 text-xs font-medium">Moyenne</span>
-                                <span className="font-bold text-blue-700">{rescalePreview.newAvg.toFixed(2)}</span>
-                            </div>
-                            <div className="bg-white p-2 rounded-lg border border-blue-200 text-center">
-                                <span className="block text-gray-600 text-xs font-medium">Min</span>
-                                <span className="font-bold text-blue-700">{rescalePreview.newMin.toFixed(2)}</span>
-                            </div>
-                            <div className="bg-white p-2 rounded-lg border border-blue-200 text-center">
-                                <span className="block text-gray-600 text-xs font-medium">Max</span>
-                                <span className="font-bold text-blue-700">{rescalePreview.newMax.toFixed(2)}</span>
-                            </div>
-                        </div>
-                        <div className="mt-3 text-xs text-blue-700">
+                        </Text>
+                        <Grid cols="3" gap="sm">
+                            <Surface className="bg-white p-2 border-blue-200 text-center">
+                                <Text variant="xsMuted" className="block font-medium">Moyenne</Text>
+                                <Text className="font-bold text-blue-700">{rescalePreview.newAvg.toFixed(2)}</Text>
+                            </Surface>
+                            <Surface className="bg-white p-2 border-blue-200 text-center">
+                                <Text variant="xsMuted" className="block font-medium">Min</Text>
+                                <Text className="font-bold text-blue-700">{rescalePreview.newMin.toFixed(2)}</Text>
+                            </Surface>
+                            <Surface className="bg-white p-2 border-blue-200 text-center">
+                                <Text variant="xsMuted" className="block font-medium">Max</Text>
+                                <Text className="font-bold text-blue-700">{rescalePreview.newMax.toFixed(2)}</Text>
+                            </Surface>
+                        </Grid>
+                        <Text variant="xsMuted" className="mt-3 text-blue-700">
                             Exemple: {grades[0]?.currentScore.toFixed(2)}/{maxPoints} → {rescalePreview.scores[0]?.newScore.toFixed(2)}/{targetScale}
-                        </div>
-                    </div>
+                        </Text>
+                    </Surface>
                 )}
 
-                <button
+                <Button
+                    variant="primary"
                     onClick={() => setShowRescaleConfirm(true)}
                     disabled={!rescalePreview || isRescaling}
-                    className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-lg transition-colors ${
-                        rescalePreview && !isRescaling
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className="w-full"
                 >
                     <Scale className="w-4 h-4" />
                     Appliquer le changement d&apos;echelle
-                </button>
-            </div>
+                </Button>
+            </Stack>
 
             {/* Harmonization confirmation modal */}
             {showConfirm && (
@@ -1115,10 +1120,10 @@ export function GradeDistributionPanel({
                             a <strong>{grades.length}</strong> copie{grades.length > 1 ? 's' : ''}.
                         </p>
                         <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-3 mb-4">
-                            <p className="text-sm text-amber-900 font-medium">
+                            <Text variant="muted" className="text-amber-900 font-medium">
                                 <strong>Attention:</strong> Cette action modifiera les notes de toutes les copies.
                                 Les anciennes notes seront conservees dans l&apos;historique.
-                            </p>
+                            </Text>
                         </div>
                         {preview && (
                             <div className="text-sm text-gray-700 mb-4 p-3 bg-gray-100 rounded-lg">
@@ -1165,9 +1170,9 @@ export function GradeDistributionPanel({
                             vers <strong>{targetScale}</strong> points pour <strong>{grades.length}</strong> copie{grades.length > 1 ? 's' : ''}.
                         </p>
                         <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-3 mb-4">
-                            <p className="text-sm text-blue-900 font-medium">
+                            <Text variant="muted" className="text-blue-900 font-medium">
                                 Formule: <code className="bg-blue-100 px-1 rounded">nouvelle_note = (ancienne_note / {maxPoints}) × {targetScale}</code>
-                            </p>
+                            </Text>
                         </div>
                         <div className="text-sm text-gray-700 mb-4 p-3 bg-gray-100 rounded-lg">
                             <div>Nouvelle moyenne: <strong className="text-blue-700">{rescalePreview.newAvg.toFixed(2)}</strong> / {targetScale}</div>
@@ -1195,6 +1200,7 @@ export function GradeDistributionPanel({
                     </div>
                 </div>
             )}
-        </div>
+            </CardBody>
+        </Card>
     )
 }

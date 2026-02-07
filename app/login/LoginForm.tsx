@@ -146,8 +146,9 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
                 {step === 'EMAIL' ? (
                     <form onSubmit={handleEmailSubmit} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">{dict.emailLabel}</label>
+                            <label htmlFor="email-input" className="block text-sm font-medium text-gray-700">{dict.emailLabel}</label>
                             <input
+                                id="email-input"
                                 type="email"
                                 autoFocus
                                 value={email}
@@ -169,8 +170,9 @@ export default function LoginForm({ dictionary, initialLocale }: LoginFormProps)
                     <form onSubmit={handlePasswordSubmit} className="space-y-4">
                         <div>
                             <p className="text-sm text-gray-500 mb-2">{dict.signingInAs} {email}</p>
-                            <label className="block text-sm font-medium text-gray-700">{dict.passwordLabel}</label>
+                            <label htmlFor="password-input" className="block text-sm font-medium text-gray-700">{dict.passwordLabel}</label>
                             <input
+                                id="password-input"
                                 ref={passwordInputRef}
                                 type="password"
                                 value={password}

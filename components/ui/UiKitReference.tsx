@@ -1,4 +1,4 @@
-﻿import Link from 'next/link'
+import Link from 'next/link'
 import { Badge } from './Badge'
 import { Button } from './Button'
 import { Card, CardBody, CardHeader } from './Card'

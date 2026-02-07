@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search } from 'lucide-react'
+import { usePolling } from '@/lib/usePolling'
 import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Text } from '@/components/ui/Text'
+import { Input } from '@/components/ui/Form'
 
 interface ExamWithGradingStatus {
     id: string
@@ -33,18 +37,7 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
     const [showArchived, setShowArchived] = useState(false)
     const dict = dictionary.teacher.correctionsPage
 
-    useEffect(() => {
-        fetchExamsWithGradingStatus(true)
-
-        // Auto-refresh every 30 seconds (silent refresh)
-        const interval = setInterval(() => {
-            fetchExamsWithGradingStatus(false)
-        }, 30000)
-
-        return () => clearInterval(interval)
-    }, [showArchived])
-
-    const fetchExamsWithGradingStatus = async (showLoadingState = true) => {
+    const fetchExamsWithGradingStatus = useCallback(async (showLoadingState = true) => {
         try {
             if (showLoadingState) {
                 setLoading(true)
@@ -69,7 +62,11 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
                 setLoading(false)
             }
         }
-    }
+    }, [showArchived])
+
+    // Initial fetch + silent refresh every 30s
+    useEffect(() => { fetchExamsWithGradingStatus(true) }, [fetchExamsWithGradingStatus])
+    usePolling(() => fetchExamsWithGradingStatus(false), { intervalMs: 30000, immediate: false })
 
     const filteredExams = exams.filter((exam) => {
         if (!searchQuery) return true
@@ -91,50 +88,60 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
         return { label: dict.statusCompleted, color: 'text-gray-900' }
     }
 
-    if (loading) return <div className="p-8 text-center text-gray-500">Loading...</div>
+    if (loading) return <div className="p-8 text-center"><Text variant="muted">Loading...</Text></div>
 
     return (
         <div className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                <h1 className="text-3xl font-bold text-brand-900">{dict.title}</h1>
+                <Text as="h1" variant="pageTitle">{dict.title}</Text>
                 <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
                     <div className="relative w-full sm:w-96">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                             <Search className="h-5 w-5 text-gray-400" />
                         </div>
-                        <input
+                        <Input
                             type="text"
-                            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-brand-900 focus:border-brand-900 sm:text-sm"
+                            className="pl-10"
                             placeholder="Rechercher un examen..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
-                    <label className="flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+                    <label className="flex items-center gap-2 whitespace-nowrap">
                         <input
                             type="checkbox"
                             checked={showArchived}
                             onChange={(e) => setShowArchived(e.target.checked)}
                             className="h-4 w-4 rounded border-gray-300 text-brand-900 focus:ring-brand-900"
                         />
-                        {dict.showArchived}
+                        <Text variant="caption">{dict.showArchived}</Text>
                     </label>
                 </div>
             </div>
 
             {filteredExams.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-                    <p className="text-gray-500">{dict.emptyStateText}</p>
-                </div>
+                <EmptyState
+                    title={dict.emptyStateText}
+                    description={searchQuery ? "Essayez de modifier votre recherche." : "Les examens publiés avec des soumissions apparaîtront ici."}
+                    size="full"
+                />
             ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{dict.table.columnCourse}</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{dict.table.columnExam}</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{dict.table.columnSubmissions}</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{dict.table.columnStatus}</th>
+                                <th className="px-6 py-3 text-left">
+                                    <Text variant="overline">{dict.table.columnCourse}</Text>
+                                </th>
+                                <th className="px-6 py-3 text-left">
+                                    <Text variant="overline">{dict.table.columnExam}</Text>
+                                </th>
+                                <th className="px-6 py-3 text-left">
+                                    <Text variant="overline">{dict.table.columnSubmissions}</Text>
+                                </th>
+                                <th className="px-6 py-3 text-left">
+                                    <Text variant="overline">{dict.table.columnStatus}</Text>
+                                </th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -150,18 +157,20 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center gap-2 max-w-xs">
                                                 <CourseCodeBadge code={exam.course.code} className="text-xs px-2 py-0.5" />
-                                                <span className="text-sm font-medium text-gray-900 truncate">
+                                                <Text variant="caption" className="font-medium truncate">
                                                     {exam.course.name}
-                                                </span>
+                                                </Text>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm font-medium text-gray-900">{exam.title}</div>
+                                            <Text variant="caption" className="font-medium">{exam.title}</Text>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <div className="text-sm text-gray-900">
-                                                <span className="font-semibold">{exam.gradedCount}</span>
-                                                <span className="text-gray-500"> / {exam.submittedCount}</span>
+                                            <div>
+                                                <Text variant="caption">
+                                                    <span className="font-semibold">{exam.gradedCount}</span>
+                                                    <span className="text-gray-500"> / {exam.submittedCount}</span>
+                                                </Text>
                                             </div>
                                             {exam.gradedCount < exam.submittedCount && (
                                                 <div className="w-24 h-2 bg-gray-200 rounded-full mt-1">
@@ -173,9 +182,9 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
                                             )}
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`text-sm ${status.color}`}>
+                                            <Text variant="caption" className={status.color}>
                                                 {status.label}
-                                            </span>
+                                            </Text>
                                         </td>
                                     </tr>
                                 )

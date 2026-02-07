@@ -4,6 +4,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { Plus, FileText, ListChecks, ChevronDown } from 'lucide-react'
 import { useExamStore } from './store'
 import { addQuestion } from '@/lib/actions/exam-editor'
+import { useToast } from '@/components/ui/Toast'
 
 type QuestionType = 'TEXT' | 'MCQ'
 
@@ -34,6 +35,7 @@ export default function AddQuestionButton() {
   const [isAdding, setIsAdding] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
+  const { toast } = useToast()
   const exam = useExamStore((state) => state.exam)
   const addQuestionToStore = useExamStore((state) => state.addQuestion)
 
@@ -110,7 +112,7 @@ export default function AddQuestionButton() {
       }
     } catch (error) {
       console.error('Failed to add question:', error)
-      // TODO: Show error toast
+      toast('Failed to add question', 'error')
     } finally {
       setIsAdding(false)
     }

@@ -4,6 +4,8 @@ import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { isTeacher } from "@/lib/api-auth"
 import { prisma } from "@/lib/prisma"
+import { analyzeFocusLossPatterns, analyzeExternalPastes, computeEnhancedAntiCheatScore } from "@/lib/proctoring/patternAnalysis"
+import { analyzeCopyPasteEvents } from "@/lib/antiCheat"
 import ProctoringDetail from "./ProctoringDetail"
 
 export const metadata: Metadata = {
@@ -62,6 +64,16 @@ export default async function ProctoringDetailPage({ params }: ProctoringDetailP
                 orderBy: {
                     timestamp: 'asc'
                 }
+            },
+            answers: {
+                select: {
+                    questionId: true,
+                    segments: {
+                        select: {
+                            autosavedAt: true
+                        }
+                    }
+                }
             }
         }
     })
@@ -74,6 +86,39 @@ export default async function ProctoringDetailPage({ params }: ProctoringDetailP
     if (attempt.exam.course.institutionId !== session.user.institutionId) {
         redirect("/dashboard")
     }
+
+    // Flatten answer timestamps
+    const answerTimestamps = attempt.answers.flatMap(answer =>
+        answer.segments
+            .filter(segment => segment.autosavedAt !== null)
+            .map(segment => ({
+                questionId: answer.questionId,
+                savedAt: segment.autosavedAt!
+            }))
+    )
+
+    // Analyze focus loss patterns
+    const focusLossPattern = analyzeFocusLossPatterns(attempt.proctorEvents, answerTimestamps)
+
+    // Analyze external pastes
+    const externalPasteAnalysis = analyzeExternalPastes(attempt.proctorEvents)
+
+    // Calculate event counts
+    const eventCounts: Record<string, number> = {}
+    attempt.proctorEvents.forEach(event => {
+        eventCounts[event.type] = (eventCounts[event.type] || 0) + 1
+    })
+
+    // Analyze copy-paste pairs
+    const copyPasteAnalysis = analyzeCopyPasteEvents(attempt.proctorEvents)
+
+    // Calculate enhanced anti-cheat score
+    const antiCheatScore = computeEnhancedAntiCheatScore({
+        eventCounts,
+        focusLossPattern,
+        externalPasteAnalysis,
+        copyPasteAnalysis
+    })
 
     const serializedAttempt = {
         id: attempt.id,
@@ -91,7 +136,16 @@ export default async function ProctoringDetailPage({ params }: ProctoringDetailP
             type: event.type,
             timestamp: event.timestamp.toISOString(),
             metadata: asObjectRecord(event.metadata)
-        }))
+        })),
+        focusLossPattern: {
+            flag: focusLossPattern.flag,
+            ratio: focusLossPattern.ratio,
+            suspiciousPairs: focusLossPattern.suspiciousPairs,
+            totalAnswers: focusLossPattern.totalAnswers
+        },
+        externalPastes: externalPasteAnalysis.externalPastes,
+        internalPastes: externalPasteAnalysis.internalPastes,
+        antiCheatScore
     }
 
     return <ProctoringDetail attempt={serializedAttempt} examId={examId} />

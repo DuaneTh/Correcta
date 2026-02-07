@@ -7,6 +7,8 @@ import { getAttemptAuthContext } from "@/lib/attempt-access"
 import { buildRateLimitResponse, rateLimit } from "@/lib/rateLimit"
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
+import { parseBody } from "@/lib/api-validation"
+import { proctorEventSchema } from "@/lib/schemas/attempts"
 
 // POST /api/attempts/[id]/proctor-events - Log anti-cheat event
 export async function POST(
@@ -76,24 +78,16 @@ export async function POST(
             return NextResponse.json({ success: true, replay: true })
         }
 
-        const body = await req.json()
-        const { type, metadata } = body
-
-        if (!type) {
-            return NextResponse.json({ error: "Missing event type" }, { status: 400 })
-        }
-
-        // Validate event type
-        if (!Object.values(ProctorEventType).includes(type)) {
-            return NextResponse.json({ error: "Invalid event type" }, { status: 400 })
-        }
+        const parsed = await parseBody(req, proctorEventSchema)
+        if ('error' in parsed) return parsed.error
+        const { type, metadata } = parsed.data
 
         // Create proctor event
         const event = await prisma.proctorEvent.create({
             data: {
                 attemptId: id,
                 type: type as ProctorEventType,
-                metadata: metadata || {},
+                metadata: (metadata || {}) as Record<string, string | number | boolean | null>,
                 timestamp: new Date()
             }
         })

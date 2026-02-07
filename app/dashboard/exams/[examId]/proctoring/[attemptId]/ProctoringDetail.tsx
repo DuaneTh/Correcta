@@ -1,7 +1,23 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
+import { Surface, Stack, Grid, Inline } from "@/components/ui/Layout"
+import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { Text } from "@/components/ui/Text"
+
+interface ProctoringHistoryEntry {
+    attemptId: string
+    examId: string
+    examTitle: string
+    courseCode: string
+    date: string
+    totalEvents: number
+    antiCheatScore: number
+    focusLossFlag: string
+}
 
 interface ProctorEvent {
     id: string
@@ -29,6 +45,15 @@ interface AttemptData {
         }
     }
     proctorEvents: ProctorEvent[]
+    focusLossPattern: {
+        flag: string
+        ratio: number
+        suspiciousPairs: number
+        totalAnswers: number
+    }
+    externalPastes: number
+    internalPastes: number
+    antiCheatScore: number
 }
 
 interface ProctoringDetailProps {
@@ -38,6 +63,30 @@ interface ProctoringDetailProps {
 
 export default function ProctoringDetail({ attempt, examId }: ProctoringDetailProps) {
     const router = useRouter()
+    const [history, setHistory] = useState<ProctoringHistoryEntry[]>([])
+    const [historyLoading, setHistoryLoading] = useState(true)
+
+    useEffect(() => {
+        fetch(`/api/students/${attempt.student.id}/proctoring-history`)
+            .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+            .then(data => setHistory(data.history || []))
+            .catch(err => console.error('Error fetching proctoring history:', err))
+            .finally(() => setHistoryLoading(false))
+    }, [attempt.student.id])
+
+    const getSuspicionColor = (score: number) => {
+        if (score === 0) return 'bg-green-100 text-green-800'
+        if (score <= 3) return 'bg-yellow-100 text-yellow-800'
+        if (score <= 8) return 'bg-orange-100 text-orange-800'
+        return 'bg-red-100 text-red-800'
+    }
+
+    const getSuspicionLabel = (score: number) => {
+        if (score === 0) return 'Aucun'
+        if (score <= 3) return 'Faible'
+        if (score <= 8) return 'Moyen'
+        return 'Élevé'
+    }
 
     const getMetadataString = (metadata: Record<string, unknown> | null, key: string) => {
         const value = metadata?.[key]
@@ -47,6 +96,11 @@ export default function ProctoringDetail({ attempt, examId }: ProctoringDetailPr
     const getMetadataNumber = (metadata: Record<string, unknown> | null, key: string) => {
         const value = metadata?.[key]
         return typeof value === 'number' ? value : null
+    }
+
+    const getMetadataBoolean = (metadata: Record<string, unknown> | null, key: string) => {
+        const value = metadata?.[key]
+        return typeof value === 'boolean' ? value : null
     }
 
     const getEventColor = (type: string) => {
@@ -112,46 +166,93 @@ export default function ProctoringDetail({ attempt, examId }: ProctoringDetailPr
     return (
         <div className="max-w-5xl mx-auto py-8 px-4">
             {/* Header */}
-            <div className="mb-6">
-                <button
+            <Stack gap="md" className="mb-6">
+                <Button
+                    variant="ghost"
                     onClick={() => router.push(`/dashboard/exams/${examId}/proctoring`)}
-                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                    className="w-fit"
                 >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    <ArrowLeft className="w-4 h-4" />
                     Retour au résumé
-                </button>
-                <h1 className="text-3xl font-bold text-gray-900">Détails de proctoring</h1>
-            </div>
+                </Button>
+                <Text variant="pageTitle">Détails de proctoring</Text>
+            </Stack>
 
             {/* Student and Exam Info */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-                <div className="grid md:grid-cols-2 gap-6">
-                    <div>
-                        <h2 className="text-sm font-medium text-gray-500 uppercase mb-2">Étudiant</h2>
-                        <p className="text-lg font-semibold text-gray-900">{attempt.student.name || 'Sans nom'}</p>
-                        <p className="text-sm text-gray-600">{attempt.student.email}</p>
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-medium text-gray-500 uppercase mb-2">Examen</h2>
-                        <p className="text-lg font-semibold text-gray-900">{attempt.exam.title}</p>
-                        <p className="text-sm text-gray-600">{attempt.exam.course.code} - {attempt.exam.course.name}</p>
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-medium text-gray-500 uppercase mb-2">Début</h2>
-                        <p className="text-sm text-gray-900">{formatTimestamp(attempt.startedAt)}</p>
-                    </div>
-                    <div>
-                        <h2 className="text-sm font-medium text-gray-500 uppercase mb-2">Soumission</h2>
-                        <p className="text-sm text-gray-900">
+            <Surface className="p-6 mb-6 shadow-sm">
+                <Grid cols="2" gap="lg">
+                    <Stack gap="xs">
+                        <Text variant="overline">Étudiant</Text>
+                        <Text variant="sectionTitle">{attempt.student.name || 'Sans nom'}</Text>
+                        <Text variant="muted">{attempt.student.email}</Text>
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="overline">Examen</Text>
+                        <Text variant="sectionTitle">{attempt.exam.title}</Text>
+                        <Text variant="muted">{attempt.exam.course.code} - {attempt.exam.course.name}</Text>
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="overline">Début</Text>
+                        <Text variant="muted">{formatTimestamp(attempt.startedAt)}</Text>
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="overline">Soumission</Text>
+                        <Text variant="muted">
                             {attempt.submittedAt ? formatTimestamp(attempt.submittedAt) : 'Non soumis'}
-                        </p>
-                    </div>
-                </div>
-            </div>
+                        </Text>
+                    </Stack>
+                </Grid>
+            </Surface>
+
+            {/* Pattern Analysis */}
+            <Surface className="p-6 mb-6 shadow-sm">
+                <Text variant="sectionTitle" className="mb-4">Analyse des patterns</Text>
+                <Grid cols="3" gap="md">
+                    <Stack gap="xs">
+                        <Text variant="overline">Pattern de perte de focus</Text>
+                        <div className="flex items-center gap-2">
+                            {attempt.focusLossPattern.flag === 'NONE' && (
+                                <Badge variant="success">Aucun pattern suspect</Badge>
+                            )}
+                            {attempt.focusLossPattern.flag === 'SUSPICIOUS' && (
+                                <Badge variant="warning" className="bg-orange-50 text-orange-700 border-orange-200">
+                                    Pattern suspect
+                                </Badge>
+                            )}
+                            {attempt.focusLossPattern.flag === 'HIGHLY_SUSPICIOUS' && (
+                                <Badge className="bg-red-50 text-red-700 border-red-200">
+                                    Pattern très suspect
+                                </Badge>
+                            )}
+                        </div>
+                        {attempt.focusLossPattern.totalAnswers > 0 && (
+                            <Text variant="muted">
+                                {attempt.focusLossPattern.suspiciousPairs} réponse{attempt.focusLossPattern.suspiciousPairs > 1 ? 's' : ''} sur {attempt.focusLossPattern.totalAnswers} précédée{attempt.focusLossPattern.suspiciousPairs > 1 ? 's' : ''} d'une perte de focus ({(attempt.focusLossPattern.ratio * 100).toFixed(0)}%)
+                            </Text>
+                        )}
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="overline">Collages externes</Text>
+                        <Text variant="sectionTitle">{attempt.externalPastes}</Text>
+                        {(attempt.externalPastes + attempt.internalPastes) > 0 && (
+                            <Text variant="muted">
+                                {attempt.externalPastes} externe{attempt.externalPastes > 1 ? 's' : ''} / {attempt.externalPastes + attempt.internalPastes} total ({((attempt.externalPastes / (attempt.externalPastes + attempt.internalPastes)) * 100).toFixed(0)}%)
+                            </Text>
+                        )}
+                    </Stack>
+                    <Stack gap="xs">
+                        <Text variant="overline">Score anti-triche amélioré</Text>
+                        <Text variant="sectionTitle">{attempt.antiCheatScore}</Text>
+                        <Text variant="muted">
+                            Score incluant patterns de focus et collages externes
+                        </Text>
+                    </Stack>
+                </Grid>
+            </Surface>
 
             {/* Event Statistics */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">Statistiques des événements</h2>
+            <Surface className="p-6 mb-6 shadow-sm">
+                <Text variant="sectionTitle" className="mb-4">Statistiques des événements</Text>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     {Object.entries(
                         attempt.proctorEvents.reduce((acc, event) => {
@@ -159,71 +260,160 @@ export default function ProctoringDetail({ attempt, examId }: ProctoringDetailPr
                             return acc
                         }, {} as Record<string, number>)
                     ).map(([type, count]) => (
-                        <div key={type} className="text-center p-3 bg-gray-50 rounded">
-                            <p className="text-2xl font-bold text-gray-900">{count}</p>
-                            <p className="text-xs text-gray-600 mt-1">{getEventLabel(type)}</p>
-                        </div>
+                        <Surface key={type} tone="subtle" className="text-center p-3">
+                            <Text as="p" className="text-2xl font-bold text-gray-900">{count}</Text>
+                            <Text variant="xsMuted" className="mt-1">{getEventLabel(type)}</Text>
+                        </Surface>
                     ))}
-                    <div className="text-center p-3 bg-indigo-50 rounded">
-                        <p className="text-2xl font-bold text-indigo-900">{attempt.proctorEvents.length}</p>
-                        <p className="text-xs text-indigo-600 mt-1">Total</p>
-                    </div>
+                    <Surface className="text-center p-3 bg-indigo-50">
+                        <Text as="p" className="text-2xl font-bold text-indigo-900">{attempt.proctorEvents.length}</Text>
+                        <Text variant="xsMuted" className="mt-1 text-indigo-600">Total</Text>
+                    </Surface>
                 </div>
-            </div>
+            </Surface>
 
-            {/* Timeline */}
-            <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
-                    Chronologie des événements ({attempt.proctorEvents.length})
-                </h2>
-
-                {attempt.proctorEvents.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">Aucun événement enregistré.</p>
+            {/* Student Proctoring History */}
+            <Surface className="p-6 mb-6 shadow-sm">
+                <Text variant="sectionTitle" className="mb-1">Historique anti-triche</Text>
+                <Text variant="muted" className="mb-4">{attempt.student.name || attempt.student.email}</Text>
+                {historyLoading ? (
+                    <Text variant="muted" className="text-center py-4">Chargement...</Text>
+                ) : history.filter(h => h.attemptId !== attempt.id).length === 0 ? (
+                    <Text variant="muted" className="text-center py-4">Aucun autre examen avec proctoring</Text>
                 ) : (
-                    <div className="space-y-3">
-                        {attempt.proctorEvents.map((event, index) => (
-                            <div
-                                key={event.id}
-                                className={`p-4 rounded-lg border ${getEventColor(event.type)} flex items-start justify-between`}
-                            >
-                                <div className="flex-1">
-                                    <div className="flex items-center gap-3">
-                                        <span className="font-semibold">{getEventLabel(event.type)}</span>
-                                        <span className="text-xs opacity-75">
-                                            {formatRelativeTime(event.timestamp)}
-                                        </span>
-                                    </div>
-                                    <p className="text-xs mt-1 opacity-75">
-                                        {formatTimestamp(event.timestamp)}
-                                    </p>
-                                    {event.metadata && Object.keys(event.metadata).length > 0 && (
-                                        <div className="mt-2 text-xs">
-                                            {getMetadataString(event.metadata, 'originalEvent') && (
-                                                <span className="mr-3">
-                                                    Event: {getMetadataString(event.metadata, 'originalEvent')}
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Examen
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Événements
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Score
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {history.map((entry) => {
+                                    const isCurrent = entry.attemptId === attempt.id
+                                    return (
+                                        <tr
+                                            key={entry.attemptId}
+                                            onClick={() => !isCurrent && router.push(`/dashboard/exams/${entry.examId}/proctoring/${entry.attemptId}`)}
+                                            className={`transition-colors ${isCurrent ? 'bg-indigo-50 font-medium' : 'hover:bg-gray-50 cursor-pointer'}`}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <Stack gap="xs">
+                                                    <Text variant="body" className={isCurrent ? 'font-medium' : ''}>
+                                                        {entry.examTitle}
+                                                        {isCurrent && <Text as="span" variant="caption" className="ml-2">(actuel)</Text>}
+                                                    </Text>
+                                                    <Text variant="xsMuted">{entry.courseCode}</Text>
+                                                </Stack>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <Text variant="caption">
+                                                    {new Date(entry.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                </Text>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <Text variant="caption">{entry.totalEvents}</Text>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${getSuspicionColor(entry.antiCheatScore)}`}>
+                                                    {entry.antiCheatScore} - {getSuspicionLabel(entry.antiCheatScore)}
                                                 </span>
-                                            )}
-                                            {getMetadataString(event.metadata, 'visibility') && (
-                                                <span>
-                                                    Visibility: {getMetadataString(event.metadata, 'visibility')}
-                                                </span>
-                                            )}
-                                            {getMetadataNumber(event.metadata, 'selectionLength') !== null && (
-                                                <span className="mr-3">
-                                                    Selection: {getMetadataNumber(event.metadata, 'selectionLength')} chars
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="text-xs font-mono text-gray-500">
-                                    #{index + 1}
-                                </div>
-                            </div>
-                        ))}
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 )}
-            </div>
+            </Surface>
+
+            {/* Timeline */}
+            <Surface className="p-6 shadow-sm">
+                <Text variant="sectionTitle" className="mb-4">
+                    Chronologie des événements ({attempt.proctorEvents.length})
+                </Text>
+
+                {attempt.proctorEvents.length === 0 ? (
+                    <Text variant="muted" className="text-center py-8">Aucun événement enregistré.</Text>
+                ) : (
+                    <Stack gap="sm">
+                        {attempt.proctorEvents.map((event, index) => {
+                            const isExternal = event.type === 'PASTE' && getMetadataBoolean(event.metadata, 'isExternal')
+                            const isPaste = event.type === 'PASTE'
+                            const borderClass = isPaste
+                                ? isExternal === true
+                                    ? 'border-2 border-red-300'
+                                    : isExternal === false
+                                    ? 'border-2 border-green-300'
+                                    : ''
+                                : ''
+
+                            return (
+                                <div
+                                    key={event.id}
+                                    className={`p-4 rounded-lg border ${getEventColor(event.type)} ${borderClass} flex items-start justify-between`}
+                                >
+                                    <div className="flex-1">
+                                        <Inline gap="sm" align="start">
+                                            <span className="font-semibold">{getEventLabel(event.type)}</span>
+                                            {isPaste && isExternal === true && (
+                                                <Badge className="bg-red-100 text-red-800 border-red-300">
+                                                    Collage externe
+                                                </Badge>
+                                            )}
+                                            {isPaste && isExternal === false && (
+                                                <Badge variant="success">
+                                                    Collage interne
+                                                </Badge>
+                                            )}
+                                            <span className="text-xs opacity-75">
+                                                {formatRelativeTime(event.timestamp)}
+                                            </span>
+                                        </Inline>
+                                        <Text variant="xsMuted" className="mt-1">
+                                            {formatTimestamp(event.timestamp)}
+                                        </Text>
+                                        {event.metadata && Object.keys(event.metadata).length > 0 && (
+                                            <div className="mt-2 text-xs">
+                                                {getMetadataString(event.metadata, 'originalEvent') && (
+                                                    <span className="mr-3">
+                                                        Event: {getMetadataString(event.metadata, 'originalEvent')}
+                                                    </span>
+                                                )}
+                                                {getMetadataString(event.metadata, 'visibility') && (
+                                                    <span>
+                                                        Visibility: {getMetadataString(event.metadata, 'visibility')}
+                                                    </span>
+                                                )}
+                                                {getMetadataNumber(event.metadata, 'selectionLength') !== null && (
+                                                    <span className="mr-3">
+                                                        Selection: {getMetadataNumber(event.metadata, 'selectionLength')} chars
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="text-xs font-mono text-gray-500">
+                                        #{index + 1}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </Stack>
+                )}
+            </Surface>
         </div>
     )
 }

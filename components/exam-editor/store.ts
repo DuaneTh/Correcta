@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import type { ContentSegments, QuestionType, StudentToolsConfig, RubricLevel } from '@/types/exams'
+import type { AntiCheatConfig } from '@/lib/proctoring/types'
+import { DEFAULT_ANTI_CHEAT_CONFIG } from '@/lib/proctoring/types'
 
 /**
  * Exam metadata that can be edited in the editor
@@ -33,6 +35,7 @@ export interface EditorExam {
   } | null
   sections: EditorSection[]
   updatedAt: string
+  antiCheatConfig: AntiCheatConfig
 }
 
 /**
@@ -109,6 +112,7 @@ interface ExamEditorState {
 
   // Metadata actions
   updateMetadata: (data: Partial<ExamMetadata>) => void
+  updateAntiCheatConfig: (config: Partial<AntiCheatConfig>) => void
   setIsSaving: (saving: boolean) => void
   markClean: () => void
 
@@ -178,7 +182,11 @@ export const useExamStore = create<ExamEditorState>((set, get) => ({
    */
   initialize: (exam) => {
     set({
-      exam,
+      exam: {
+        ...exam,
+        // Ensure antiCheatConfig exists with defaults if not present
+        antiCheatConfig: exam.antiCheatConfig || DEFAULT_ANTI_CHEAT_CONFIG,
+      },
       isDirty: false,
       isSaving: false,
       activeSectionId: null,
@@ -215,6 +223,56 @@ export const useExamStore = create<ExamEditorState>((set, get) => ({
       },
       isDirty: true,
     })
+  },
+
+  /**
+   * Update anti-cheat configuration
+   * Immediately persists to API (no debounce)
+   */
+  updateAntiCheatConfig: async (config) => {
+    const { exam } = get()
+    if (!exam) return
+
+    // Merge partial config into existing
+    const mergedConfig: AntiCheatConfig = {
+      ...exam.antiCheatConfig,
+      ...config,
+    }
+
+    // Optimistically update UI
+    set({
+      exam: {
+        ...exam,
+        antiCheatConfig: mergedConfig,
+      },
+    })
+
+    // Persist to API via PUT
+    try {
+      const response = await fetch(`/api/exams/${exam.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-csrf-token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+        },
+        body: JSON.stringify({
+          antiCheatConfig: mergedConfig,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to update anti-cheat config')
+      }
+    } catch (error) {
+      console.error('Failed to update anti-cheat config:', error)
+      // Revert optimistic update on failure
+      set({
+        exam: {
+          ...exam,
+          antiCheatConfig: exam.antiCheatConfig,
+        },
+      })
+    }
   },
 
   /**

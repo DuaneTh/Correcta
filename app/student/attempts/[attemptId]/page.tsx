@@ -139,6 +139,9 @@ export default async function ExamRoomPage({ params }: ExamRoomPageProps) {
             : null,
         requireHonorCommitment: attempt.exam.requireHonorCommitment,
         allowedMaterials: attempt.exam.allowedMaterials ?? null,
+        antiCheatConfig: attempt.exam.antiCheatConfig
+            ? (attempt.exam.antiCheatConfig as { webcamDeterrent?: boolean; browserLockdown?: boolean })
+            : null,
         changes: attempt.exam.changes.map((change) => ({
             ...change,
             createdAt: change.createdAt.toISOString(),

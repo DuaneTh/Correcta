@@ -3,6 +3,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, CheckCircle, Loader2 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
+import { Button } from '@/components/ui/Button'
+import { Text } from '@/components/ui/Text'
+import { Badge } from '@/components/ui/Badge'
 
 interface GradingProgressModalProps {
     examId: string
@@ -34,7 +37,7 @@ export function GradingProgressModal({
     const [isSwitchingToSync, setIsSwitchingToSync] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isStuck, setIsStuck] = useState(false)
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastCompletedRef = useRef<number>(0)
     const stuckCheckCountRef = useRef<number>(0)
 
@@ -198,7 +201,7 @@ export function GradingProgressModal({
     const isComplete = progress?.status === 'COMPLETED'
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Progression de la correction">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -211,6 +214,7 @@ export function GradingProgressModal({
                 <button
                     onClick={handleClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    aria-label="Fermer"
                 >
                     <X className="w-5 h-5" />
                 </button>
@@ -222,14 +226,14 @@ export function GradingProgressModal({
                     ) : (
                         <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
                     )}
-                    <h2 className="text-xl font-semibold text-gray-900">
+                    <Text as="h2" variant="sectionTitle">
                         {isComplete ? 'Correction terminee' : 'Correction en cours...'}
-                    </h2>
+                    </Text>
                 </div>
 
                 {/* Progress content */}
                 {error ? (
-                    <div className="text-red-600 text-sm mb-4">{error}</div>
+                    <Text variant="caption" className="text-red-600 mb-4">{error}</Text>
                 ) : progress ? (
                     <div className="space-y-4">
                         {/* Progress bar */}
@@ -243,31 +247,33 @@ export function GradingProgressModal({
                         </div>
 
                         {/* Progress text */}
-                        <p className="text-center text-gray-700 font-medium">
+                        <Text variant="body" className="text-center font-medium">
                             {progress.completed} / {progress.total} {progress.total > 1 ? 'copies corrigees' : 'copie corrigee'}
-                        </p>
+                        </Text>
 
                         {/* Percentage */}
-                        <p className="text-center text-2xl font-bold text-gray-900">
+                        <Text as="p" className="text-center text-2xl font-bold">
                             {progress.percentage}%
-                        </p>
+                        </Text>
 
                         {/* Stuck warning */}
                         {isStuck && !isComplete && (
                             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                <p className="text-sm text-amber-800 font-medium">
+                                <Text variant="caption" className="text-amber-800 font-medium">
                                     La correction semble bloquee
-                                </p>
-                                <p className="text-xs text-amber-600 mt-1">
+                                </Text>
+                                <Text variant="xsMuted" className="text-amber-600 mt-1">
                                     Le service de correction en arriere-plan ne repond pas.
-                                </p>
-                                <button
+                                </Text>
+                                <Button
                                     onClick={handleSwitchToSync}
                                     disabled={isSwitchingToSync}
-                                    className="mt-2 w-full px-3 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                                    variant="primary"
+                                    className="mt-2 w-full bg-amber-600 hover:bg-amber-700"
+                                    size="sm"
                                 >
                                     {isSwitchingToSync ? 'Correction en cours...' : 'Corriger directement (sans file d\'attente)'}
-                                </button>
+                                </Button>
                             </div>
                         )}
 
@@ -282,13 +288,13 @@ export function GradingProgressModal({
                                         className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
                                         disabled={isComplete}
                                     />
-                                    <span className="text-sm text-gray-700">
+                                    <Text variant="caption">
                                         Publier les notes immediatement apres correction
-                                    </span>
+                                    </Text>
                                 </label>
-                                <p className="text-xs text-gray-500 mt-1 ml-7">
+                                <Text variant="xsMuted" className="mt-1 ml-7">
                                     Les etudiants pourront voir leurs notes des la fin de la correction.
-                                </p>
+                                </Text>
                             </div>
                         )}
                     </div>
@@ -301,20 +307,20 @@ export function GradingProgressModal({
                 {/* Actions */}
                 <div className="mt-6 flex justify-end gap-3">
                     {progress?.canCancel && !isComplete && (
-                        <button
+                        <Button
                             onClick={handleCancel}
                             disabled={isCancelling}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+                            variant="secondary"
                         >
                             {isCancelling ? 'Annulation...' : 'Annuler'}
-                        </button>
+                        </Button>
                     )}
-                    <button
+                    <Button
                         onClick={handleClose}
-                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700"
+                        variant="primary"
                     >
                         {isComplete ? 'Fermer' : 'Laisser en arriere-plan'}
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

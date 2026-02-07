@@ -7,6 +7,7 @@ import { getAttemptAuthContext } from "@/lib/attempt-access"
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { ensureIdempotency, verifyAttemptNonce } from "@/lib/attemptIntegrity"
 import { scoreMultipleChoiceAnswer } from "@/lib/actions/exam-taking"
+import { buildRateLimitResponse, rateLimit } from "@/lib/rateLimit"
 
 // POST /api/attempts/[id]/submit - Submit exam attempt
 export async function POST(
@@ -29,6 +30,18 @@ export async function POST(
         })
         if (!csrfResult.ok) {
             return NextResponse.json({ error: "CSRF" }, { status: 403 })
+        }
+
+        // Rate limit: 5 submit attempts per 60 seconds per student
+        const rlOpts = { windowSeconds: 60, max: 5, prefix: 'attempt_submit' }
+        try {
+            const rl = await rateLimit(session.user.id, rlOpts)
+            if (!rl.ok) {
+                const limited = buildRateLimitResponse(rl, rlOpts)
+                return NextResponse.json(limited.body, { status: limited.status, headers: limited.headers })
+            }
+        } catch {
+            // Redis unavailable — allow through
         }
 
         const attemptAuth = await getAttemptAuthContext(id)

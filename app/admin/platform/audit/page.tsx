@@ -2,6 +2,8 @@ import { redirect } from 'next/navigation'
 import { getAuthSession, isPlatformAdmin } from '@/lib/api-auth'
 import { getDictionary, getLocale } from '@/lib/i18n/server'
 import PlatformAdminLayout from '@/components/admin/platform/PlatformAdminLayout'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 
 export default async function PlatformAuditPage() {
     const session = await getAuthSession()
@@ -27,24 +29,31 @@ export default async function PlatformAuditPage() {
                 </div>
 
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="text-xs uppercase text-gray-500">{dict.cardEvents}</div>
-                        <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
-                        <div className="mt-1 text-xs text-gray-500">{dict.cardEventsHint}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="text-xs uppercase text-gray-500">{dict.cardAdminActions}</div>
-                        <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
-                        <div className="mt-1 text-xs text-gray-500">{dict.cardAdminActionsHint}</div>
-                    </div>
-                    <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-                        <div className="text-xs uppercase text-gray-500">{dict.cardSecuritySignals}</div>
-                        <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
-                        <div className="mt-1 text-xs text-gray-500">{dict.cardSecuritySignalsHint}</div>
-                    </div>
+                    <Card>
+                        <CardBody>
+                            <div className="text-xs uppercase text-gray-500">{dict.cardEvents}</div>
+                            <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
+                            <div className="mt-1 text-xs text-gray-500">{dict.cardEventsHint}</div>
+                        </CardBody>
+                    </Card>
+                    <Card>
+                        <CardBody>
+                            <div className="text-xs uppercase text-gray-500">{dict.cardAdminActions}</div>
+                            <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
+                            <div className="mt-1 text-xs text-gray-500">{dict.cardAdminActionsHint}</div>
+                        </CardBody>
+                    </Card>
+                    <Card>
+                        <CardBody>
+                            <div className="text-xs uppercase text-gray-500">{dict.cardSecuritySignals}</div>
+                            <div className="mt-2 text-3xl font-semibold text-gray-900">0</div>
+                            <div className="mt-1 text-xs text-gray-500">{dict.cardSecuritySignalsHint}</div>
+                        </CardBody>
+                    </Card>
                 </div>
 
-                <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                <Card>
+                    <CardBody padding="none">
                     <div className="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-sm font-semibold text-gray-900">{dict.recentEvents}</div>
                         <div className="text-xs text-gray-500">{dict.exportHint}</div>
@@ -69,16 +78,16 @@ export default async function PlatformAuditPage() {
                         </table>
                     </div>
                     <div className="flex items-center justify-end border-t border-gray-200 p-4">
-                        <button
-                            type="button"
+                        <Button
+                            variant="secondary"
+                            size="sm"
                             disabled
-                            className="rounded-md border border-gray-200 px-3 py-2 text-xs font-medium text-gray-400"
-                            aria-disabled
                         >
                             {dict.exportLabel}
-                        </button>
+                        </Button>
                     </div>
-                </div>
+                    </CardBody>
+                </Card>
             </div>
         </PlatformAdminLayout>
     )

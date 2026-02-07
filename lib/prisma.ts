@@ -11,6 +11,9 @@ const pool =
     globalForPrisma.prismaPool ??
     new Pool({
         connectionString: process.env.DATABASE_URL,
+        ...(process.env.NODE_ENV === 'production' && {
+            ssl: { rejectUnauthorized: false },
+        }),
     })
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prismaPool = pool

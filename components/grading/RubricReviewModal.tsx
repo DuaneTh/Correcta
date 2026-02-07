@@ -4,6 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, ChevronDown, ChevronUp, Edit2, Loader2 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { RubricEditor } from './RubricEditor'
+import { Text } from '@/components/ui/Text'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Inline, Stack } from '@/components/ui/Layout'
 
 interface Criterion {
     name: string
@@ -195,17 +200,17 @@ export function RubricReviewModal({
             {/* Modal - Full screen on mobile, large on desktop */}
             <div className="relative bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] mx-4 flex flex-col">
                 {/* Header */}
-                <div className="flex items-center justify-between p-4 border-b">
-                    <h2 className="text-xl font-semibold text-gray-900">
+                <Inline align="between" className="p-4 border-b">
+                    <Text variant="pageTitle" className="text-xl">
                         {rubricOnly ? 'Générer les barèmes' : 'Vérifier les barèmes avant correction'}
-                    </h2>
-                    <button
+                    </Text>
+                    <Button
+                        variant="ghost"
                         onClick={onClose}
-                        className="text-gray-400 hover:text-gray-600"
                     >
                         <X className="w-5 h-5" />
-                    </button>
-                </div>
+                    </Button>
+                </Inline>
 
                 {/* Content - scrollable */}
                 <div className="flex-1 overflow-y-auto p-4">
@@ -214,43 +219,43 @@ export function RubricReviewModal({
                             <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
                         </div>
                     ) : error ? (
-                        <div className="text-red-600 text-center py-8">{error}</div>
+                        <Text variant="muted" className="text-red-600 text-center py-8">{error}</Text>
                     ) : questions.length === 0 ? (
-                        <div className="text-gray-500 text-center py-8">
+                        <Text variant="muted" className="text-center py-8">
                             Aucune question TEXT a corriger
-                        </div>
+                        </Text>
                     ) : (
-                        <div className="space-y-4">
-                            <p className="text-sm text-gray-600 mb-4">
+                        <Stack gap="md">
+                            <Text variant="muted" className="mb-4">
                                 Verifiez et modifiez les baremes si necessaire. Le meme bareme sera applique a toutes les copies pour garantir l&apos;equite.
-                            </p>
+                            </Text>
 
                             {questions.map((question, index) => (
-                                <div
+                                <Card
                                     key={question.id}
-                                    className="border rounded-lg overflow-hidden"
+                                    overflow="hidden"
                                 >
                                     {/* Question header */}
                                     <button
                                         onClick={() => toggleQuestion(question.id)}
                                         className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
                                     >
-                                        <div className="flex-1 text-left">
-                                            <div className="flex items-center gap-2">
-                                                <span className="font-medium text-gray-900">
+                                        <Stack gap="xs" className="flex-1 text-left">
+                                            <Inline gap="sm" align="center">
+                                                <Text variant="label" className="text-gray-900">
                                                     Question {index + 1}
-                                                </span>
-                                                <span className="text-sm text-gray-500">
+                                                </Text>
+                                                <Text variant="muted">
                                                     ({question.sectionTitle})
-                                                </span>
-                                                <span className="text-sm text-gray-500">
+                                                </Text>
+                                                <Text variant="muted">
                                                     - {question.maxPoints} pts
-                                                </span>
-                                            </div>
-                                            <p className="text-sm text-gray-600 mt-1">
+                                                </Text>
+                                            </Inline>
+                                            <Text variant="muted">
                                                 {truncateContent(question.content)}
-                                            </p>
-                                        </div>
+                                            </Text>
+                                        </Stack>
                                         {expandedQuestions.has(question.id) ? (
                                             <ChevronUp className="w-5 h-5 text-gray-400" />
                                         ) : (
@@ -260,7 +265,7 @@ export function RubricReviewModal({
 
                                     {/* Rubric content */}
                                     {expandedQuestions.has(question.id) && (
-                                        <div className="p-4 border-t">
+                                        <CardBody className="border-t">
                                             {editingQuestion === question.id ? (
                                                 /* Edit mode - using RubricEditor */
                                                 <RubricEditor
@@ -273,86 +278,89 @@ export function RubricReviewModal({
                                                 />
                                             ) : question.generatedRubric ? (
                                                 /* Display rubric */
-                                                <div>
-                                                    <div className="flex items-center justify-between mb-3">
-                                                        <h4 className="font-medium text-gray-900">Criteres</h4>
-                                                        <button
+                                                <Stack gap="sm">
+                                                    <Inline align="between">
+                                                        <Text variant="label">Criteres</Text>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
                                                             onClick={() => startEditing(question)}
-                                                            className="flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800"
+                                                            className="text-indigo-600 hover:text-indigo-800"
                                                         >
                                                             <Edit2 className="w-4 h-4" />
                                                             Modifier
-                                                        </button>
-                                                    </div>
-                                                    <ul className="space-y-2">
+                                                        </Button>
+                                                    </Inline>
+                                                    <Stack gap="sm">
                                                         {question.generatedRubric.criteria.map((criterion, i) => (
-                                                            <li
+                                                            <Inline
                                                                 key={i}
-                                                                className="flex items-start gap-3 p-2 bg-gray-50 rounded"
+                                                                gap="sm"
+                                                                align="start"
+                                                                className="p-2 bg-gray-50 rounded"
                                                             >
-                                                                <span className="flex-shrink-0 w-12 text-sm font-medium text-indigo-600">
+                                                                <Badge variant="info" className="flex-shrink-0">
                                                                     {criterion.points} pts
-                                                                </span>
-                                                                <div className="flex-1">
-                                                                    <div className="font-medium text-gray-900 text-sm">
+                                                                </Badge>
+                                                                <Stack gap="xs" className="flex-1">
+                                                                    <Text variant="label" className="text-gray-900">
                                                                         {criterion.name}
-                                                                    </div>
-                                                                    <div className="text-sm text-gray-600">
+                                                                    </Text>
+                                                                    <Text variant="muted">
                                                                         {criterion.description}
-                                                                    </div>
-                                                                </div>
-                                                            </li>
+                                                                    </Text>
+                                                                </Stack>
+                                                            </Inline>
                                                         ))}
-                                                    </ul>
-                                                    <div className="mt-2 text-sm text-gray-500">
+                                                    </Stack>
+                                                    <Text variant="muted" className="mt-2">
                                                         Total: {question.generatedRubric.totalPoints} points
-                                                    </div>
-                                                </div>
+                                                    </Text>
+                                                </Stack>
                                             ) : (
                                                 /* No rubric yet */
-                                                <div className="text-center py-4">
-                                                    <p className="text-gray-500 text-sm">
+                                                <Stack gap="sm" className="text-center py-4">
+                                                    <Text variant="muted">
                                                         Sera genere automatiquement
-                                                    </p>
-                                                    <button
+                                                    </Text>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
                                                         onClick={() => startEditing(question)}
-                                                        className="mt-2 text-sm text-indigo-600 hover:text-indigo-800"
+                                                        className="text-indigo-600 hover:text-indigo-800"
                                                     >
                                                         Creer manuellement
-                                                    </button>
-                                                </div>
+                                                    </Button>
+                                                </Stack>
                                             )}
-                                        </div>
+                                        </CardBody>
                                     )}
-                                </div>
+                                </Card>
                             ))}
-                        </div>
+                        </Stack>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end gap-3 p-4 border-t bg-gray-50">
-                    <button
+                <Inline align="end" gap="sm" className="p-4 border-t bg-gray-50">
+                    <Button
+                        variant="ghost"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                     >
                         Annuler
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                        variant={rubricOnly ? "primary" : "primary"}
                         onClick={handleConfirm}
                         disabled={loading || questions.length === 0 || confirmLoading}
-                        className={`px-4 py-2 text-sm font-medium text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-                            rubricOnly
-                                ? 'bg-indigo-600 hover:bg-indigo-700'
-                                : 'bg-green-600 hover:bg-green-700'
-                        }`}
+                        className={rubricOnly ? '' : 'bg-green-600 hover:bg-green-700'}
                     >
                         {confirmLoading
                             ? (rubricOnly ? 'Validation...' : 'Lancement...')
                             : (rubricOnly ? 'Valider le barème' : 'Lancer la correction')
                         }
-                    </button>
-                </div>
+                    </Button>
+                </Inline>
             </div>
         </div>
     )

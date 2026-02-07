@@ -46,6 +46,24 @@ Requirements pour le pilote ESSEC. Amelioration de l'existant, pas reconstructio
 - [x] **ORG-04**: Import CSV/Excel pour creation massive d'utilisateurs
 - [x] **ORG-05**: Attribution des roles (professeur, admin ecole)
 
+### UI Kit (UIKIT)
+
+- [x] **UIKIT-01**: cn() utility and base design tokens
+- [x] **UIKIT-02**: Migrate admin pages (school admin, platform admin) to UI Kit components
+- [x] **UIKIT-03**: Migrate teacher pages (courses, exams, grading) to UI Kit components
+- [x] **UIKIT-04**: Migrate student pages (courses, exams, results) to UI Kit components
+- [x] **UIKIT-05**: Consolidate modals (grading, export, confirm) using UI Kit patterns
+- [x] **UIKIT-06**: UI Kit showcase page at /internal/ui-kit
+
+### Proctoring Intelligent (PROCT)
+
+- [x] **PROCT-01**: Mode webcam dissuasif (invite permission camera + indicateur actif, pas d'enregistrement)
+- [x] **PROCT-02**: Proctoring activable/desactivable par examen (webcam + lockdown independants)
+- [x] **PROCT-03**: Detection lockdown navigateur (changements d'onglet, perte de focus, detection collage externe)
+- [x] **PROCT-04**: Analyse des patterns de perte de focus (correlation avec timing des reponses = suspicieux)
+- [x] **PROCT-05**: Journalisation d'activite avec evenements horodates pour review prof
+- [x] **PROCT-06**: Dashboard proctoring prof (timeline par etudiant, score suspicion, patterns)
+
 ## v2 Requirements
 
 Defere apres pilote ESSEC.
@@ -106,12 +124,26 @@ Defere apres pilote ESSEC.
 | EXPO-02 | Phase 5 - Export | Complete |
 | EXPO-03 | Phase 5 - Export | Complete |
 | EXPO-04 | Phase 5 - Export | Complete |
+| UIKIT-01 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-02 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-03 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-04 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-05 | Phase 6 - UI Kit Integration | Complete |
+| UIKIT-06 | Phase 6 - UI Kit Integration | Complete |
+| PROCT-01 | Phase 7 - Intelligent Proctoring | Complete |
+| PROCT-02 | Phase 7 - Intelligent Proctoring | Complete |
+| PROCT-03 | Phase 7 - Intelligent Proctoring | Complete |
+| PROCT-04 | Phase 7 - Intelligent Proctoring | Complete |
+| PROCT-05 | Phase 7 - Intelligent Proctoring | Complete |
+| PROCT-06 | Phase 7 - Intelligent Proctoring | Complete |
 
 **Coverage:**
-- v1 requirements: 24 total
-- Mapped to phases: 24
+- v1 requirements: 24 total (all complete)
+- UI Kit requirements: 6 total (all complete)
+- Proctoring requirements: 6 total (all complete)
+- Mapped to phases: 36
 - Unmapped: 0
 
 ---
 *Requirements defined: 2026-01-18*
-*Last updated: 2026-01-20 after Phase 5 completion - ALL v1 REQUIREMENTS COMPLETE*
+*Last updated: 2026-02-02 after Phase 7 completion - ALL REQUIREMENTS COMPLETE (v1 + UIKIT + PROCT)*

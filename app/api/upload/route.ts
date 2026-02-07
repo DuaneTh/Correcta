@@ -6,6 +6,8 @@ import {
   isValidImageType,
   MAX_FILE_SIZE,
 } from '@/lib/storage/minio'
+import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
+import { buildRateLimitResponse, rateLimit } from '@/lib/rateLimit'
 
 /**
  * POST /api/upload
@@ -41,6 +43,29 @@ export async function POST(request: NextRequest) {
         { error: 'Teacher role required to upload files' },
         { status: 403 }
       )
+    }
+
+    // Verify CSRF token
+    const csrfResult = verifyCsrf({
+      req: request,
+      cookieToken: getCsrfCookieToken(request),
+      headerToken: request.headers.get('x-csrf-token'),
+      allowedOrigins: getAllowedOrigins()
+    })
+    if (!csrfResult.ok) {
+      return NextResponse.json({ error: 'CSRF' }, { status: 403 })
+    }
+
+    // Rate limit: 30 uploads per 60 seconds per user
+    const rlOpts = { windowSeconds: 60, max: 30, prefix: 'upload' }
+    try {
+      const rl = await rateLimit(session.user.id, rlOpts)
+      if (!rl.ok) {
+        const limited = buildRateLimitResponse(rl, rlOpts)
+        return NextResponse.json(limited.body, { status: limited.status, headers: limited.headers })
+      }
+    } catch {
+      // Redis unavailable — allow through
     }
 
     // Parse form data

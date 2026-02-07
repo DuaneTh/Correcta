@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, Fragment } from 'react'
+import { useMemo, useState, useEffect, Fragment } from 'react'
 import { legacyMathHtmlToLatex } from '@/lib/math/legacy'
 import { parseContent } from '@/lib/content'
 import { ContentSegment } from '@/types/exams'
@@ -159,16 +159,34 @@ function GraphSegment({
     scale: number
     availableWidth: number
 }) {
-    const containerRef = useMemo(() => {
-        // Create a temporary container for the graph
+    const [html, setHtml] = useState<string>('')
+
+    useEffect(() => {
+        // Create a temporary container for the graph (client-side only)
         const container = document.createElement('div')
         container.style.display = 'block'
         container.style.margin = '8px 0'
         container.style.width = 'max-content'
         container.style.maxWidth = '100%'
         renderGraphInto(container, segment, { maxWidth: availableWidth, scale })
-        return container.innerHTML
+        setHtml(container.innerHTML)
     }, [segment, scale, availableWidth])
+
+    if (!html) {
+        return (
+            <div
+                style={{
+                    display: 'block',
+                    margin: '8px 0',
+                    width: 'max-content',
+                    maxWidth: '100%',
+                    minHeight: segment.height || 280,
+                    minWidth: segment.width || 480,
+                    backgroundColor: '#f9fafb',
+                }}
+            />
+        )
+    }
 
     return (
         <div
@@ -178,7 +196,7 @@ function GraphSegment({
                 width: 'max-content',
                 maxWidth: '100%',
             }}
-            dangerouslySetInnerHTML={{ __html: containerRef }}
+            dangerouslySetInnerHTML={{ __html: html }}
         />
     )
 }

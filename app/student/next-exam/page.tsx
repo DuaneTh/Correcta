@@ -8,6 +8,7 @@ import StartExamButton from "@/app/student/components/StartExamButton"
 import { getDictionary, getLocale } from "@/lib/i18n/server"
 import { getExamEndAt } from "@/lib/exam-time"
 import { resolvePublishedExamsForClasses } from "@/lib/exam-variants"
+import { Card, CardBody } from "@/components/ui/Card"
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
 
@@ -349,10 +350,8 @@ export default async function NextExamPage() {
                     </div>
                     <div className="grid gap-4 lg:grid-cols-2">
                         {upcomingExams.map(exam => (
-                            <div
-                                key={exam.id}
-                                className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm flex flex-col gap-3"
-                            >
+                            <Card key={exam.id}>
+                                <CardBody padding="md" className="flex flex-col gap-3">
                                 <div className="flex items-center justify-between">
                                     <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">
                                         {dict.upcomingExam.title}
@@ -379,7 +378,8 @@ export default async function NextExamPage() {
                                 <div className="text-sm text-blue-800 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
                                     {dict.upcomingExam.willOpenPrefix} {formatDate(exam.startAt)} {formatTime(exam.startAt)}.
                                 </div>
-                            </div>
+                                </CardBody>
+                            </Card>
                         ))}
                     </div>
                 </section>

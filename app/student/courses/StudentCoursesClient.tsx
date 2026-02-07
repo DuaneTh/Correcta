@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import Link from "next/link"
@@ -7,6 +7,14 @@ import { getCorrectionReleaseInfo } from "@/lib/correction-release"
 import StartExamButton from "@/app/student/components/StartExamButton"
 import type { Dictionary } from "@/lib/i18n/dictionaries"
 import type { Locale } from "@/lib/i18n/config"
+import { Badge } from "@/components/ui/Badge"
+import { Button } from "@/components/ui/Button"
+import { Card, CardBody } from "@/components/ui/Card"
+import { EmptyState } from "@/components/ui/EmptyState"
+import { Grid, Stack } from "@/components/ui/Layout"
+import { SearchField } from "@/components/ui/SearchField"
+import { Text } from "@/components/ui/Text"
+import { cn } from "@/components/ui/cn"
 
 type AttemptStatus = 'IN_PROGRESS' | 'SUBMITTED' | 'GRADED' | 'GRADING_IN_PROGRESS'
 
@@ -126,260 +134,269 @@ export default function StudentCoursesClient({ courses, dictionary, locale }: Pr
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-6">
-                <h1 className="text-3xl font-bold text-brand-900 mb-4">{dict.title}</h1>
-
-                {/* Barre de recherche */}
-                <div className="w-full">
-                    <input
-                        type="text"
+            <Stack gap="lg">
+                <Stack gap="md">
+                    <Text as="h1" variant="pageTitle">{dict.title}</Text>
+                    <SearchField
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         placeholder={dict.searchPlaceholder}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-500"
                     />
-                </div>
-            </div>
+                </Stack>
 
-            <div className="grid gap-8">
-                {filteredCourses.length === 0 ? (
-                    <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
-                        <p className="text-gray-500">
-                            {searchTerm
-                                ? "Aucun résultat trouvé pour votre recherche."
-                                : "Aucun cours disponible pour le moment."}
-                        </p>
-                    </div>
-                ) : (
-                    filteredCourses.map((course) => (
-                        <div key={course.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            {/* En-tête du cours */}
-                            <div className="mb-4 pb-4 border-b border-gray-200">
-                                <h2 className="text-2xl font-bold text-gray-900">
-                                    {course.code ? `${course.code} - ` : ''}{course.name}
-                                </h2>
-                                {course.instructor?.name && (
-                                    <p className="text-sm text-gray-600 mt-1">
-                                        {dict.teacherLabel} : {course.instructor.name}
-                                    </p>
-                                )}
-                            </div>
+                <Stack gap="xl">
+                    {filteredCourses.length === 0 ? (
+                        <EmptyState
+                            title={searchTerm ? "Aucun résultat trouvé" : "Aucun cours disponible"}
+                            description={searchTerm ? "Essayez un autre terme de recherche." : "Aucun cours disponible pour le moment."}
+                            size="full"
+                        />
+                    ) : (
+                        filteredCourses.map((course) => (
+                            <Card key={course.id}>
+                                <CardBody padding="lg">
+                                    <Stack gap="md">
+                                        {/* En-tête du cours */}
+                                        <div className="pb-4 border-b border-gray-200">
+                                            <Text as="h2" variant="sectionTitle">
+                                                {course.code ? `${course.code} - ` : ''}{course.name}
+                                            </Text>
+                                            {course.instructor?.name && (
+                                                <Text variant="caption" className="mt-1">
+                                                    {dict.teacherLabel} : {course.instructor.name}
+                                                </Text>
+                                            )}
+                                        </div>
 
-                            {/* Liste des examens du cours */}
-                            <div className="space-y-4">
-                                <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span>{dict.examsSectionLabel}</span>
-                                </h4>
-                                {course.exams.length === 0 ? (
-                                    <p className="text-gray-500 text-sm italic">Aucun examen pour ce cours.</p>
-                                ) : (
-                                    course.exams.map((exam) => {
-                                        const attempt = exam.attempts[0]
-                                        const now = new Date()
-                                        const startAt = new Date(exam.startAt)
-                                        const endAt = getExamEndAt(exam.startAt, exam.durationMinutes, exam.endAt)
-
-                                        const isStarted = !!attempt
-                                        const isInProgressAttempt = attempt?.status === 'IN_PROGRESS'
-                                        const isSubmitted = attempt?.status === 'SUBMITTED' || attempt?.status === 'GRADED' || attempt?.status === 'GRADING_IN_PROGRESS'
-                                        const isGraded = attempt?.status === 'GRADED'
-                                        const isBeforeStart = now < startAt
-                                        const isAfterEnd = endAt && now > endAt
-                                        const isWithinWindow = !isBeforeStart && !isAfterEnd
-                                        const isArchived = Boolean(exam.archivedAt)
-                                        const releaseInfo = getCorrectionReleaseInfo({
-                                            gradingConfig: exam.gradingConfig,
-                                            startAt,
-                                            durationMinutes: exam.durationMinutes,
-                                            endAt,
-                                        })
-                                        const canViewCorrection = Boolean(isSubmitted && (isAfterEnd || isArchived) && isGraded && releaseInfo.isReleased)
-                                        const score = attempt?.score
-                                        const maxPoints = attempt?.maxPoints
-
-                                        let statusLabel = "Non démarré"
-                                        let statusColor = "bg-gray-100 text-gray-800"
-                                        let actionButton = null
-
-                                        // Handle archived exams first
-                                        if (isArchived) {
-                                            statusLabel = isGraded && canViewCorrection ? dict.statusCorrected : (isSubmitted ? dict.statusSubmitted : "Archivé")
-                                            statusColor = canViewCorrection
-                                                ? "bg-emerald-50 text-emerald-900 border border-emerald-200"
-                                                : "bg-gray-100 text-gray-500"
-                                            actionButton = isSubmitted && attempt ? (
-                                                <Link
-                                                    href={`/student/attempts/${attempt.id}/results`}
-                                                    className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-                                                >
-                                                    {dict.viewGradedCopyButton}
-                                                </Link>
+                                        {/* Liste des examens du cours */}
+                                        <Stack gap="sm">
+                                            <Text variant="label">{dict.examsSectionLabel}</Text>
+                                            {course.exams.length === 0 ? (
+                                                <Text variant="caption" className="italic">Aucun examen pour ce cours.</Text>
                                             ) : (
-                                                <span className="text-sm text-gray-400 italic">Examen archivé</span>
-                                            )
-                                        } else if (isBeforeStart) {
-                                            statusLabel = dict.statusUpcoming
-                                            statusColor = "bg-yellow-100 text-yellow-800"
-                                            actionButton = (
-                                                <button disabled className="px-4 py-2 bg-gray-300 text-gray-700 rounded cursor-not-allowed text-sm">
-                                                    {dict.notAvailableYetButton}
-                                                </button>
-                                            )
-                                        } else if (isSubmitted) {
-                                            statusLabel = canViewCorrection ? dict.statusCorrected : dict.statusSubmitted
-                                            statusColor = canViewCorrection ? "bg-emerald-50 text-emerald-900 border border-emerald-200" : "bg-brand-50 text-brand-900 border border-brand-700"
-                                            actionButton = (
-                                                <div className="flex flex-col gap-2">
-                                                    <button disabled className="px-4 py-2 bg-gray-300 text-gray-700 rounded cursor-not-allowed text-sm">
-                                                        {dict.submittedExamButton}
-                                                    </button>
-                                                    {canViewCorrection ? (
-                                                        <Link
-                                                            href={`/student/attempts/${attempt.id}/results`}
-                                                            className="inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50"
-                                                        >
-                                                            {dict.viewGradedCopyButton}
-                                                        </Link>
-                                                    ) : (
-                                                        !isAfterEnd && (
-                                                            <p className="text-xs text-gray-500">
-                                                                {dict.correctionAfterWindowLabel}
-                                                            </p>
+                                                <Stack gap="sm">
+                                                    {course.exams.map((exam) => {
+                                                        const attempt = exam.attempts[0]
+                                                        const now = new Date()
+                                                        const startAt = new Date(exam.startAt)
+                                                        const endAt = getExamEndAt(exam.startAt, exam.durationMinutes, exam.endAt)
+
+                                                        const isStarted = !!attempt
+                                                        const isInProgressAttempt = attempt?.status === 'IN_PROGRESS'
+                                                        const isSubmitted = attempt?.status === 'SUBMITTED' || attempt?.status === 'GRADED' || attempt?.status === 'GRADING_IN_PROGRESS'
+                                                        const isGraded = attempt?.status === 'GRADED'
+                                                        const isBeforeStart = now < startAt
+                                                        const isAfterEnd = endAt && now > endAt
+                                                        const isWithinWindow = !isBeforeStart && !isAfterEnd
+                                                        const isArchived = Boolean(exam.archivedAt)
+                                                        const releaseInfo = getCorrectionReleaseInfo({
+                                                            gradingConfig: exam.gradingConfig,
+                                                            startAt,
+                                                            durationMinutes: exam.durationMinutes,
+                                                            endAt,
+                                                        })
+                                                        const canViewCorrection = Boolean(isSubmitted && (isAfterEnd || isArchived) && isGraded && releaseInfo.isReleased)
+                                                        const score = attempt?.score
+                                                        const maxPoints = attempt?.maxPoints
+
+                                                        let statusLabel = "Non démarré"
+                                                        let statusVariant: 'neutral' | 'info' | 'success' | 'warning' = 'neutral'
+                                                        let actionButton = null
+
+                                                        // Handle archived exams first
+                                                        if (isArchived) {
+                                                            statusLabel = isGraded && canViewCorrection ? dict.statusCorrected : (isSubmitted ? dict.statusSubmitted : "Archivé")
+                                                            statusVariant = canViewCorrection ? 'success' : 'neutral'
+                                                            actionButton = isSubmitted && attempt ? (
+                                                                <Link href={`/student/attempts/${attempt.id}/results`}>
+                                                                    <Button variant="secondary" size="sm">
+                                                                        {dict.viewGradedCopyButton}
+                                                                    </Button>
+                                                                </Link>
+                                                            ) : (
+                                                                <Text variant="caption" className="italic text-gray-400">Examen archivé</Text>
+                                                            )
+                                                        } else if (isBeforeStart) {
+                                                            statusLabel = dict.statusUpcoming
+                                                            statusVariant = 'warning'
+                                                            actionButton = (
+                                                                <Button variant="secondary" size="sm" disabled>
+                                                                    {dict.notAvailableYetButton}
+                                                                </Button>
+                                                            )
+                                                        } else if (isSubmitted) {
+                                                            statusLabel = canViewCorrection ? dict.statusCorrected : dict.statusSubmitted
+                                                            statusVariant = canViewCorrection ? 'success' : 'info'
+                                                            actionButton = (
+                                                                <Stack gap="xs">
+                                                                    <Button variant="secondary" size="sm" disabled>
+                                                                        {dict.submittedExamButton}
+                                                                    </Button>
+                                                                    {canViewCorrection ? (
+                                                                        <Link href={`/student/attempts/${attempt.id}/results`}>
+                                                                            <Button variant="secondary" size="sm">
+                                                                                {dict.viewGradedCopyButton}
+                                                                            </Button>
+                                                                        </Link>
+                                                                    ) : (
+                                                                        !isAfterEnd && (
+                                                                            <Text variant="xsMuted">
+                                                                                {dict.correctionAfterWindowLabel}
+                                                                            </Text>
+                                                                        )
+                                                                    )}
+                                                                </Stack>
+                                                            )
+                                                        } else if (isAfterEnd) {
+                                                            statusLabel = dict.statusExpired
+                                                            statusVariant = 'warning'
+                                                            actionButton = (
+                                                                <Button variant="secondary" size="sm" disabled>
+                                                                    {dict.windowClosedButton}
+                                                                </Button>
+                                                            )
+                                                        } else if (isInProgressAttempt && isWithinWindow) {
+                                                            statusLabel = dict.statusInProgress
+                                                            statusVariant = 'info'
+                                                            actionButton = (
+                                                                <StartExamButton
+                                                                    examId={exam.id}
+                                                                    attemptId={attempt.id}
+                                                                    label={dict.resumeButton}
+                                                                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-brand-900 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-900"
+                                                                />
+                                                            )
+                                                        } else if (!isStarted && isWithinWindow) {
+                                                            statusLabel = dict.statusAvailable
+                                                            statusVariant = 'success'
+                                                            actionButton = (
+                                                                <StartExamButton
+                                                                    examId={exam.id}
+                                                                    label={dictionary.student.nextExamPage.availableExam.startButton}
+                                                                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-brand-900 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-900"
+                                                                />
+                                                            )
+                                                        } else {
+                                                            actionButton = (
+                                                                <Button variant="secondary" size="sm" disabled>
+                                                                    Non disponible
+                                                                </Button>
+                                                            )
+                                                        }
+
+                                                        if (isInProgressAttempt && isWithinWindow) {
+                                                            return (
+                                                                <Card
+                                                                    key={exam.id}
+                                                                    className="border-brand-200 bg-brand-50"
+                                                                >
+                                                                    <CardBody padding="md">
+                                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                                            <Stack gap="sm">
+                                                                                <Badge variant="info" className="text-white bg-brand-900 border-brand-900 w-fit">
+                                                                                    {dict.statusAvailable}
+                                                                                </Badge>
+                                                                                <Stack gap="xs">
+                                                                                    <Text variant="caption">
+                                                                                        {course.code} - {course.name}
+                                                                                    </Text>
+                                                                                    <Text as="h3" variant="sectionTitle">
+                                                                                        {exam.title}
+                                                                                    </Text>
+                                                                                </Stack>
+                                                                                <Stack gap="xs">
+                                                                                    <Text variant="muted">{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</Text>
+                                                                                    <Text variant="muted">{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</Text>
+                                                                                    {endAt && <Text variant="muted">Fin : {endAt.toLocaleString(localeString)}</Text>}
+                                                                                </Stack>
+                                                                            </Stack>
+                                                                            <div className="flex-shrink-0">
+                                                                                {actionButton}
+                                                                            </div>
+                                                                        </div>
+                                                                    </CardBody>
+                                                                </Card>
+                                                            )
+                                                        }
+
+                                                        if (!isStarted && isWithinWindow) {
+                                                            return (
+                                                                <Card
+                                                                    key={exam.id}
+                                                                    className="border-brand-200 bg-brand-50"
+                                                                >
+                                                                    <CardBody padding="md">
+                                                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                                            <Stack gap="sm">
+                                                                                <Badge variant="info" className="text-white bg-brand-900 border-brand-900 w-fit">
+                                                                                    {dict.statusInProgress}
+                                                                                </Badge>
+                                                                                <Stack gap="xs">
+                                                                                    <Text variant="caption">
+                                                                                        {course.code} - {course.name}
+                                                                                    </Text>
+                                                                                    <Text as="h3" variant="sectionTitle">
+                                                                                        {exam.title}
+                                                                                    </Text>
+                                                                                </Stack>
+                                                                                <Stack gap="xs">
+                                                                                    <Text variant="muted">{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</Text>
+                                                                                    <Text variant="muted">{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</Text>
+                                                                                    {endAt && <Text variant="muted">Fin : {endAt.toLocaleString(localeString)}</Text>}
+                                                                                </Stack>
+                                                                            </Stack>
+                                                                            <div className="flex-shrink-0">
+                                                                                {actionButton}
+                                                                            </div>
+                                                                        </div>
+                                                                    </CardBody>
+                                                                </Card>
+                                                            )
+                                                        }
+
+                                                        return (
+                                                            <Card
+                                                                key={exam.id}
+                                                                className={cn("bg-gray-50", isArchived ? 'opacity-70' : '')}
+                                                            >
+                                                                <CardBody padding="md">
+                                                                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                                                        <Stack gap="sm" className="flex-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <Badge variant={statusVariant}>
+                                                                                    {statusLabel}
+                                                                                </Badge>
+                                                                                {canViewCorrection && score !== null && score !== undefined && maxPoints ? (
+                                                                                    <Badge variant="info" className="bg-brand-100 text-brand-900 border-brand-200">
+                                                                                        {score} / {maxPoints}
+                                                                                    </Badge>
+                                                                                ) : null}
+                                                                            </div>
+                                                                            <Text as="h3" variant="sectionTitle">{exam.title}</Text>
+                                                                            <Stack gap="xs">
+                                                                                <Text variant="muted">{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</Text>
+                                                                                <Text variant="muted">{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</Text>
+                                                                                {endAt && !isArchived && <Text variant="muted">Fin : {endAt.toLocaleString(localeString)}</Text>}
+                                                                            </Stack>
+                                                                        </Stack>
+                                                                        <div className="flex-shrink-0">
+                                                                            {actionButton}
+                                                                        </div>
+                                                                    </div>
+                                                                </CardBody>
+                                                            </Card>
                                                         )
-                                                    )}
-                                                </div>
-                                            )
-                                        } else if (isAfterEnd) {
-                                            statusLabel = dict.statusExpired
-                                            statusColor = "bg-red-100 text-red-800"
-                                            actionButton = (
-                                                <button disabled className="px-4 py-2 bg-gray-300 text-gray-700 rounded cursor-not-allowed text-sm">
-                                                    {dict.windowClosedButton}
-                                                </button>
-                                            )
-                                        } else if (isInProgressAttempt && isWithinWindow) {
-                                            statusLabel = dict.statusInProgress
-                                            statusColor = "bg-blue-100 text-blue-800"
-                                            actionButton = (
-                                                <StartExamButton
-                                                    examId={exam.id}
-                                                    attemptId={attempt.id}
-                                                    label={dict.resumeButton}
-                                                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-brand-900 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-900"
-                                                />
-                                            )
-                                        } else if (!isStarted && isWithinWindow) {
-                                            statusLabel = dict.statusAvailable
-                                            statusColor = "bg-green-100 text-green-800"
-                                            actionButton = (
-                                                <StartExamButton
-                                                    examId={exam.id}
-                                                    label={dictionary.student.nextExamPage.availableExam.startButton}
-                                                    className="inline-flex items-center justify-center px-6 py-2.5 rounded-full text-sm font-semibold text-white bg-brand-900 hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-900"
-                                                />
-                                            )
-                                        } else {
-                                            actionButton = (
-                                                <button disabled className="px-4 py-2 bg-gray-300 text-gray-700 rounded cursor-not-allowed text-sm">
-                                                    Non disponible
-                                                </button>
-                                            )
-                                        }
-
-                                        if (isInProgressAttempt && isWithinWindow) {
-                                            return (
-                                                <div
-                                                    key={exam.id}
-                                                    className="rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                                                >
-                                                    <div className="space-y-2">
-                                                        <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white bg-brand-900 border border-brand-900">
-                                                            {dict.statusAvailable}
-                                                        </span>
-                                                        <div>
-                                                            <p className="text-sm text-gray-500">
-                                                                {course.code} - {course.name}
-                                                            </p>
-                                                            <h3 className="text-lg font-semibold text-gray-900">
-                                                                {exam.title}
-                                                            </h3>
-                                                        </div>
-                                                        <div className="text-sm text-gray-600 space-y-1">
-                                                            <p>{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</p>
-                                                            <p>{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</p>
-                                                            {endAt && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-shrink-0">
-                                                        {actionButton}
-                                                    </div>
-                                                </div>
-                                            )
-                                        }
-
-                                        if (!isStarted && isWithinWindow) {
-                                            return (
-                                                <div
-                                                    key={exam.id}
-                                                    className="rounded-xl border border-brand-200 bg-brand-50 px-5 py-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
-                                                >
-                                                    <div className="space-y-2">
-                                                        <span className="inline-flex items-center rounded-full px-3 py-1 text-sm font-semibold text-white bg-brand-900 border border-brand-900">
-                                                            {dict.statusInProgress}
-                                                        </span>
-                                                        <div>
-                                                            <p className="text-sm text-gray-500">
-                                                                {course.code} - {course.name}
-                                                            </p>
-                                                            <h3 className="text-lg font-semibold text-gray-900">
-                                                                {exam.title}
-                                                            </h3>
-                                                        </div>
-                                                        <div className="text-sm text-gray-600 space-y-1">
-                                                            <p>{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</p>
-                                                            <p>{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</p>
-                                                            {endAt && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
-                                                        </div>
-                                                    </div>
-                                                    <div className="flex-shrink-0">
-                                                        {actionButton}
-                                                    </div>
-                                                </div>
-                                            )
-                                        }
-
-                                        return (
-                                            <div key={exam.id} className={`bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 ${isArchived ? 'opacity-70' : ''}`}>
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusColor}`}>
-                                                            {statusLabel}
-                                                        </span>
-                                                        {canViewCorrection && score !== null && score !== undefined && maxPoints ? (
-                                                            <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold bg-brand-100 text-brand-900 border border-brand-200">
-                                                                {score} / {maxPoints}
-                                                            </span>
-                                                        ) : null}
-                                                    </div>
-                                                    <h3 className="text-lg font-semibold text-gray-900 mb-1">{exam.title}</h3>
-                                                    <div className="text-sm text-gray-600 space-y-1">
-                                                        <p>{dict.examMeta.durationLabel} : {exam.durationMinutes} minutes</p>
-                                                        <p>{dict.examMeta.startLabel} : {new Date(exam.startAt).toLocaleString(localeString)}</p>
-                                                        {endAt && !isArchived && <p>Fin : {endAt.toLocaleString(localeString)}</p>}
-                                                    </div>
-                                                </div>
-                                                <div className="flex-shrink-0">
-                                                    {actionButton}
-                                                </div>
-                                            </div>
-                                        )
-                                    })
-                                )}
-                            </div>
-                        </div>
-                    ))
-                )}
-            </div>
+                                                    })}
+                                                </Stack>
+                                            )}
+                                        </Stack>
+                                    </Stack>
+                                </CardBody>
+                            </Card>
+                        ))
+                    )}
+                </Stack>
+            </Stack>
         </div>
     )
 }

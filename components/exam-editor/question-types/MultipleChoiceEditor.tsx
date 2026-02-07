@@ -254,6 +254,7 @@ export default function MultipleChoiceEditor({ questionId }: MultipleChoiceEdito
                   <div className="flex-1">
                     <input
                       type="text"
+                      aria-label={`Option ${String.fromCharCode(65 + index)} text`}
                       value={segment.instruction}
                       onChange={(e) => handleOptionTextChange(segment.id, e.target.value)}
                       placeholder={`Option ${String.fromCharCode(65 + index)}...`}
@@ -270,6 +271,7 @@ export default function MultipleChoiceEditor({ questionId }: MultipleChoiceEdito
                     <div className="w-20 flex-shrink-0">
                       <input
                         type="number"
+                        aria-label={`Option ${String.fromCharCode(65 + index)} points`}
                         min={0}
                         step={0.5}
                         value={segment.maxPoints ?? ''}

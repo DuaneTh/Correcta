@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Save, Loader2, Settings } from 'lucide-react'
 import { useExamStore, useTotalPoints, useQuestionCount } from './store'
 import { updateExamMetadata } from '@/lib/actions/exam-editor'
+import { useToast } from '@/components/ui/Toast'
 import Link from 'next/link'
+import ExamSettingsPanel from './ExamSettingsPanel'
 
 export default function ExamHeader() {
   const router = useRouter()
+  const { toast } = useToast()
   const exam = useExamStore((state) => state.exam)
   const isDirty = useExamStore((state) => state.isDirty)
   const isSaving = useExamStore((state) => state.isSaving)
@@ -21,6 +24,7 @@ export default function ExamHeader() {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [titleInput, setTitleInput] = useState('')
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
 
   const handleTitleClick = useCallback(() => {
     if (exam) {
@@ -58,7 +62,7 @@ export default function ExamHeader() {
       markClean()
     } catch (error) {
       console.error('Failed to save:', error)
-      // TODO: Show error toast
+      toast('Failed to save exam', 'error')
     } finally {
       setIsSaving(false)
     }
@@ -80,7 +84,7 @@ export default function ExamHeader() {
           <Link
             href="/teacher/exams"
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Back to exams"
+            aria-label="Back to exams"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
@@ -89,6 +93,7 @@ export default function ExamHeader() {
             {isEditingTitle ? (
               <input
                 type="text"
+                aria-label="Exam title"
                 value={titleInput}
                 onChange={(e) => setTitleInput(e.target.value)}
                 onBlur={handleTitleBlur}
@@ -134,12 +139,18 @@ export default function ExamHeader() {
           </span>
 
           {/* Settings button */}
-          <button
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-            title="Exam settings"
-          >
-            <Settings className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Exam settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            {isSettingsOpen && (
+              <ExamSettingsPanel onClose={() => setIsSettingsOpen(false)} />
+            )}
+          </div>
 
           {/* Save button */}
           <button

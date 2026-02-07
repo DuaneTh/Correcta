@@ -1,4 +1,4 @@
-﻿import type { ElementType, HTMLAttributes, ReactNode } from 'react'
+import type { ElementType, HTMLAttributes, LabelHTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn'
 
 type TextVariant =
@@ -22,12 +22,14 @@ const variantClasses: Record<TextVariant, string> = {
     label: 'text-sm font-medium text-gray-700',
 }
 
-type TextProps<T extends ElementType> = HTMLAttributes<HTMLElement> & {
-    as?: T
-    variant?: TextVariant
-    truncate?: boolean
-    children: ReactNode
-}
+type TextProps<T extends ElementType> = HTMLAttributes<HTMLElement> &
+    (T extends 'label' ? LabelHTMLAttributes<HTMLLabelElement> : unknown) & {
+        as?: T
+        variant?: TextVariant
+        truncate?: boolean
+        htmlFor?: string
+        children: ReactNode
+    }
 
 export function Text<T extends ElementType = 'p'>({
     as,

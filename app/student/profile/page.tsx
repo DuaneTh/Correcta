@@ -1,6 +1,8 @@
-import { getServerSession } from "next-auth"
-import { buildAuthOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
+import { getAuthSession, isStudent } from "@/lib/api-auth"
+import { LOCALE_COOKIE_NAME, DEFAULT_LOCALE } from "@/lib/i18n/config"
+import { PasswordChangeForm } from "@/components/PasswordChangeForm"
 
 const ROLE_LABELS: Record<string, string> = {
     'STUDENT': 'ÉTUDIANT',
@@ -9,13 +11,23 @@ const ROLE_LABELS: Record<string, string> = {
 }
 
 export default async function StudentProfilePage() {
-    const session = await getServerSession(await buildAuthOptions())
+    const session = await getAuthSession()
 
-    if (!session) {
+    if (!session || !session.user) {
+        redirect('/login')
+    }
+
+    if (!isStudent(session)) {
+        const role = session.user.role
+        if (role === 'TEACHER' || role === 'SCHOOL_ADMIN' || role === 'PLATFORM_ADMIN') {
+            redirect('/teacher/courses')
+        }
         redirect('/login')
     }
 
     const roleLabel = ROLE_LABELS[session.user?.role] || session.user?.role
+    const cookieStore = await cookies()
+    const locale = cookieStore.get(LOCALE_COOKIE_NAME)?.value ?? DEFAULT_LOCALE
 
     return (
         <div className="p-8">
@@ -48,6 +60,8 @@ export default async function StudentProfilePage() {
                         </dl>
                     </div>
                 </div>
+
+                <PasswordChangeForm locale={locale} />
             </div>
         </div>
     )

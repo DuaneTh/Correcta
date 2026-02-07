@@ -14,7 +14,8 @@ const buildCsp = (options: SecurityHeadersOptions): string => {
     const styleSrc = [`'self'`, `'unsafe-inline'`]
     const connectSrc = [
         `'self'`,
-        ...(isDev ? ['ws:', 'wss:'] : [])
+        ...(isDev ? ['ws:', 'wss:'] : []),
+        'https://*.ingest.sentry.io'
     ]
 
     return [
@@ -25,7 +26,7 @@ const buildCsp = (options: SecurityHeadersOptions): string => {
         `form-action 'self'`,
         `script-src ${scriptSrc.join(' ')}`,
         `style-src ${styleSrc.join(' ')}`,
-        `img-src 'self' data: blob:`,
+        `img-src 'self' data: blob: https://*.s3.eu-west-3.amazonaws.com`,
         `font-src 'self' data:`,
         `connect-src ${connectSrc.join(' ')}`
     ].join('; ')
@@ -52,7 +53,7 @@ export function getSecurityHeaders(
     if (options.isProduction) {
         headers.push({
             key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains'
+            value: 'max-age=31536000; includeSubDomains; preload'
         })
     }
 

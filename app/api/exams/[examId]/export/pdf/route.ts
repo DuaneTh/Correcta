@@ -3,6 +3,7 @@ import { getAuthSession, isTeacher } from '@/lib/api-auth'
 import { prisma } from '@/lib/prisma'
 import { exportQueue } from '@/lib/queue'
 import { verifyCsrf, getCsrfCookieName, getAllowedOrigins } from '@/lib/csrf'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 // POST /api/exams/[examId]/export/pdf - Start PDF export job
 export async function POST(
@@ -60,6 +61,16 @@ export async function POST(
             classIds,
             type: 'pdf',
             requestedBy: session.user.id
+        })
+
+        logAudit({
+            action: 'EXPORT_PDF',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'EXAM',
+            targetId: examId,
+            metadata: classIds ? { classIds: classIds.length } : undefined,
+            ipAddress: getClientIp(req),
         })
 
         return NextResponse.json({

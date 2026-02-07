@@ -123,6 +123,11 @@ export async function GET(
         let totalScore = 0
         let totalMaxPoints = 0
 
+        // Build answer lookup map (avoids O(n²) .find() in loop)
+        const answerByQuestionId = new Map(
+            attempt.answers.map(a => [a.questionId, a])
+        )
+
         const resultData = {
             examTitle: attempt.exam.title,
             studentName: attempt.student.name,
@@ -133,7 +138,7 @@ export async function GET(
                 id: section.id,
                 title: section.title,
                 questions: section.questions.map(question => {
-                    const answer = attempt.answers.find(a => a.questionId === question.id)
+                    const answer = answerByQuestionId.get(question.id)
                     const grade = answer?.grades?.[0]
 
                     const maxPoints = question.segments.reduce((sum, seg) => sum + (seg.maxPoints || 0), 0)

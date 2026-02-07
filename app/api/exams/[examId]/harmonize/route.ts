@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
+import { parseBody } from "@/lib/api-validation"
+import { logAudit, getClientIp } from "@/lib/audit"
+import { harmonizeSchema } from "@/lib/schemas/exams"
 
 /**
  * POST /api/exams/[examId]/harmonize
@@ -51,19 +54,10 @@ export async function POST(
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
         }
 
-        // 4. Parse request body
-        const body = await req.json()
-        const { method, params: methodParams, scores } = body as {
-            method: string
-            params: Record<string, number>
-            scores: Array<{ attemptId: string; newScore: number }>
-        }
-
-        if (!method || !scores || !Array.isArray(scores)) {
-            return NextResponse.json({
-                error: "Missing required fields: method, scores"
-            }, { status: 400 })
-        }
+        // 4. Parse & validate request body
+        const parsed = await parseBody(req, harmonizeSchema)
+        if ('error' in parsed) return parsed.error
+        const { method, params: methodParams, scores } = parsed.data
 
         // 5. Get all graded attempts for this exam with their current scores
         const attempts = await prisma.attempt.findMany({
@@ -91,7 +85,7 @@ export async function POST(
             data: {
                 examId,
                 method,
-                params: methodParams,
+                params: methodParams as Record<string, number>,
                 appliedBy: session.user.id,
                 appliedAt: new Date()
             }
@@ -163,6 +157,16 @@ export async function POST(
             data: {
                 attemptsAffected: updatedCount
             }
+        })
+
+        logAudit({
+            action: 'GRADE_HARMONIZE',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'EXAM',
+            targetId: examId,
+            metadata: { method, updatedCount },
+            ipAddress: getClientIp(req),
         })
 
         return NextResponse.json({

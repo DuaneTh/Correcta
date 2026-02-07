@@ -1,17 +1,16 @@
-import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { buildAuthOptions } from "@/lib/auth"
+import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { parseContent, serializeContent } from "@/lib/content"
 import { getExamPermissions } from "@/lib/exam-permissions"
+import { getAuthSession, isTeacher } from "@/lib/api-auth"
+import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
 
 export async function POST(
-    req: Request,
+    req: NextRequest,
     { params }: { params: Promise<{ examId: string }> }
 ) {
     try {
         const resolvedParams = await params
-        // Robustly resolve examId (params in turbopack may be undefined or wrapped differently)
         const urlExamId = (() => {
             try {
                 const path = new URL(req.url).pathname
@@ -26,15 +25,20 @@ export async function POST(
         if (!examId || examId === 'undefined' || examId === 'null') {
             return NextResponse.json({ error: "Invalid exam id" }, { status: 400 })
         }
-        const cookieStore = req.headers.get('cookie') || ''
-        const match = cookieStore.match(/correcta-institution=([^;]+)/)
-        const institutionId = match ? match[1] : undefined
 
-        const authOptions = await buildAuthOptions(institutionId)
-        const session = await getServerSession(authOptions)
-
-        if (!session || !session.user || session.user.role === 'STUDENT') {
+        const session = await getAuthSession(req)
+        if (!session || !session.user || !isTeacher(session)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
         const exam = await prisma.exam.findUnique({

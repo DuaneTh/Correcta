@@ -1,4 +1,4 @@
-﻿import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode } from 'react'
 import { cn } from './cn'
 
 type StackGap = 'xs' | 'sm' | 'md' | 'lg' | 'xl'

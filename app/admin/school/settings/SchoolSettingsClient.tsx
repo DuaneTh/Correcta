@@ -1,8 +1,13 @@
 'use client'
 
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo } from 'react'
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Grid, Inline, Stack } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { Badge } from '@/components/ui/Badge'
 
 type InstitutionInfo = {
     id: string
@@ -66,183 +71,227 @@ export default function SchoolSettingsClient({
     }, [institution, dict.noDomains])
 
     return (
-        <div className="flex flex-col gap-6">
+        <Stack gap="lg">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-brand-900">{dict.nav.settings}</h1>
-                <p className="text-sm text-gray-500">{dict.settings.subtitle}</p>
-            </div>
+            <Stack gap="xs">
+                <Text as="h1" variant="pageTitle">
+                    {dict.nav.settings}
+                </Text>
+                <Text variant="muted">{dict.settings.subtitle}</Text>
+            </Stack>
 
             {/* Tabs */}
-            <div className="flex gap-2">
-                <button
+            <Inline align="start" gap="sm">
+                <Button
                     type="button"
                     onClick={() => setTabParam('sso')}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${activeTab === 'sso'
-                        ? 'bg-brand-900 text-white'
-                        : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    variant={activeTab === 'sso' ? 'primary' : 'secondary'}
+                    size="xs"
                 >
                     {dict.settings.ssoTab}
-                </button>
-                <button
+                </Button>
+                <Button
                     type="button"
                     onClick={() => setTabParam('import')}
-                    className={`rounded-full px-4 py-1.5 text-sm font-medium transition ${activeTab === 'import'
-                        ? 'bg-brand-900 text-white'
-                        : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
-                    }`}
+                    variant={activeTab === 'import' ? 'primary' : 'secondary'}
+                    size="xs"
                 >
                     {dict.settings.importTab}
-                </button>
-            </div>
+                </Button>
+            </Inline>
 
             {/* SSO Tab */}
             {activeTab === 'sso' && (
-                <div className="space-y-6">
+                <Stack gap="lg">
                     {/* SSO Status Card */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">{dict.settings.ssoStatus}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{dict.settings.ssoStatusHint}</p>
+                    <Card>
+                        <CardBody padding="lg">
+                            <Stack gap="sm">
+                                <Text variant="sectionTitle">{dict.settings.ssoStatus}</Text>
+                                <Text variant="muted">{dict.settings.ssoStatusHint}</Text>
+                            </Stack>
 
-                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                            <div>
-                                <div className="text-xs uppercase text-gray-500">{dict.ssoLabel}</div>
-                                <div className="mt-1 flex items-center gap-2">
-                                    <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${ssoConfig.enabled
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-gray-100 text-gray-600'
-                                    }`}>
-                                        {ssoConfig.enabled ? dict.ssoEnabled : dict.ssoDisabled}
-                                    </span>
-                                    {ssoConfig.type !== 'none' && (
-                                        <span className="text-sm text-gray-600">({ssoConfig.type.toUpperCase()})</span>
-                                    )}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-xs uppercase text-gray-500">{dict.domainsLabel}</div>
-                                <div className="mt-1 text-sm text-gray-900">{domains}</div>
-                            </div>
-                        </div>
+                            <Grid cols="2" gap="md" className="mt-6">
+                                <Stack gap="xs">
+                                    <Text variant="overline">{dict.ssoLabel}</Text>
+                                    <Inline align="start" gap="sm">
+                                        <Badge variant={ssoConfig.enabled ? 'success' : 'neutral'}>
+                                            {ssoConfig.enabled ? dict.ssoEnabled : dict.ssoDisabled}
+                                        </Badge>
+                                        {ssoConfig.type !== 'none' && (
+                                            <Text variant="muted">({ssoConfig.type.toUpperCase()})</Text>
+                                        )}
+                                    </Inline>
+                                </Stack>
+                                <Stack gap="xs">
+                                    <Text variant="overline">{dict.domainsLabel}</Text>
+                                    <Text variant="body">{domains}</Text>
+                                </Stack>
+                            </Grid>
 
-                        {ssoConfig.enabled && ssoConfig.type !== 'none' && (
-                            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
-                                <div className="text-sm font-medium text-blue-900">{dict.ssoHint}</div>
-                                <p className="mt-1 text-sm text-blue-700">{dict.settings.ssoAuthOnly}</p>
-                            </div>
-                        )}
+                            {ssoConfig.enabled && ssoConfig.type !== 'none' && (
+                                <Card className="mt-6 border-blue-200 bg-blue-50">
+                                    <CardBody padding="md">
+                                        <Stack gap="xs">
+                                            <Text variant="body" className="font-medium text-blue-900">
+                                                {dict.ssoHint}
+                                            </Text>
+                                            <Text variant="muted" className="text-blue-700">
+                                                {dict.settings.ssoAuthOnly}
+                                            </Text>
+                                        </Stack>
+                                    </CardBody>
+                                </Card>
+                            )}
 
-                        <div className="mt-6 text-sm text-gray-500">
-                            {dict.settings.ssoContactAdmin}
-                        </div>
-                    </div>
+                            <Text variant="muted" className="mt-6">
+                                {dict.settings.ssoContactAdmin}
+                            </Text>
+                        </CardBody>
+                    </Card>
 
                     {/* Institution Info */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">{dict.settings.institutionInfo}</h2>
+                    <Card>
+                        <CardBody padding="lg">
+                            <Text variant="sectionTitle">{dict.settings.institutionInfo}</Text>
 
-                        <div className="mt-4 space-y-3">
-                            <div>
-                                <div className="text-xs uppercase text-gray-500">{dict.namePlaceholder}</div>
-                                <div className="mt-1 text-sm text-gray-900">{institution?.name || dict.unknownInstitution}</div>
-                            </div>
-                            <div>
-                                <div className="text-xs uppercase text-gray-500">ID</div>
-                                <div className="mt-1 font-mono text-xs text-gray-600">{institution?.id || '-'}</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                            <Stack gap="sm" className="mt-4">
+                                <Stack gap="xs">
+                                    <Text variant="overline">{dict.namePlaceholder}</Text>
+                                    <Text variant="body">{institution?.name || dict.unknownInstitution}</Text>
+                                </Stack>
+                                <Stack gap="xs">
+                                    <Text variant="overline">ID</Text>
+                                    <Text variant="muted" className="font-mono text-xs">
+                                        {institution?.id || '-'}
+                                    </Text>
+                                </Stack>
+                            </Stack>
+                        </CardBody>
+                    </Card>
+                </Stack>
             )}
 
             {/* Import & Sync Tab */}
             {activeTab === 'import' && (
-                <div className="space-y-6">
+                <Stack gap="lg">
                     {/* Manual Roster Card */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <h2 className="text-lg font-semibold text-gray-900">{dict.settings.manualRoster}</h2>
-                        <p className="mt-1 text-sm text-gray-500">{dict.settings.manualRosterHint}</p>
+                    <Card>
+                        <CardBody padding="lg">
+                            <Stack gap="sm">
+                                <Text variant="sectionTitle">{dict.settings.manualRoster}</Text>
+                                <Text variant="muted">{dict.settings.manualRosterHint}</Text>
+                            </Stack>
 
-                        <div className="mt-6 space-y-4">
-                            <div className="rounded-lg border border-gray-200 p-4">
-                                <h3 className="text-sm font-medium text-gray-900">{dict.settings.importCsv}</h3>
-                                <p className="mt-1 text-sm text-gray-500">{dict.settings.importCsvHint}</p>
-                                <div className="mt-4 flex flex-wrap gap-2">
-                                    <a
-                                        href="/admin/school/users?role=teacher&action=add"
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        {dict.createTeacherButton}
-                                    </a>
-                                    <a
-                                        href="/admin/school/users?role=student&action=add"
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        {dict.createStudentButton}
-                                    </a>
-                                    <a
-                                        href="/admin/school/classes?action=add-course"
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                                    >
-                                        {dict.createCourseButton}
-                                    </a>
-                                </div>
-                            </div>
+                            <Stack gap="md" className="mt-6">
+                                <Card>
+                                    <CardBody padding="md">
+                                        <Stack gap="sm">
+                                            <Text variant="body" className="font-medium">
+                                                {dict.settings.importCsv}
+                                            </Text>
+                                            <Text variant="muted">{dict.settings.importCsvHint}</Text>
+                                            <Inline align="start" gap="sm" wrap="wrap" className="mt-4">
+                                                <Button
+                                                    onClick={() => window.location.href = '/admin/school/users?role=teacher&action=add'}
+                                                    variant="secondary"
+                                                    size="xs"
+                                                >
+                                                    {dict.createTeacherButton}
+                                                </Button>
+                                                <Button
+                                                    onClick={() => window.location.href = '/admin/school/users?role=student&action=add'}
+                                                    variant="secondary"
+                                                    size="xs"
+                                                >
+                                                    {dict.createStudentButton}
+                                                </Button>
+                                                <Button
+                                                    onClick={() => window.location.href = '/admin/school/classes?action=add-course'}
+                                                    variant="secondary"
+                                                    size="xs"
+                                                >
+                                                    {dict.createCourseButton}
+                                                </Button>
+                                            </Inline>
+                                        </Stack>
+                                    </CardBody>
+                                </Card>
 
-                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-                                <h3 className="text-sm font-medium text-amber-900">{dict.settings.ssoNotRoster}</h3>
-                                <p className="mt-1 text-sm text-amber-700">{dict.settings.ssoNotRosterHint}</p>
-                            </div>
-                        </div>
-                    </div>
+                                <Card className="border-amber-200 bg-amber-50">
+                                    <CardBody padding="md">
+                                        <Stack gap="xs">
+                                            <Text variant="body" className="font-medium text-amber-900">
+                                                {dict.settings.ssoNotRoster}
+                                            </Text>
+                                            <Text variant="muted" className="text-amber-700">
+                                                {dict.settings.ssoNotRosterHint}
+                                            </Text>
+                                        </Stack>
+                                    </CardBody>
+                                </Card>
+                            </Stack>
+                        </CardBody>
+                    </Card>
 
                     {/* Directory Sync Card (Coming Soon) */}
-                    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-gray-900">{dict.settings.directorySync}</h2>
-                            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                                {dict.settings.comingSoon}
-                            </span>
-                        </div>
-                        <p className="mt-1 text-sm text-gray-500">{dict.settings.directorySyncHint}</p>
+                    <Card>
+                        <CardBody padding="lg">
+                            <Inline align="between" gap="sm">
+                                <Text variant="sectionTitle">{dict.settings.directorySync}</Text>
+                                <Badge variant="neutral">{dict.settings.comingSoon}</Badge>
+                            </Inline>
+                            <Text variant="muted" className="mt-1">
+                                {dict.settings.directorySyncHint}
+                            </Text>
 
-                        <div className="mt-6 space-y-3 opacity-50">
-                            <div className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
-                                <div className="h-8 w-8 rounded bg-gray-200"></div>
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">SCIM 2.0</div>
-                                    <div className="text-xs text-gray-500">{dict.settings.scimHint}</div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
-                                <div className="h-8 w-8 rounded bg-gray-200"></div>
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">Azure AD / Entra ID</div>
-                                    <div className="text-xs text-gray-500">{dict.settings.azureHint}</div>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
-                                <div className="h-8 w-8 rounded bg-gray-200"></div>
-                                <div>
-                                    <div className="text-sm font-medium text-gray-900">Google Workspace</div>
-                                    <div className="text-xs text-gray-500">{dict.settings.googleHint}</div>
-                                </div>
-                            </div>
-                        </div>
+                            <Stack gap="sm" className="mt-6 opacity-50">
+                                <Card>
+                                    <CardBody padding="sm">
+                                        <Inline align="start" gap="sm">
+                                            <div className="h-8 w-8 rounded bg-gray-200"></div>
+                                            <Stack gap="xs">
+                                                <Text variant="body" className="font-medium">SCIM 2.0</Text>
+                                                <Text variant="xsMuted">{dict.settings.scimHint}</Text>
+                                            </Stack>
+                                        </Inline>
+                                    </CardBody>
+                                </Card>
+                                <Card>
+                                    <CardBody padding="sm">
+                                        <Inline align="start" gap="sm">
+                                            <div className="h-8 w-8 rounded bg-gray-200"></div>
+                                            <Stack gap="xs">
+                                                <Text variant="body" className="font-medium">Azure AD / Entra ID</Text>
+                                                <Text variant="xsMuted">{dict.settings.azureHint}</Text>
+                                            </Stack>
+                                        </Inline>
+                                    </CardBody>
+                                </Card>
+                                <Card>
+                                    <CardBody padding="sm">
+                                        <Inline align="start" gap="sm">
+                                            <div className="h-8 w-8 rounded bg-gray-200"></div>
+                                            <Stack gap="xs">
+                                                <Text variant="body" className="font-medium">Google Workspace</Text>
+                                                <Text variant="xsMuted">{dict.settings.googleHint}</Text>
+                                            </Stack>
+                                        </Inline>
+                                    </CardBody>
+                                </Card>
+                            </Stack>
 
-                        <div className="mt-6">
-                            <button
+                            <Button
                                 type="button"
                                 disabled
-                                className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-400 cursor-not-allowed"
+                                className="mt-6 cursor-not-allowed bg-gray-100 text-gray-400"
                             >
                                 {dict.settings.configureSync}
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                            </Button>
+                        </CardBody>
+                    </Card>
+                </Stack>
             )}
-        </div>
+        </Stack>
     )
 }

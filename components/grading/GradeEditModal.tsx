@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { X, ChevronDown, ChevronUp, Sparkles } from 'lucide-react'
 import MathRenderer from '@/components/exams/MathRenderer'
+import { Button } from '@/components/ui/Button'
+import { Input, Textarea } from '@/components/ui/Form'
+import { Text } from '@/components/ui/Text'
+import { Stack, Surface } from '@/components/ui/Layout'
 
 interface GradeEditModalProps {
     isOpen: boolean
@@ -127,7 +131,7 @@ export default function GradeEditModal({
             >
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-900">Modifier la note</h2>
+                    <Text as="h2" variant="sectionTitle">Modifier la note</Text>
                     <button
                         ref={closeButtonRef}
                         type="button"
@@ -144,9 +148,9 @@ export default function GradeEditModal({
                     {isAiGrade && (
                         <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
                             <Sparkles className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                            <p className="text-sm text-blue-800">
+                            <Text variant="caption" className="text-blue-800">
                                 Note generee par IA - sera marquee comme modifiee par le professeur
-                            </p>
+                            </Text>
                         </div>
                     )}
 
@@ -156,8 +160,9 @@ export default function GradeEditModal({
                             type="button"
                             onClick={() => setContextExpanded(!contextExpanded)}
                             className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                            aria-expanded={contextExpanded}
                         >
-                            <span className="text-sm font-medium text-gray-700">Contexte</span>
+                            <Text variant="label">Contexte</Text>
                             {contextExpanded ? (
                                 <ChevronUp className="w-4 h-4 text-gray-500" />
                             ) : (
@@ -166,23 +171,23 @@ export default function GradeEditModal({
                         </button>
 
                         {contextExpanded && (
-                            <div className="p-4 space-y-4 border-t border-gray-200">
+                            <Stack gap="md" className="p-4 border-t border-gray-200">
                                 {/* Question Content */}
                                 <div>
-                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Question</h4>
-                                    <div className="text-gray-800 bg-gray-50 p-3 rounded-md">
+                                    <Text variant="overline" className="mb-2">Question</Text>
+                                    <Surface tone="subtle" className="p-3">
                                         <MathRenderer text={questionContent} />
-                                    </div>
+                                    </Surface>
                                 </div>
 
                                 {/* Student Answer */}
                                 <div>
-                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">Reponse de l&apos;etudiant</h4>
+                                    <Text variant="overline" className="mb-2">Reponse de l&apos;etudiant</Text>
                                     <div className="text-gray-800 bg-blue-50 p-3 rounded-md border border-blue-100">
                                         {studentAnswer ? (
                                             <MathRenderer text={studentAnswer} />
                                         ) : (
-                                            <span className="italic text-gray-400">Aucune reponse fournie</span>
+                                            <Text variant="caption" className="italic">Aucune reponse fournie</Text>
                                         )}
                                     </div>
                                 </div>
@@ -190,30 +195,32 @@ export default function GradeEditModal({
                                 {/* AI Rationale */}
                                 {aiRationale && (
                                     <div>
-                                        <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2">
+                                        <Text variant="overline" className="mb-2">
                                             <span className="inline-flex items-center gap-1">
                                                 <Sparkles className="w-3 h-3" />
                                                 Raisonnement IA
                                             </span>
-                                        </h4>
-                                        <div className="text-gray-600 bg-gray-100 p-3 rounded-md text-sm">
-                                            <MathRenderer text={aiRationale} />
-                                        </div>
+                                        </Text>
+                                        <Surface tone="subtle" className="p-3">
+                                            <Text variant="caption">
+                                                <MathRenderer text={aiRationale} />
+                                            </Text>
+                                        </Surface>
                                     </div>
                                 )}
-                            </div>
+                            </Stack>
                         )}
                     </div>
 
                     {/* Edit Section */}
-                    <div className="space-y-4">
+                    <Stack gap="md">
                         {/* Score Input */}
                         <div>
-                            <label htmlFor="grade-score" className="block text-sm font-medium text-gray-700 mb-1">
+                            <Text as="label" variant="label" htmlFor="grade-score" className="mb-1">
                                 Score (0 - {maxPoints})
-                            </label>
+                            </Text>
                             <div className="flex items-center gap-2">
-                                <input
+                                <Input
                                     id="grade-score"
                                     type="number"
                                     min="0"
@@ -221,48 +228,47 @@ export default function GradeEditModal({
                                     step="0.5"
                                     value={score}
                                     onChange={(e) => handleScoreChange(e.target.value)}
-                                    className="block w-32 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                                    className="w-32"
                                 />
-                                <span className="text-gray-500">/ {maxPoints}</span>
+                                <Text variant="caption">/ {maxPoints}</Text>
                             </div>
                         </div>
 
                         {/* Feedback Textarea */}
                         <div>
-                            <label htmlFor="grade-feedback" className="block text-sm font-medium text-gray-700 mb-1">
+                            <Text as="label" variant="label" htmlFor="grade-feedback" className="mb-1">
                                 Commentaire pour l&apos;etudiant
-                            </label>
-                            <textarea
+                            </Text>
+                            <Textarea
                                 id="grade-feedback"
                                 rows={4}
                                 value={feedback}
                                 onChange={(e) => setFeedback(e.target.value)}
                                 placeholder="Commentaire pour l'etudiant..."
-                                className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
                             />
-                            <p className="mt-1 text-xs text-gray-500">
+                            <Text variant="xsMuted" className="mt-1">
                                 Ce commentaire sera visible par l&apos;etudiant apres publication
-                            </p>
+                            </Text>
                         </div>
-                    </div>
+                    </Stack>
                 </div>
 
                 {/* Footer */}
                 <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4 flex justify-end gap-3">
-                    <button
+                    <Button
                         type="button"
                         onClick={onClose}
-                        className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        variant="secondary"
                     >
                         Annuler
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                         type="button"
                         onClick={handleSave}
-                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        variant="primary"
                     >
                         Enregistrer
-                    </button>
+                    </Button>
                 </div>
             </div>
         </div>

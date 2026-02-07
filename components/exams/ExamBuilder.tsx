@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
 import ExamPreview from '@/components/exams/ExamPreview'
 import { ExamLayout } from '@/components/exams/builder/ExamLayout'
 import { ExamMetadataHeader } from '@/components/exams/builder/ExamMetadataHeader'
@@ -352,15 +353,10 @@ export default function ExamBuilder({ examId, initialData, isLocked = false, dic
         }
         try {
             setError(null)
-            const res = await fetch(`/api/exams/${examId}/batch`, {
+            await fetchJsonWithCsrf(`/api/exams/${examId}/batch`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ops: pendingLiveOps }),
+                body: { ops: pendingLiveOps },
             })
-            if (!res.ok) {
-                const text = await res.text()
-                throw new Error(text || 'Failed to apply live edits')
-            }
             setPendingLiveOps([])
             setLiveEditEnabled(false)
             await reloadExam()

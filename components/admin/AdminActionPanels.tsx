@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { Card, CardBody } from '@/components/ui/Card'
 
 type AdminActionPanelsProps = {
     isAddOpen: boolean
@@ -18,33 +19,35 @@ export default function AdminActionPanels({
     return (
         <div className="mb-6 space-y-4">
             {isAddOpen && (
-                <div 
-                    className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm ring-1 ring-black/5"
+                <Card
+                    overflow="hidden"
+                    className="ring-1 ring-black/5"
                     role="region"
                     aria-label="Ajouter un élément"
                 >
                     <div className="bg-gray-50/50 px-4 py-3 border-b border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-900">Ajouter un élément</h3>
                     </div>
-                    <div className="p-4 sm:p-6">
+                    <CardBody padding="lg">
                         {addPanelContent}
-                    </div>
-                </div>
+                    </CardBody>
+                </Card>
             )}
-            
+
             {isImportOpen && importPanelContent && (
-                <div 
-                    className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm ring-1 ring-black/5"
+                <Card
+                    overflow="hidden"
+                    className="ring-1 ring-black/5"
                     role="region"
                     aria-label="Import en masse"
                 >
                     <div className="bg-gray-50/50 px-4 py-3 border-b border-gray-100">
                         <h3 className="text-sm font-semibold text-gray-900">Import en masse</h3>
                     </div>
-                    <div className="p-4 sm:p-6">
+                    <CardBody padding="lg">
                         {importPanelContent}
-                    </div>
-                </div>
+                    </CardBody>
+                </Card>
             )}
         </div>
     )

@@ -1,4 +1,4 @@
-﻿import type { AnchorHTMLAttributes } from 'react'
+import type { AnchorHTMLAttributes } from 'react'
 import Link from 'next/link'
 import { cn } from './cn'
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession, isTeacher } from '@/lib/api-auth'
 import { prisma } from '@/lib/prisma'
 import { generateGradesCSV } from '@/lib/export/csv-generator'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 // GET /api/exams/[examId]/export/csv - Download grades as CSV
 export async function GET(
@@ -39,6 +40,16 @@ export async function GET(
 
     // Generate CSV
     const csv = await generateGradesCSV({ examId, classIds })
+
+    logAudit({
+        action: 'EXPORT_CSV',
+        actorId: session.user.id,
+        institutionId: session.user.institutionId,
+        targetType: 'EXAM',
+        targetId: examId,
+        metadata: classId ? { classId } : undefined,
+        ipAddress: getClientIp(req),
+    })
 
     // Return as downloadable file
     // Sanitize filename: replace non-alphanumeric with dash

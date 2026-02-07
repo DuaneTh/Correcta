@@ -1,13 +1,13 @@
-﻿import type { InputHTMLAttributes, TextareaHTMLAttributes, SelectHTMLAttributes } from 'react'
+import { forwardRef, type InputHTMLAttributes, type TextareaHTMLAttributes, type SelectHTMLAttributes } from 'react'
 import { cn } from './cn'
 
-type InputProps = InputHTMLAttributes<HTMLInputElement> & {
+type InputProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
     size?: 'sm' | 'md'
 }
 
 type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>
 
-type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+type SelectProps = Omit<SelectHTMLAttributes<HTMLSelectElement>, 'size'> & {
     size?: 'sm' | 'md'
 }
 
@@ -22,9 +22,9 @@ const inputSize = {
 const textareaBase =
     'min-h-[96px] w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-900 focus:ring-offset-2'
 
-export function Input({ className, size = 'md', ...props }: InputProps) {
-    return <input className={cn(inputBase, inputSize[size], className)} {...props} />
-}
+export const Input = forwardRef<HTMLInputElement, InputProps>(function Input({ className, size = 'md', ...props }, ref) {
+    return <input ref={ref} className={cn(inputBase, inputSize[size], className)} {...props} />
+})
 
 export function Textarea({ className, ...props }: TextareaProps) {
     return <textarea className={cn(textareaBase, className)} {...props} />

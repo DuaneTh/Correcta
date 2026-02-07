@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { RotateCcw, Loader2 } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import ConfirmModal from '@/components/ui/ConfirmModal'
+import { Button } from '@/components/ui/Button'
 
 interface ReGradeButtonProps {
     attemptId: string
@@ -58,11 +59,13 @@ export default function ReGradeButton({
 
     return (
         <>
-            <button
+            <Button
                 type="button"
                 onClick={handleClick}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                variant="ghost"
+                size="xs"
+                className="text-gray-600 hover:text-indigo-600"
             >
                 {loading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -70,7 +73,7 @@ export default function ReGradeButton({
                     <RotateCcw className="w-3.5 h-3.5" />
                 )}
                 Recorriger (IA)
-            </button>
+            </Button>
 
             <ConfirmModal
                 open={showConfirm}

@@ -124,22 +124,54 @@ export type GraphFunction = {
     labelPos?: { x: number; y: number }
     expression: string
     domain?: { min?: number; max?: number }
+    /** Horizontal offset for translating the function (shifts the curve right) */
+    offsetX?: number
+    /** Vertical offset for translating the function (shifts the curve up) */
+    offsetY?: number
+    /** Vertical scale factor (controls opening angle for parabolas, default 1) */
+    scaleY?: number
     style?: GraphStrokeStyle
 }
 
 export type GraphArea = {
     id: string
+    /** Display label for the area (e.g., "A" or "\mathcal{A}") */
     label?: string
+    /** If true, label is rendered as LaTeX math */
     labelIsMath?: boolean
     labelSegments?: ContentSegment[]
+    /** Whether to show the label (default: true) */
     showLabel?: boolean
+    /** Position of the label/control point in graph coordinates */
     labelPos?: { x: number; y: number }
-    mode: 'polygon' | 'under-function' | 'between-functions'
+    /**
+     * How the area polygon is determined:
+     * - 'polygon': Direct point list
+     * - 'under-function': Area between function and y=0
+     * - 'between-functions': Area between two functions
+     * - 'between-line-and-function': Area between a line and function
+     * - 'bounded-region': Area bounded by mix of functions, lines, axes
+     */
+    mode: 'polygon' | 'under-function' | 'between-functions' | 'between-line-and-function' | 'bounded-region'
+    /** Direct polygon points (used when mode='polygon' or as cached result) */
     points?: GraphAnchor[]
+    /** Primary function ID (for under-function, between-functions, between-line-and-function) */
     functionId?: string
+    /** Secondary function ID (for between-functions mode) */
     functionId2?: string
+    /** Line ID (for between-line-and-function mode) */
+    lineId?: string
+    /** All element IDs that bound this area (for bounded-region mode) */
+    boundaryIds?: string[]
+    /** X-axis domain for area calculation */
     domain?: { min?: number; max?: number }
+    /** Fill style (color, opacity) */
     fill?: GraphFillStyle
+    /**
+     * Element IDs to ignore as boundaries (for "extend" feature).
+     * When set, area extends across these boundaries to fill adjacent regions.
+     */
+    ignoredBoundaries?: string[]
 }
 
 export type GraphText = {

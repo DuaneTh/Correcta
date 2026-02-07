@@ -65,3 +65,22 @@ export function isPlatformAdmin(session: any): boolean {
 export function isAdmin(session: any): boolean {
     return isSchoolAdmin(session) || isPlatformAdmin(session)
 }
+
+/**
+ * Resolve the effective institutionId for school admin API routes.
+ * - School Admins: use session.user.institutionId
+ * - Platform Admins: use the institutionId from the request (query param or body)
+ * Returns null if the user is not authorized or institutionId cannot be resolved.
+ */
+export function resolveSchoolAdminInstitutionId(
+    session: any,
+    requestInstitutionId?: string | null
+): string | null {
+    if (isSchoolAdmin(session)) {
+        return session?.user?.institutionId ?? null
+    }
+    if (isPlatformAdmin(session)) {
+        return requestInstitutionId || session?.user?.institutionId || null
+    }
+    return null
+}

@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { buildAuthOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { parseContent, serializeContent } from '@/lib/content'
 import { getExamPermissions } from '@/lib/exam-permissions'
+import { getAuthSession, isTeacher } from '@/lib/api-auth'
+import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from '@/lib/csrf'
 
 type ExamParams = { examId?: string }
 
@@ -86,21 +86,26 @@ const resolveExamId = async (req: Request, params: Promise<ExamParams>) => {
     }
 }
 
-export async function POST(req: Request, { params }: { params: Promise<ExamParams> }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<ExamParams> }) {
     try {
         const examId = await resolveExamId(req, params)
         if (!examId) {
             return NextResponse.json({ error: 'Invalid exam id' }, { status: 400 })
         }
 
-        const cookieStore = req.headers.get('cookie') || ''
-        const match = cookieStore.match(/correcta-institution=([^;]+)/)
-        const institutionId = match ? match[1] : undefined
-        const authOptions = await buildAuthOptions(institutionId)
-        const session = await getServerSession(authOptions)
-
-        if (!session || !session.user || session.user.role === 'STUDENT') {
+        const session = await getAuthSession(req)
+        if (!session || !session.user || !isTeacher(session)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+
+        const csrfResult = verifyCsrf({
+            req,
+            cookieToken: req.cookies.get(getCsrfCookieName())?.value,
+            headerToken: req.headers.get('x-csrf-token'),
+            allowedOrigins: getAllowedOrigins()
+        })
+        if (!csrfResult.ok) {
+            return NextResponse.json({ error: 'CSRF' }, { status: 403 })
         }
 
         const existingExam = await prisma.exam.findUnique({

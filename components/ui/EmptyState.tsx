@@ -1,11 +1,11 @@
-﻿import type { ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cn } from './cn'
 
 type EmptyStateSize = 'compact' | 'full'
 
 type EmptyStateProps = {
     title: string
-    description: string
+    description?: string
     action?: ReactNode
     size?: EmptyStateSize
 }
@@ -20,7 +20,7 @@ export function EmptyState({ title, description, action, size = 'compact' }: Emp
         return (
             <div className={sizeClasses.compact}>
                 <div className="font-semibold text-gray-700">{title}</div>
-                <div className="mt-1 text-gray-500">{description}</div>
+                {description ? <div className="mt-1 text-gray-500">{description}</div> : null}
                 {action ? <div className="mt-2">{action}</div> : null}
             </div>
         )
@@ -29,7 +29,7 @@ export function EmptyState({ title, description, action, size = 'compact' }: Emp
     return (
         <div className={cn(sizeClasses.full)}>
             <div className="text-sm font-semibold text-gray-700">{title}</div>
-            <div className="mt-2 text-sm text-gray-500">{description}</div>
+            {description ? <div className="mt-2 text-sm text-gray-500">{description}</div> : null}
             {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
         </div>
     )

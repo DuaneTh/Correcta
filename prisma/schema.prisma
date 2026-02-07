@@ -470,6 +470,25 @@ model AIGradingLog {
   createdBy     String?  // User who triggered the grading
 }
 
+// --- Audit Log ---
+
+model AuditLog {
+  id            String   @id @default(uuid())
+  action        String   // USER_CREATE, USER_UPDATE, PASSWORD_CHANGE, LOGIN_SUCCESS, LOGIN_FAIL, GRADE_UPDATE, EXAM_PUBLISH, EXPORT, SETTING_UPDATE, ENROLLMENT_CREATE, ENROLLMENT_DELETE
+  actorId       String?  // User who performed the action (null for system)
+  institutionId String?
+  targetType    String?  // USER, EXAM, ATTEMPT, GRADE, SETTING, ENROLLMENT, COURSE
+  targetId      String?
+  metadata      Json?    // Extra context (e.g., { email: "..." })
+  ipAddress     String?
+  createdAt     DateTime @default(now())
+
+  @@index([action])
+  @@index([actorId])
+  @@index([institutionId])
+  @@index([createdAt])
+}
+
 // --- Grade Harmonization ---
 
 model HarmonizationHistory {

@@ -1,7 +1,8 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getDictionary } from '@/lib/i18n/dictionaries'
 import { getLocale } from '@/lib/i18n/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthSession, isTeacher } from '@/lib/api-auth'
 import TeacherCourseDetailClient from './TeacherCourseDetailClient'
 
 export default async function TeacherCourseDetailPage({
@@ -10,11 +11,18 @@ export default async function TeacherCourseDetailPage({
     params: Promise<{ courseId: string }>
 }) {
     const { courseId } = await params
+    const session = await getAuthSession()
+
+    if (!session || !session.user) {
+        redirect('/login')
+    }
+
+    if (!isTeacher(session)) {
+        redirect('/student/courses')
+    }
+
     const locale = await getLocale()
     const dictionary = getDictionary(locale)
-
-    // TODO: Add authentication/authorization check
-    // Ensure the current user is a teacher and has access to this course
 
     const course = await prisma.course.findFirst({
         where: { id: courseId, archivedAt: null },

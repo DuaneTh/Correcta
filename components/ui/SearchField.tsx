@@ -1,8 +1,8 @@
-﻿import type { InputHTMLAttributes } from 'react'
+import type { InputHTMLAttributes } from 'react'
 import { Search } from 'lucide-react'
 import { Input } from './Form'
 
-type SearchFieldProps = InputHTMLAttributes<HTMLInputElement>
+type SearchFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'>
 
 export function SearchField({ placeholder, value, onChange, ...props }: SearchFieldProps) {
     return (

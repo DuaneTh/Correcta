@@ -34,7 +34,7 @@ const getRedisClient = (): Redis | null => {
 
 const ensureRedisAvailable = (): Redis | null => {
     const redis = getRedisClient()
-    if (!redis && process.env.NODE_ENV === 'production') {
+    if (!redis && process.env.NODE_ENV === 'production' && process.env.ATTEMPT_INTEGRITY_REQUIRED !== 'false') {
         throw new Error('Attempt integrity requires Redis in production')
     }
     return redis

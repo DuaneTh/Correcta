@@ -5,6 +5,13 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, Bot } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import MathRenderer from '@/components/exams/MathRenderer'
+import { Badge } from '@/components/ui/Badge'
+import { Button } from '@/components/ui/Button'
+import { Card, CardBody } from '@/components/ui/Card'
+import { Stack } from '@/components/ui/Layout'
+import { Surface } from '@/components/ui/Layout'
+import { Text } from '@/components/ui/Text'
+import { cn } from '@/components/ui/cn'
 
 interface ResultData {
     examTitle: string
@@ -100,39 +107,38 @@ export default function ResultsView({ attemptId, dictionary }: ResultsViewProps)
         fetchResults()
     }, [fetchResults])
 
-    if (loading) return <div className="p-8 text-center">{dict.messages.loading}</div>
+    if (loading) return <div className="p-8 text-center"><Text variant="body">{dict.messages.loading}</Text></div>
 
     if (resultsNotAvailable) {
         return (
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <button
+                <Stack gap="lg">
+                    <Button
                         onClick={() => router.back()}
-                        className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                        variant="ghost"
+                        className="w-fit"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         {dict.backLink}
-                    </button>
-                </div>
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-lg">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <h3 className="text-lg font-medium text-yellow-800">
-                                {dict.messages.notAvailableTitle}
-                            </h3>
-                            <div className="mt-2 text-sm text-yellow-700">
-                                <p>
+                    </Button>
+                    <div className="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded-r-lg">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <Text as="h3" variant="sectionTitle" className="text-yellow-800">
+                                    {dict.messages.notAvailableTitle}
+                                </Text>
+                                <Text variant="muted" className="mt-2 text-yellow-700">
                                     {dict.messages.notAvailableMessage}
-                                </p>
+                                </Text>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Stack>
             </div>
         )
     }
@@ -140,125 +146,129 @@ export default function ResultsView({ attemptId, dictionary }: ResultsViewProps)
     if (resultsNotReleased) {
         return (
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="mb-8">
-                    <button
+                <Stack gap="lg">
+                    <Button
                         onClick={() => router.back()}
-                        className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                        variant="ghost"
+                        className="w-fit"
                     >
                         <ArrowLeft className="w-4 h-4 mr-2" />
                         {dict.backLink}
-                    </button>
-                </div>
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-r-lg">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <h3 className="text-lg font-medium text-blue-800">
-                                {dict.messages.notReleasedTitle}
-                            </h3>
-                            <div className="mt-2 text-sm text-blue-700">
-                                <p>
+                    </Button>
+                    <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-r-lg">
+                        <div className="flex">
+                            <div className="flex-shrink-0">
+                                <svg className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <Text as="h3" variant="sectionTitle" className="text-blue-800">
+                                    {dict.messages.notReleasedTitle}
+                                </Text>
+                                <Text variant="muted" className="mt-2 text-blue-700">
                                     {dict.messages.notReleasedMessage}
-                                </p>
+                                </Text>
                             </div>
                         </div>
                     </div>
-                </div>
+                </Stack>
             </div>
         )
     }
 
-    if (!data) return <div className="p-8 text-center">{dict.messages.errorLoading}</div>
+    if (!data) return <div className="p-8 text-center"><Text variant="body">{dict.messages.errorLoading}</Text></div>
 
     return (
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <div className="mb-8">
-                <button
+            <Stack gap="lg">
+                <Button
                     onClick={() => router.back()}
-                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                    variant="ghost"
+                    className="w-fit"
                 >
                     <ArrowLeft className="w-4 h-4 mr-2" />
                     {dict.backLink}
-                </button>
-                <div className="bg-white shadow rounded-lg p-6 border border-gray-200">
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <h1 className="text-2xl font-bold text-brand-900">{data.examTitle}</h1>
-                            <p className="text-gray-500">{dict.header.candidateLabel} : {data.studentName}</p>
-                            <p className="text-sm text-gray-400">{dict.header.submittedAtLabel} : {new Date(data.submittedAt).toLocaleString()}</p>
-                        </div>
-                        <div className="text-right">
-                            <div className="text-4xl font-bold text-indigo-600">
-                                {data.totalScore} <span className="text-xl text-gray-400">/ {data.totalMaxPoints}</span>
+                </Button>
+                <Card>
+                    <CardBody padding="lg">
+                        <div className="flex justify-between items-center">
+                            <Stack gap="xs">
+                                <Text as="h1" variant="pageTitle">{data.examTitle}</Text>
+                                <Text variant="caption">{dict.header.candidateLabel} : {data.studentName}</Text>
+                                <Text variant="xsMuted">{dict.header.submittedAtLabel} : {new Date(data.submittedAt).toLocaleString()}</Text>
+                            </Stack>
+                            <div className="text-right">
+                                <div className="text-4xl font-bold text-indigo-600">
+                                    {data.totalScore} <span className="text-xl text-gray-400">/ {data.totalMaxPoints}</span>
+                                </div>
+                                <Text variant="muted" className="font-medium text-brand-900 uppercase tracking-wide">{dict.header.finalGradeLabel}</Text>
                             </div>
-                            <div className="text-sm font-medium text-brand-900 uppercase tracking-wide">{dict.header.finalGradeLabel}</div>
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </CardBody>
+                </Card>
 
-            <div className="space-y-8">
-                {data.sections.map(section => (
-                    <div key={section.id} className="space-y-6">
-                        {section.title?.trim() && (
-                            <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">{section.title}</h2>
-                        )}
-                        {section.questions.map((question, index) => (
-                            <div key={question.id} className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-                                <div className="p-4 sm:p-6">
-                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4 mb-4">
-                                        <div className="flex-1">
-                                            <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-600 rounded mb-2">
-                                                {dict.questionCard.questionLabel} {index + 1} - {question.maxPoints} {dict.questionCard.pointsSuffix}
-                                            </span>
-                                            <MathRenderer text={question.content} className="text-lg text-gray-900 font-medium" />
-                                        </div>
-                                        {question.grade && (
-                                            <div className={`text-2xl font-bold ${getScoreColor(question.grade.score, question.maxPoints)} sm:text-right`}>
-                                                {question.grade.score} / {question.maxPoints}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="bg-gray-50 p-4 rounded-md border border-gray-200 mb-4">
-                                        <h4 className="text-xs font-bold text-gray-500 uppercase mb-2">{dict.questionCard.yourAnswerLabel}</h4>
-                                        {question.answer?.segments.length ? (
-                                            <MathRenderer text={question.answer.segments.join('\n')} className="text-gray-800 whitespace-pre-wrap" />
-                                        ) : (
-                                            <span className="italic text-gray-400">{dict.questionCard.noAnswerLabel}</span>
-                                        )}
-                                    </div>
-
-                                    {question.grade && (
-                                        <div className={`p-4 rounded-md border-l-4 bg-gray-50 ${getFeedbackBorderColor(question.grade.score, question.maxPoints)}`}>
-                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                                                <h4 className="text-xs font-bold text-gray-700 uppercase">Commentaire du correcteur</h4>
-                                                {question.grade.isAiGrade && (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">
-                                                        <Bot className="w-3 h-3" />
-                                                        Correction automatique
-                                                    </span>
+                <Stack gap="lg">
+                    {data.sections.map(section => (
+                        <Stack key={section.id} gap="md">
+                            {section.title?.trim() && (
+                                <Text as="h2" variant="sectionTitle" className="border-b pb-2">{section.title}</Text>
+                            )}
+                            {section.questions.map((question, index) => (
+                                <Card key={question.id}>
+                                    <CardBody padding="lg">
+                                        <Stack gap="sm">
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+                                                <Stack gap="xs" className="flex-1">
+                                                    <Badge variant="neutral" className="w-fit">
+                                                        {dict.questionCard.questionLabel} {index + 1} - {question.maxPoints} {dict.questionCard.pointsSuffix}
+                                                    </Badge>
+                                                    <MathRenderer text={question.content} className="text-lg text-gray-900 font-medium" />
+                                                </Stack>
+                                                {question.grade && (
+                                                    <Text as="div" variant="pageTitle" className={cn(getScoreColor(question.grade.score, question.maxPoints), "sm:text-right text-2xl")}>
+                                                        {question.grade.score} / {question.maxPoints}
+                                                    </Text>
                                                 )}
                                             </div>
-                                            {question.grade.feedback ? (
-                                                <MathRenderer text={question.grade.feedback} className="text-gray-800 text-sm" />
-                                            ) : (
-                                                <div className="text-gray-600 text-sm">
-                                                    {getDefaultFeedback(question.grade.score, question.maxPoints)}
+
+                                            <Surface tone="subtle" className="p-4">
+                                                <Text variant="overline" className="mb-2">{dict.questionCard.yourAnswerLabel}</Text>
+                                                {question.answer?.segments.length ? (
+                                                    <MathRenderer text={question.answer.segments.join('\n')} className="text-gray-800 whitespace-pre-wrap" />
+                                                ) : (
+                                                    <Text variant="caption" className="italic">{dict.questionCard.noAnswerLabel}</Text>
+                                                )}
+                                            </Surface>
+
+                                            {question.grade && (
+                                                <div className={cn("p-4 rounded-md border-l-4 bg-gray-50", getFeedbackBorderColor(question.grade.score, question.maxPoints))}>
+                                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                                                        <Text variant="overline">Commentaire du correcteur</Text>
+                                                        {question.grade.isAiGrade && (
+                                                            <Badge variant="info" className="w-fit">
+                                                                <Bot className="w-3 h-3" />
+                                                                Correction automatique
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    {question.grade.feedback ? (
+                                                        <MathRenderer text={question.grade.feedback} className="text-gray-800 text-sm" />
+                                                    ) : (
+                                                        <Text variant="muted">
+                                                            {getDefaultFeedback(question.grade.score, question.maxPoints)}
+                                                        </Text>
+                                                    )}
                                                 </div>
                                             )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ))}
-            </div>
+                                        </Stack>
+                                    </CardBody>
+                                </Card>
+                            ))}
+                        </Stack>
+                    ))}
+                </Stack>
+            </Stack>
         </div>
     )
 }

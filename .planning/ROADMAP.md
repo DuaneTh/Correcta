@@ -2,7 +2,7 @@
 
 **Created:** 2026-01-18
 **Core Value:** Teachers create exams, AI corrects with personalized feedback
-**Depth:** Standard (5 phases)
+**Depth:** Standard (7 phases)
 
 ---
 
@@ -158,6 +158,197 @@ Plans:
 
 ---
 
+## Phase 6: UI Kit Integration
+
+**Goal:** All application pages use a consistent UI Kit (components from feat/kourpat1), replacing raw HTML/Tailwind with typed, reusable components.
+
+**Dependencies:** Phase 1-5 (all pages exist and are functional)
+
+**Requirements:**
+- UIKIT-01: cn() utility and base design tokens (already delivered by kourpat1)
+- UIKIT-02: Migrate admin pages (school admin, platform admin) to UI Kit components
+- UIKIT-03: Migrate teacher pages (courses, exams, grading) to UI Kit components
+- UIKIT-04: Migrate student pages (courses, exams, results) to UI Kit components
+- UIKIT-05: Consolidate modals (grading, export, confirm) using UI Kit patterns
+- UIKIT-06: UI Kit showcase page at /internal/ui-kit (already delivered by kourpat1)
+
+**Plans:** 8 plans
+
+Plans:
+- [x] 06-01-PLAN.md — Cherry-pick UI Kit components from kourpat1 branch
+- [x] 06-02-PLAN.md — Migrate large admin pages (Institutions, Classes, Users)
+- [x] 06-03-PLAN.md — Migrate small admin pages + platform admin + layouts
+- [x] 06-04-PLAN.md — Migrate teacher pages + grading pages
+- [x] 06-05-PLAN.md — Migrate student pages
+- [x] 06-06-PLAN.md — Migrate large grading components (Distribution, AttemptDetail, Rubric, GradeAll)
+- [x] 06-07-PLAN.md — Migrate small grading modals + export modal
+- [x] 06-08-PLAN.md — Migrate CourseFormModal (1840 lines)
+
+**Success Criteria:**
+1. All pages use Button, Card, Text, Layout components instead of raw HTML
+2. No raw `className` strings for common patterns (badges, cards, buttons) outside UI Kit components
+3. Consistent visual language across admin, teacher, and student interfaces
+4. /internal/ui-kit page showcases all available components with variants
+5. TeacherCoursesClient serves as reference implementation for migration pattern
+
+---
+
+## Phase 7: Intelligent Proctoring
+
+**Goal:** Browser-based exam integrity monitoring — webcam deterrent (camera on, no analysis), browser lockdown with focus loss detection, paste origin verification, suspicious pattern analysis, and teacher review dashboard.
+
+**Dependencies:** Phase 2 (exam taking flow), Phase 6 (UI Kit for consistent UI)
+
+**Requirements:**
+- PROCT-01: Webcam deterrent mode (camera permission prompt + active indicator, no recording/analysis)
+- PROCT-02: Toggleable proctoring per exam (teacher enables/disables webcam + lockdown independently)
+- PROCT-03: Browser lockdown detection (tab switches, focus loss, external paste detection)
+- PROCT-04: Focus loss pattern analysis (correlate focus losses with answer timing = suspicious)
+- PROCT-05: Activity logging with timestamped events for teacher review
+- PROCT-06: Teacher proctoring review dashboard (per-student timeline, suspicion score, event patterns)
+
+**Plans:** 4 plans
+
+Plans:
+- [x] 07-01-PLAN.md — Proctoring config types + exam settings panel with toggles
+- [x] 07-02-PLAN.md — Focus loss pattern analysis engine (TDD)
+- [x] 07-03-PLAN.md — Client-side proctoring monitor (webcam deterrent + browser lockdown)
+- [x] 07-04-PLAN.md — Enhanced teacher proctoring dashboard with pattern indicators
+
+**Success Criteria:**
+1. Student opening a proctored exam sees camera permission prompt and active camera indicator (deterrent only)
+2. Student switching tabs triggers a logged event visible to teacher
+3. Student pasting text from external source (not from within the exam page) is flagged differently from internal paste
+4. Repeated focus loss before answering questions is detected as a suspicious pattern
+5. Teacher can toggle webcam deterrent and browser lockdown independently per exam
+6. Teacher can review a timeline of proctoring events per student with suspicion indicators
+
+---
+
+## Phase 8: PDF Exam Import
+
+**Goal:** Teachers can upload an existing exam PDF, which is analyzed by AI to automatically create a structured exam with questions, point allocations, and correction guidelines — landing the teacher directly in the exam editor with pre-filled questions ready for review and modification.
+
+**Dependencies:** Phase 2 (exam editor), Phase 4 (OpenAI integration)
+
+**Requirements:**
+- IMPORT-01: PDF upload in exam creation flow (drag-and-drop or file picker)
+- IMPORT-02: AI analysis of PDF to extract questions, point values, and structure
+- IMPORT-03: Automatic question type detection (open question vs MCQ)
+- IMPORT-04: Auto-generated correction guidelines from extracted rubric/answer key
+- IMPORT-05: Seamless landing in existing exam editor with pre-filled questions (teacher can modify freely)
+
+**Plans:** 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Extraction schemas, GPT-4o extractor, BullMQ queue + worker
+- [ ] 08-02-PLAN.md — Upload API route + job status polling endpoint
+- [ ] 08-03-PLAN.md — PDF upload UI with react-dropzone + exam creation flow integration
+
+**Success Criteria:**
+1. Teacher can upload a PDF exam and see a progress indicator during AI analysis
+2. AI correctly identifies and separates individual questions from the PDF
+3. Point values are extracted or intelligently assigned based on PDF content
+4. Teacher lands in the standard exam editor with all questions pre-created
+5. Teacher can modify, reorder, delete, or add questions after import — full editor functionality preserved
+
+---
+
+## Phase 9: Graph Editor Overhaul
+
+**Goal:** Redesign the graph editor with an intuitive dual-mode interface — a simple mode for drag-and-drop manipulation of predefined curves and objects (PowerPoint-style), and an advanced mode for function-based graph creation — making it easy and beautiful to represent any mathematical graph.
+
+**Dependencies:** Phase 1 (math rendering), Phase 2 (exam editor), Phase 6 (UI Kit)
+
+**Requirements:**
+- GRAPH-01: Intuitive simple mode with draggable predefined curves and geometric objects
+- GRAPH-02: Advanced mode for function-based graph creation (enter f(x) expressions)
+- GRAPH-03: Clean, modern UI with dropdown menu for mode selection from graph button
+- GRAPH-04: Support for common math graph elements (axes, grids, labels, asymptotes, points)
+- GRAPH-05: Seamless integration with existing exam editor and content segment system
+
+**Plans:** 4 plans
+
+Plans:
+- [ ] 09-01-PLAN.md — Install deps, shared types/utils, predefined shapes, extract AdvancedGraphEditor
+- [ ] 09-02-PLAN.md — react-konva interactive canvas with editable shapes
+- [ ] 09-03-PLAN.md — SimpleGraphEditor with shape palette + GraphEditorWrapper dual-mode
+- [ ] 09-04-PLAN.md — Integration into exam builder with dropdown menu + visual verification
+
+**Success Criteria:**
+1. Teacher can create a parabola by dragging a predefined curve and adjusting control points
+2. Teacher can type f(x) = sin(x) in advanced mode and see the graph rendered immediately
+3. Graph button shows a dropdown with "Simple" and "Advanced" creation modes
+4. Teacher can add axes labels, grid lines, and annotations without writing code
+5. Created graphs integrate seamlessly as content segments in exam questions
+
+---
+
+## Phase 10: Area Tool Overhaul
+
+**Goal:** Refonte complète de l'outil d'aire dans l'éditeur graphique — permettre le drag-and-drop d'une aire sur une zone délimitée par plusieurs courbes, segments ou autres formes, avec détection automatique de la zone fermée et personnalisation du nom et de la couleur.
+
+**Dependencies:** Phase 9 (Graph Editor Overhaul)
+
+**Requirements:**
+- AREA-01: Drag-and-drop d'aire sur le canvas avec détection automatique de zone fermée
+- AREA-02: Support des zones délimitées par plusieurs éléments (courbes, segments, axes)
+- AREA-03: Personnalisation de l'aire (nom/label, couleur, opacité)
+- AREA-04: Gestion correcte de l'aire entre deux fonctions ou plus
+- AREA-05: Intégration seamless avec le système de formes existant
+
+**Plans:** 3 plans
+
+Plans:
+- [x] 10-01-PLAN.md — Region detection utilities (TDD): intersection solver + boundary tracer
+- [x] 10-02-PLAN.md — Area properties panel for color, opacity, label customization
+- [x] 10-03-PLAN.md — Enhanced EditableArea with multi-function region detection + extend mode
+
+**Success Criteria:**
+1. Teacher can drag an area tool onto the canvas and drop it inside a closed region
+2. Area automatically fills the zone bounded by surrounding curves/segments
+3. Teacher can customize area name, color, and opacity via properties panel
+4. Area between two functions (e.g., f(x) and g(x)) renders correctly
+5. Area data persists correctly in GraphPayload and renders on reload
+
+---
+
+## Phase 11: Comprehensive Pre-Production Verification
+
+**Goal:** Vérification ultra complète de toutes les fonctionnalités du site avant publication — traductions, fonctionnalités, edge cases, sécurité, cohérence UI Kit sur toutes les pages.
+
+**Dependencies:** All phases (1-10)
+
+**Requirements:**
+- VERIF-01: Vérification complète des traductions FR/EN sur toutes les pages et composants
+- VERIF-02: Test de toutes les fonctionnalités utilisateur (création d'examen, correction AI, export, import PDF, graphes, proctoring)
+- VERIF-03: Détection et correction des edge cases (données vides, valeurs limites, erreurs réseau, sessions expirées)
+- VERIF-04: Audit de sécurité (CSRF, XSS, injection SQL, autorisations, validation des entrées, accès non autorisé)
+- VERIF-05: Vérification de la cohérence UI Kit (tous les composants utilisent le design system, pas de styles raw incohérents)
+- VERIF-06: Test des flux end-to-end par rôle (student, teacher, school admin, platform admin)
+- VERIF-07: Vérification de la robustesse (gestion d'erreurs, loading states, fallbacks, timeouts)
+- VERIF-08: Vérification de la performance et de l'accessibilité de base
+
+**Plans:** 6 plans
+
+Plans:
+- [x] 11-01-PLAN.md — Translations audit: FR/EN dictionary parity and hardcoded string detection
+- [x] 11-02-PLAN.md — Feature verification: end-to-end flows for all user roles
+- [x] 11-03-PLAN.md — Edge cases and error handling: error boundaries, empty states, loading states
+- [x] 11-04-PLAN.md — Security audit: CSRF, XSS, authorization, input validation
+- [x] 11-05-PLAN.md — UI Kit consistency: design system compliance across all pages
+- [x] 11-06-PLAN.md — Performance and accessibility baseline checks
+
+**Success Criteria:**
+1. Toutes les chaînes de traduction existent en FR et EN, aucune clé manquante
+2. Tous les flux utilisateur fonctionnent de bout en bout sans erreur pour chaque rôle
+3. Les edge cases identifiés sont traités avec des messages d'erreur appropriés
+4. Aucune vulnérabilité de sécurité critique (OWASP Top 10)
+5. 100% des pages utilisent les composants UI Kit de manière cohérente
+6. Les temps de chargement sont acceptables et les états de loading sont présents
+
+---
+
 ## Progress
 
 | Phase | Goal | Requirements | Status |
@@ -167,6 +358,12 @@ Plans:
 | 3 - Organization | Class, subgroup, and user management | ORG-01, ORG-02, ORG-03, ORG-04, ORG-05 | Complete |
 | 4 - AI Correction | GPT-4 auto-grading with feedback and review | CORR-01, CORR-02, CORR-03, CORR-04, CORR-05 | Complete |
 | 5 - Export | CSV/PDF export with math rendering | EXPO-01, EXPO-02, EXPO-03, EXPO-04 (PDF math) | Complete |
+| 6 - UI Kit Integration | Consistent UI components across all pages | UIKIT-01 through UIKIT-06 | Complete |
+| 7 - Intelligent Proctoring | Webcam deterrent + browser lockdown + focus pattern analysis + review dashboard | PROCT-01 through PROCT-06 | Complete |
+| 8 - PDF Exam Import | AI-powered PDF analysis to auto-create exams from existing documents | IMPORT-01 through IMPORT-05 | Planned |
+| 9 - Graph Editor Overhaul | Dual-mode graph editor (drag-and-drop + function-based) | GRAPH-01 through GRAPH-05 | Planned |
+| 10 - Area Tool Overhaul | Drag-and-drop area tool with multi-curve boundary detection | AREA-01 through AREA-05 | Complete |
+| 11 - Pre-Production Verification | Vérification complète avant publication | VERIF-01 through VERIF-08 | Complete |
 
 ---
 
@@ -186,8 +383,12 @@ Plans:
 - Phase 1 creates `renderLatexToString` export for Phase 5 PDF generation
 - Phase 3: Research found 80% of infrastructure exists; 3 focused extension plans instead of 5
 - Phase 5: MathJax used for PDF (produces SVG), KaTeX used for web (produces HTML)
+- Phase 7: Webcam is deterrent ONLY (no recording, no snapshots, no AI Vision). Uses native getUserMedia, not react-webcam. Focus loss pattern analysis is the core intelligence.
+- Phase 8: Uses GPT-4o native PDF support (no pdf-parse). BullMQ async processing. react-dropzone for upload UI. All other infrastructure already exists.
+- Phase 9: Uses react-konva for interactive canvas, click-to-add shape palette (not drag from palette), existing form editor extracted as Advanced mode. Builds on existing GraphSegment data model without changes.
+- Phase 10: Uses heuristic intersection detection (bisection method), point-in-polygon validation. Properties panel for area customization. Builds on existing EditableArea component.
 
 ---
 
 *Roadmap created: 2026-01-18*
-*Coverage: 24/24 v1 requirements mapped*
+*Coverage: 24/24 v1 requirements mapped + 6 UIKIT requirements + 6 PROCT requirements + 5 IMPORT requirements + 5 GRAPH requirements + 5 AREA requirements + 8 VERIF requirements*

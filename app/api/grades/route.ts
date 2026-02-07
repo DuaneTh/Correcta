@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { recomputeAttemptStatus } from "@/lib/attemptStatus"
 import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { parseBody } from "@/lib/api-validation"
+import { upsertGradeSchema } from "@/lib/schemas/grades"
+import { logAudit, getClientIp } from "@/lib/audit"
 
 // POST /api/grades - Upsert a grade
 export async function POST(req: NextRequest) {
@@ -23,12 +26,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
-        const body = await req.json()
-        const { answerId, score, feedback } = body
-
-        if (!answerId || score === undefined) {
-            return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-        }
+        const parsed = await parseBody(req, upsertGradeSchema)
+        if ('error' in parsed) return parsed.error
+        const { answerId, score, feedback } = parsed.data
 
         // Verify teacher access and fetch question with segments to get maxPoints
         const answer = await prisma.answer.findUnique({
@@ -112,6 +112,16 @@ export async function POST(req: NextRequest) {
 
         // Update attempt status using centralized logic
         await recomputeAttemptStatus(answer.attemptId)
+
+        logAudit({
+            action: 'GRADE_UPDATE',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'GRADE',
+            targetId: grade.id,
+            metadata: { answerId, score: clampedScore, isOverride: isOverridingAIGrade },
+            ipAddress: getClientIp(req),
+        })
 
         return NextResponse.json({ success: true, grade })
 

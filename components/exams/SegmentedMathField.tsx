@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 
 
@@ -10,6 +10,8 @@ import { renderGraphInto } from './graph-utils'
 import MathToolbar from './MathToolbar'
 import { renderLatexToString } from './KaTeXRenderer'
 import ImageUpload from '@/components/ui/ImageUpload'
+import { GraphEditorPopup } from './graph-editor/GraphEditorPopup'
+import { EditorMode } from './graph-editor/types'
 
 
 // ------------------------------------------------------------------
@@ -310,13 +312,16 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload> | ContentSegment): 
                 id: fn?.id || createId(),
                 expression: typeof fn?.expression === 'string' ? fn.expression : '',
                 domain: fn?.domain,
+                offsetX: typeof fn?.offsetX === 'number' ? fn.offsetX : undefined,
+                offsetY: typeof fn?.offsetY === 'number' ? fn.offsetY : undefined,
+                scaleY: typeof fn?.scaleY === 'number' ? fn.scaleY : undefined,
                 style: fn?.style,
             }))
             : [],
         areas: Array.isArray(graph.areas)
             ? graph.areas.map((area) => ({
                 id: area?.id || createId(),
-                mode: area?.mode === 'under-function' || area?.mode === 'between-functions'
+                mode: area?.mode === 'under-function' || area?.mode === 'between-functions' || area?.mode === 'bounded-region'
                     ? area.mode
                     : 'polygon',
                 points: Array.isArray(area?.points) ? area.points.map((point) => normalizeGraphAnchor(point)) : undefined,
@@ -324,6 +329,12 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload> | ContentSegment): 
                 functionId2: typeof area?.functionId2 === 'string' ? area.functionId2 : undefined,
                 domain: area?.domain,
                 fill: area?.fill,
+                label: typeof area?.label === 'string' ? area.label : undefined,
+                labelIsMath: area?.labelIsMath === true ? true : undefined,
+                showLabel: area?.showLabel === false ? false : undefined,
+                labelPos: area?.labelPos,
+                boundaryIds: Array.isArray(area?.boundaryIds) ? area.boundaryIds : undefined,
+                ignoredBoundaries: Array.isArray(area?.ignoredBoundaries) ? area.ignoredBoundaries : undefined,
             }))
             : [],
         texts: Array.isArray(graph.texts)
@@ -1329,1013 +1340,9 @@ function InlineTableEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete
 
 
 // ------------------------------------------------------------------
-// InlineGraphEditor: Popup for editing a graph segment
+// InlineGraphEditor: Removed - replaced with GraphEditorPopup
+// (Was located at lines 1332-2339, removed during 09-04 integration)
 // ------------------------------------------------------------------
-
-interface InlineGraphEditorProps {
-    value: GraphPayload
-    onChangeDraft: (payload: GraphPayload) => void
-    onConfirm: () => void
-    onCancel: () => void
-    onDelete: () => void
-    anchorRef: React.RefObject<HTMLDivElement | null>
-    locale?: string
-}
-
-function InlineGraphEditor({ value, onChangeDraft, onConfirm, onCancel, onDelete, anchorRef, locale = 'fr' }: InlineGraphEditorProps) {
-    const editorRef = useRef<HTMLDivElement>(null)
-    const previewRef = useRef<HTMLDivElement>(null)
-    const [position, setPosition] = useState({ top: 0, left: 0 })
-    const [pendingDelete, setPendingDelete] = useState<{ type: string; id: string } | null>(null)
-    const isFrench = locale === 'fr'
-    const payload = normalizeGraphPayload(value)
-
-    useLayoutEffect(() => {
-        if (!anchorRef.current || !editorRef.current) return
-
-        const updatePosition = () => {
-            const anchorRect = anchorRef.current?.getBoundingClientRect()
-            const editorRect = editorRef.current?.getBoundingClientRect()
-            if (!anchorRect || !editorRect) return
-
-            const editorWidth = editorRect.width || 700
-            const editorHeight = editorRect.height || 420
-            const margin = 8
-
-            let left = anchorRect.left
-            let top = anchorRect.bottom + 4
-
-            if (left + editorWidth > window.innerWidth - margin) {
-                left = window.innerWidth - editorWidth - margin
-            }
-            if (left < margin) left = margin
-
-            if (top + editorHeight > window.innerHeight - margin) {
-                top = Math.max(margin, anchorRect.top - editorHeight - 4)
-            }
-            if (top < margin) top = margin
-
-            setPosition({ top, left })
-        }
-
-        updatePosition()
-
-        const handleScroll = () => updatePosition()
-        const handleResize = () => updatePosition()
-
-        window.addEventListener('scroll', handleScroll, true)
-        window.addEventListener('resize', handleResize)
-
-        let resizeObserver: ResizeObserver | null = null
-        if (typeof ResizeObserver !== 'undefined') {
-            resizeObserver = new ResizeObserver(() => updatePosition())
-            resizeObserver.observe(editorRef.current)
-        }
-
-        return () => {
-            window.removeEventListener('scroll', handleScroll, true)
-            window.removeEventListener('resize', handleResize)
-            resizeObserver?.disconnect()
-        }
-    }, [anchorRef])
-
-    useEffect(() => {
-        let isListenerActive = false
-
-        const handleClickOutside = (e: MouseEvent) => {
-            if (!isListenerActive) return
-            if (editorRef.current && !editorRef.current.contains(e.target as Node)) {
-                onConfirm()
-            }
-        }
-
-        document.addEventListener('mousedown', handleClickOutside, true)
-
-        const timeoutId = setTimeout(() => {
-            isListenerActive = true
-        }, 150)
-
-        return () => {
-            clearTimeout(timeoutId)
-            document.removeEventListener('mousedown', handleClickOutside, true)
-        }
-    }, [onConfirm])
-
-    useEffect(() => {
-        if (!previewRef.current) return
-        renderGraphInto(previewRef.current, { id: 'preview', type: 'graph', ...payload }, { maxWidth: 300 })
-        // KaTeX rendering is handled synchronously by renderGraphInto if needed
-        // No additional typesetting required
-    }, [payload])
-
-
-    const updatePayload = (next: GraphPayload) => {
-        setPendingDelete(null)
-        onChangeDraft(next)
-    }
-
-    const updateAxes = (key: keyof GraphPayload['axes'], value: string | number | boolean) => {
-        updatePayload({
-            ...payload,
-            axes: {
-                ...payload.axes,
-                [key]: value,
-            },
-        })
-    }
-
-    const updatePoint = (id: string, patch: Partial<GraphPayload['points'][0]>) => {
-        updatePayload({
-            ...payload,
-            points: payload.points.map((point) => (point.id === id ? { ...point, ...patch } : point)),
-        })
-    }
-
-    const addPoint = () => {
-        updatePayload({
-            ...payload,
-            points: [
-                ...payload.points,
-                { id: createId(), x: 0, y: 0, label: '', labelIsMath: false, size: 4, filled: true },
-            ],
-        })
-    }
-
-    const removePoint = (id: string) => {
-        updatePayload({
-            ...payload,
-            points: payload.points.filter((point) => point.id !== id),
-            lines: payload.lines.filter((line) => line.start.type !== 'point' || line.start.pointId !== id)
-                .filter((line) => line.end.type !== 'point' || line.end.pointId !== id),
-            curves: payload.curves.filter((curve) => curve.start.type !== 'point' || curve.start.pointId !== id)
-                .filter((curve) => curve.end.type !== 'point' || curve.end.pointId !== id),
-        })
-    }
-
-    const updateLine = (id: string, patch: Partial<GraphPayload['lines'][0]>) => {
-        updatePayload({
-            ...payload,
-            lines: payload.lines.map((line) => (line.id === id ? { ...line, ...patch } : line)),
-        })
-    }
-
-    const addLine = () => {
-        updatePayload({
-            ...payload,
-            lines: [
-                ...payload.lines,
-                {
-                    id: createId(),
-                    kind: 'segment',
-                    start: { type: 'coord', x: -2, y: 0 },
-                    end: { type: 'coord', x: 2, y: 0 },
-                    style: { color: '#111827', width: 1.5 },
-                },
-            ],
-        })
-    }
-
-    const removeLine = (id: string) => {
-        updatePayload({ ...payload, lines: payload.lines.filter((line) => line.id !== id) })
-    }
-
-    const updateCurve = (id: string, patch: Partial<GraphPayload['curves'][0]>) => {
-        updatePayload({
-            ...payload,
-            curves: payload.curves.map((curve) => (curve.id === id ? { ...curve, ...patch } : curve)),
-        })
-    }
-
-    const addCurve = () => {
-        updatePayload({
-            ...payload,
-            curves: [
-                ...payload.curves,
-                {
-                    id: createId(),
-                    start: { type: 'coord', x: -2, y: -1 },
-                    end: { type: 'coord', x: 2, y: 1 },
-                    curvature: 1,
-                    style: { color: '#2563eb', width: 1.5 },
-                },
-            ],
-        })
-    }
-
-    const removeCurve = (id: string) => {
-        updatePayload({ ...payload, curves: payload.curves.filter((curve) => curve.id !== id) })
-    }
-
-    const updateFunction = (id: string, patch: Partial<GraphPayload['functions'][0]>) => {
-        updatePayload({
-            ...payload,
-            functions: payload.functions.map((fn) => (fn.id === id ? { ...fn, ...patch } : fn)),
-        })
-    }
-
-    const addFunction = () => {
-        updatePayload({
-            ...payload,
-            functions: [
-                ...payload.functions,
-                {
-                    id: createId(),
-                    expression: 'sin(x)',
-                    domain: { min: payload.axes.xMin, max: payload.axes.xMax },
-                    style: { color: '#7c3aed', width: 1.5 },
-                },
-            ],
-        })
-    }
-
-    const removeFunction = (id: string) => {
-        updatePayload({
-            ...payload,
-            functions: payload.functions.filter((fn) => fn.id !== id),
-            areas: payload.areas.filter((area) => area.functionId !== id && area.functionId2 !== id),
-        })
-    }
-
-    const updateArea = (id: string, patch: Partial<GraphPayload['areas'][0]>) => {
-        updatePayload({
-            ...payload,
-            areas: payload.areas.map((area) => (area.id === id ? { ...area, ...patch } : area)),
-        })
-    }
-
-    const addArea = () => {
-        updatePayload({
-            ...payload,
-            areas: [
-                ...payload.areas,
-                {
-                    id: createId(),
-                    mode: 'polygon',
-                    points: [
-                        { type: 'coord', x: -2, y: 0 },
-                        { type: 'coord', x: 0, y: 2 },
-                        { type: 'coord', x: 2, y: 0 },
-                    ],
-                    fill: { color: '#6366f1', opacity: 0.2 },
-                },
-            ],
-        })
-    }
-
-    const removeArea = (id: string) => {
-        updatePayload({ ...payload, areas: payload.areas.filter((area) => area.id !== id) })
-    }
-
-    const updateText = (id: string, patch: Partial<GraphPayload['texts'][0]>) => {
-        updatePayload({
-            ...payload,
-            texts: payload.texts.map((text) => (text.id === id ? { ...text, ...patch } : text)),
-        })
-    }
-
-    const addText = () => {
-        updatePayload({
-            ...payload,
-            texts: [
-                ...payload.texts,
-                { id: createId(), x: 0, y: 0, text: isFrench ? 'Texte' : 'Text', isMath: false },
-            ],
-        })
-    }
-
-    const removeText = (id: string) => {
-        updatePayload({ ...payload, texts: payload.texts.filter((text) => text.id !== id) })
-    }
-
-
-    const renderAnchorEditor = (
-        anchor: GraphPayload['lines'][0]['start'],
-        onUpdate: (next: GraphPayload['lines'][0]['start']) => void
-    ) => {
-        const pointOptions = payload.points
-        const handleTypeChange = (value: string) => {
-            if (value === 'point') {
-                onUpdate({ type: 'point', pointId: pointOptions[0]?.id || '' })
-            } else {
-                onUpdate({ type: 'coord', x: 0, y: 0 })
-            }
-        }
-
-        return (
-            <div className="flex items-center gap-1">
-                <select
-                    value={anchor.type}
-                    onChange={(e) => handleTypeChange(e.target.value)}
-                    className="border border-gray-200 rounded px-1 py-0.5 text-[11px]"
-                >
-                    <option value="coord">{isFrench ? 'Coord' : 'Coord'}</option>
-                    <option value="point">{isFrench ? 'Point' : 'Point'}</option>
-                </select>
-                {anchor.type === 'point' ? (
-                    <select
-                        value={anchor.pointId}
-                        onChange={(e) => onUpdate({ type: 'point', pointId: e.target.value })}
-                        className="border border-gray-200 rounded px-1 py-0.5 text-[11px]"
-                    >
-                        {pointOptions.length === 0 && (
-                            <option value="">{isFrench ? 'Aucun' : 'None'}</option>
-                        )}
-                        {pointOptions.map((point) => (
-                            <option key={point.id} value={point.id}>
-                                {point.label || point.id.slice(0, 4)}
-                            </option>
-                        ))}
-                    </select>
-                ) : (
-                    <>
-                        <input
-                            type="number"
-                            value={anchor.x}
-                            onChange={(e) => onUpdate({ type: 'coord', x: Number(e.target.value), y: anchor.y })}
-                            className="border border-gray-200 rounded px-1 py-0.5 text-[11px] w-16"
-                        />
-                        <input
-                            type="number"
-                            value={anchor.y}
-                            onChange={(e) => onUpdate({ type: 'coord', x: anchor.x, y: Number(e.target.value) })}
-                            className="border border-gray-200 rounded px-1 py-0.5 text-[11px] w-16"
-                        />
-                    </>
-                )}
-            </div>
-        )
-    }
-
-    const handleDeleteClick = (type: string, id: string, onConfirmDelete: () => void) => {
-        if (pendingDelete?.id === id && pendingDelete.type === type) {
-            onConfirmDelete()
-            setPendingDelete(null)
-            return
-        }
-        setPendingDelete({ type, id })
-    }
-
-    const inputLabelClass = 'text-[11px] text-gray-500'
-    const inputClass = 'border border-gray-200 rounded px-1 py-0.5 text-xs'
-
-    return (
-        <div
-            ref={editorRef}
-            className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 p-3 w-[44rem] inline-graph-editor-popup"
-            style={{ top: position.top, left: position.left }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-        >
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-gray-800">{isFrench ? 'Modifier le graphique' : 'Edit Graph'}</span>
-                <div className="flex gap-1">
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className="p-1 text-green-700 hover:bg-green-50 rounded"
-                        title={isFrench ? 'Enregistrer' : 'Save'}
-                    >
-                        <Check className="w-4 h-4" />
-                    </button>
-                    <button
-                        type="button"
-                        onClick={onCancel}
-                        className="p-1 text-gray-600 hover:bg-gray-100 rounded"
-                        title={isFrench ? 'Annuler' : 'Cancel'}
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
-                </div>
-            </div>
-
-            <div className="flex gap-3">
-                <div className="flex-1 space-y-3 max-h-[70vh] overflow-auto pr-2">
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="text-xs font-medium text-gray-700">{isFrench ? 'Axes' : 'Axes'}</div>
-                        <div className="grid grid-cols-4 gap-2">
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>x min</span>
-                                <input
-                                    type="number"
-                                    value={payload.axes.xMin}
-                                    onChange={(e) => updateAxes('xMin', Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>x max</span>
-                                <input
-                                    type="number"
-                                    value={payload.axes.xMax}
-                                    onChange={(e) => updateAxes('xMax', Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>y min</span>
-                                <input
-                                    type="number"
-                                    value={payload.axes.yMin}
-                                    onChange={(e) => updateAxes('yMin', Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>y max</span>
-                                <input
-                                    type="number"
-                                    value={payload.axes.yMax}
-                                    onChange={(e) => updateAxes('yMax', Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </label>
-                        </div>
-                        <div className="grid grid-cols-3 gap-2">
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>{isFrench ? 'Label x' : 'x label'}</span>
-                                <input
-                                    type="text"
-                                    value={payload.axes.xLabel}
-                                    onChange={(e) => updateAxes('xLabel', e.target.value)}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-gray-600">
-                                <input
-                                    type="checkbox"
-                                    checked={payload.axes.xLabelIsMath}
-                                    onChange={(e) => updateAxes('xLabelIsMath', e.target.checked)}
-                                />
-                                {isFrench ? 'Formule' : 'Math'}
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>{isFrench ? 'Label y' : 'y label'}</span>
-                                <input
-                                    type="text"
-                                    value={payload.axes.yLabel}
-                                    onChange={(e) => updateAxes('yLabel', e.target.value)}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-gray-600">
-                                <input
-                                    type="checkbox"
-                                    checked={payload.axes.yLabelIsMath}
-                                    onChange={(e) => updateAxes('yLabelIsMath', e.target.checked)}
-                                />
-                                {isFrench ? 'Formule' : 'Math'}
-                            </label>
-                            <label className="flex items-center gap-2 text-xs text-gray-600">
-                                <input
-                                    type="checkbox"
-                                    checked={payload.axes.showGrid}
-                                    onChange={(e) => updateAxes('showGrid', e.target.checked)}
-                                />
-                                {isFrench ? 'Grille' : 'Grid'}
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>{isFrench ? 'Pas' : 'Step'}</span>
-                                <input
-                                    type="number"
-                                    value={payload.axes.gridStep}
-                                    onChange={(e) => updateAxes('gridStep', Number(e.target.value))}
-                                    className={inputClass}
-                                />
-                            </label>
-                        </div>
-                        <div className="grid grid-cols-2 gap-2">
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>{isFrench ? 'Largeur' : 'Width'}</span>
-                                <input
-                                    type="number"
-                                    value={payload.width}
-                                    onChange={(e) => updatePayload({ ...payload, width: Number(e.target.value) })}
-                                    className={inputClass}
-                                />
-                            </label>
-                            <label className="flex flex-col gap-1">
-                                <span className={inputLabelClass}>{isFrench ? 'Hauteur' : 'Height'}</span>
-                                <input
-                                    type="number"
-                                    value={payload.height}
-                                    onChange={(e) => updatePayload({ ...payload, height: Number(e.target.value) })}
-                                    className={inputClass}
-                                />
-                            </label>
-                        </div>
-                    </div>
-
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Points' : 'Points'}</span>
-                            <button
-                                type="button"
-                                onClick={addPoint}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter un point' : '+ Add point'}
-                            </button>
-                        </div>
-                        {payload.points.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucun point' : 'No points yet'}</div>
-                        )}
-                        {payload.points.map((point) => (
-                            <div key={point.id} className="flex flex-wrap items-center gap-2 text-xs">
-                                <input
-                                    type="text"
-                                    value={point.label || ''}
-                                    onChange={(e) => updatePoint(point.id, { label: e.target.value })}
-                                    placeholder={isFrench ? 'Nom' : 'Label'}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-24"
-                                />
-                                <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(point.labelIsMath)}
-                                        onChange={(e) => updatePoint(point.id, { labelIsMath: e.target.checked })}
-                                    />
-                                    {isFrench ? 'Formule' : 'Math'}
-                                </label>
-                                <input
-                                    type="number"
-                                    value={point.x}
-                                    onChange={(e) => updatePoint(point.id, { x: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                />
-                                <input
-                                    type="number"
-                                    value={point.y}
-                                    onChange={(e) => updatePoint(point.id, { y: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                />
-                                <input
-                                    type="color"
-                                    value={point.color || '#111827'}
-                                    onChange={(e) => updatePoint(point.id, { color: e.target.value })}
-                                />
-                                <input
-                                    type="number"
-                                    value={point.size ?? 4}
-                                    onChange={(e) => updatePoint(point.id, { size: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
-                                />
-                                <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                    <input
-                                        type="checkbox"
-                                        checked={point.filled !== false}
-                                        onChange={(e) => updatePoint(point.id, { filled: e.target.checked })}
-                                    />
-                                    {isFrench ? 'Plein' : 'Filled'}
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => handleDeleteClick('point', point.id, () => removePoint(point.id))}
-                                    className={`text-[11px] ${
-                                        pendingDelete?.id === point.id && pendingDelete.type === 'point'
-                                            ? 'text-red-800'
-                                            : 'text-red-600'
-                                    }`}
-                                >
-                                    {pendingDelete?.id === point.id && pendingDelete.type === 'point'
-                                        ? (isFrench ? 'Confirmer' : 'Confirm')
-                                        : (isFrench ? 'Supprimer' : 'Delete')}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Lignes' : 'Lines'}</span>
-                            <button
-                                type="button"
-                                onClick={addLine}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter une ligne' : '+ Add line'}
-                            </button>
-                        </div>
-                        {payload.lines.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucune ligne' : 'No lines yet'}</div>
-                        )}
-                        {payload.lines.map((line) => (
-                            <div key={line.id} className="border border-gray-100 rounded p-2 space-y-2 text-xs">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <select
-                                        value={line.kind}
-                                        onChange={(e) => updateLine(line.id, { kind: e.target.value as GraphPayload['lines'][0]['kind'] })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs"
-                                    >
-                                        <option value="segment">{isFrench ? 'Segment' : 'Segment'}</option>
-                                        <option value="line">{isFrench ? 'Droite' : 'Line'}</option>
-                                        <option value="ray">{isFrench ? 'Demi-droite' : 'Ray'}</option>
-                                    </select>
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'D\u00e9but' : 'Start'}</label>
-                                    {renderAnchorEditor(line.start, (next) => updateLine(line.id, { start: next }))}
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'Fin' : 'End'}</label>
-                                    {renderAnchorEditor(line.end, (next) => updateLine(line.id, { end: next }))}
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <input
-                                        type="color"
-                                        value={line.style?.color || '#111827'}
-                                        onChange={(e) => updateLine(line.id, { style: { ...line.style, color: e.target.value } })}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={line.style?.width ?? 1.5}
-                                        onChange={(e) => updateLine(line.id, { style: { ...line.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                    />
-                                    <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(line.style?.dashed)}
-                                            onChange={(e) => updateLine(line.id, { style: { ...line.style, dashed: e.target.checked } })}
-                                        />
-                                        {isFrench ? 'Pointill\u00e9' : 'Dashed'}
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteClick('line', line.id, () => removeLine(line.id))}
-                                        className={`text-[11px] ${
-                                            pendingDelete?.id === line.id && pendingDelete.type === 'line'
-                                                ? 'text-red-800'
-                                                : 'text-red-600'
-                                        }`}
-                                    >
-                                        {pendingDelete?.id === line.id && pendingDelete.type === 'line'
-                                            ? (isFrench ? 'Confirmer' : 'Confirm')
-                                            : (isFrench ? 'Supprimer' : 'Delete')}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Courbes' : 'Curves'}</span>
-                            <button
-                                type="button"
-                                onClick={addCurve}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter une courbe' : '+ Add curve'}
-                            </button>
-                        </div>
-                        {payload.curves.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucune courbe' : 'No curves yet'}</div>
-                        )}
-                        {payload.curves.map((curve) => (
-                            <div key={curve.id} className="border border-gray-100 rounded p-2 space-y-2 text-xs">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'D\u00e9but' : 'Start'}</label>
-                                    {renderAnchorEditor(curve.start, (next) => updateCurve(curve.id, { start: next }))}
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'Fin' : 'End'}</label>
-                                    {renderAnchorEditor(curve.end, (next) => updateCurve(curve.id, { end: next }))}
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'Courbure' : 'Curvature'}</label>
-                                    <input
-                                        type="number"
-                                        value={curve.curvature ?? 0}
-                                        onChange={(e) => updateCurve(curve.id, { curvature: Number(e.target.value) })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
-                                    />
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <input
-                                        type="color"
-                                        value={curve.style?.color || '#2563eb'}
-                                        onChange={(e) => updateCurve(curve.id, { style: { ...curve.style, color: e.target.value } })}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={curve.style?.width ?? 1.5}
-                                        onChange={(e) => updateCurve(curve.id, { style: { ...curve.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                    />
-                                    <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(curve.style?.dashed)}
-                                            onChange={(e) => updateCurve(curve.id, { style: { ...curve.style, dashed: e.target.checked } })}
-                                        />
-                                        {isFrench ? 'Pointill\u00e9' : 'Dashed'}
-                                    </label>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteClick('curve', curve.id, () => removeCurve(curve.id))}
-                                        className={`text-[11px] ${
-                                            pendingDelete?.id === curve.id && pendingDelete.type === 'curve'
-                                                ? 'text-red-800'
-                                                : 'text-red-600'
-                                        }`}
-                                    >
-                                        {pendingDelete?.id === curve.id && pendingDelete.type === 'curve'
-                                            ? (isFrench ? 'Confirmer' : 'Confirm')
-                                            : (isFrench ? 'Supprimer' : 'Delete')}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Fonctions' : 'Functions'}</span>
-                            <button
-                                type="button"
-                                onClick={addFunction}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter une fonction' : '+ Add function'}
-                            </button>
-                        </div>
-                        {payload.functions.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucune fonction' : 'No functions yet'}</div>
-                        )}
-                        {payload.functions.map((fn) => (
-                            <div key={fn.id} className="border border-gray-100 rounded p-2 space-y-2 text-xs">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <input
-                                        type="text"
-                                        value={fn.expression}
-                                        onChange={(e) => updateFunction(fn.id, { expression: e.target.value })}
-                                        placeholder={isFrench ? 'Ex: sin(x)' : 'Ex: sin(x)'}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs flex-1"
-                                    />
-                                    <input
-                                        type="color"
-                                        value={fn.style?.color || '#7c3aed'}
-                                        onChange={(e) => updateFunction(fn.id, { style: { ...fn.style, color: e.target.value } })}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={fn.style?.width ?? 1.5}
-                                        onChange={(e) => updateFunction(fn.id, { style: { ...fn.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                    />
-                                    <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={Boolean(fn.style?.dashed)}
-                                            onChange={(e) => updateFunction(fn.id, { style: { ...fn.style, dashed: e.target.checked } })}
-                                        />
-                                        {isFrench ? 'Pointill\u00e9' : 'Dashed'}
-                                    </label>
-                                </div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <label className="text-[11px] text-gray-500">{isFrench ? 'Domaine' : 'Domain'}</label>
-                                    <input
-                                        type="number"
-                                        value={fn.domain?.min ?? payload.axes.xMin}
-                                        onChange={(e) => updateFunction(fn.id, { domain: { ...fn.domain, min: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
-                                    />
-                                    <input
-                                        type="number"
-                                        value={fn.domain?.max ?? payload.axes.xMax}
-                                        onChange={(e) => updateFunction(fn.id, { domain: { ...fn.domain, max: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteClick('function', fn.id, () => removeFunction(fn.id))}
-                                        className={`text-[11px] ${
-                                            pendingDelete?.id === fn.id && pendingDelete.type === 'function'
-                                                ? 'text-red-800'
-                                                : 'text-red-600'
-                                        }`}
-                                    >
-                                        {pendingDelete?.id === fn.id && pendingDelete.type === 'function'
-                                            ? (isFrench ? 'Confirmer' : 'Confirm')
-                                            : (isFrench ? 'Supprimer' : 'Delete')}
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Surfaces' : 'Areas'}</span>
-                            <button
-                                type="button"
-                                onClick={addArea}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter une surface' : '+ Add area'}
-                            </button>
-                        </div>
-                        {payload.areas.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucune surface' : 'No areas yet'}</div>
-                        )}
-                        {payload.areas.map((area) => (
-                            <div key={area.id} className="border border-gray-100 rounded p-2 space-y-2 text-xs">
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <select
-                                        value={area.mode}
-                                        onChange={(e) => updateArea(area.id, { mode: e.target.value as GraphPayload['areas'][0]['mode'] })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs"
-                                    >
-                                        <option value="polygon">{isFrench ? 'Polygone' : 'Polygon'}</option>
-                                        <option value="under-function">{isFrench ? 'Sous fonction' : 'Under function'}</option>
-                                        <option value="between-functions">{isFrench ? 'Entre fonctions' : 'Between functions'}</option>
-                                    </select>
-                                    <input
-                                        type="color"
-                                        value={area.fill?.color || '#6366f1'}
-                                        onChange={(e) => updateArea(area.id, { fill: { ...area.fill, color: e.target.value } })}
-                                    />
-                                    <input
-                                        type="number"
-                                        value={area.fill?.opacity ?? 0.2}
-                                        onChange={(e) => updateArea(area.id, { fill: { ...area.fill, opacity: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteClick('area', area.id, () => removeArea(area.id))}
-                                        className={`text-[11px] ${
-                                            pendingDelete?.id === area.id && pendingDelete.type === 'area'
-                                                ? 'text-red-800'
-                                                : 'text-red-600'
-                                        }`}
-                                    >
-                                        {pendingDelete?.id === area.id && pendingDelete.type === 'area'
-                                            ? (isFrench ? 'Confirmer' : 'Confirm')
-                                            : (isFrench ? 'Supprimer' : 'Delete')}
-                                    </button>
-                                </div>
-                                {area.mode === 'polygon' && (
-                                    <div className="space-y-2">
-                                        {(area.points || []).map((point, index) => (
-                                            <div key={`${area.id}-point-${index}`} className="flex items-center gap-2">
-                                                <span className="text-[11px] text-gray-500">P{index + 1}</span>
-                                                {renderAnchorEditor(point, (next) => {
-                                                    const nextPoints = [...(area.points || [])]
-                                                    nextPoints[index] = next
-                                                    updateArea(area.id, { points: nextPoints })
-                                                })}
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        const nextPoints = (area.points || []).filter((_, i) => i !== index)
-                                                        updateArea(area.id, { points: nextPoints })
-                                                    }}
-                                                    className="text-[11px] text-red-600"
-                                                >
-                                                    {isFrench ? 'Retirer' : 'Remove'}
-                                                </button>
-                                            </div>
-                                        ))}
-                                        <button
-                                            type="button"
-                                            onClick={() => updateArea(area.id, { points: [...(area.points || []), { type: 'coord', x: 0, y: 0 }] })}
-                                            className="text-[11px] text-indigo-700"
-                                        >
-                                            {isFrench ? '+ Ajouter un point' : '+ Add point'}
-                                        </button>
-                                    </div>
-                                )}
-                                {area.mode !== 'polygon' && (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <select
-                                            value={area.functionId || ''}
-                                            onChange={(e) => updateArea(area.id, { functionId: e.target.value })}
-                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs"
-                                        >
-                                            <option value="">{isFrench ? 'Fonction' : 'Function'}</option>
-                                            {payload.functions.map((fn) => (
-                                                <option key={fn.id} value={fn.id}>
-                                                    {fn.expression || fn.id.slice(0, 4)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        {area.mode === 'between-functions' && (
-                                            <select
-                                                value={area.functionId2 || ''}
-                                                onChange={(e) => updateArea(area.id, { functionId2: e.target.value })}
-                                                className="border border-gray-200 rounded px-1 py-0.5 text-xs"
-                                            >
-                                                <option value="">{isFrench ? 'Fonction 2' : 'Function 2'}</option>
-                                                {payload.functions.map((fn) => (
-                                                    <option key={fn.id} value={fn.id}>
-                                                        {fn.expression || fn.id.slice(0, 4)}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        )}
-                                        <input
-                                            type="number"
-                                            value={area.domain?.min ?? payload.axes.xMin}
-                                            onChange={(e) => updateArea(area.id, { domain: { ...area.domain, min: Number(e.target.value) } })}
-                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
-                                        />
-                                        <input
-                                            type="number"
-                                            value={area.domain?.max ?? payload.axes.xMax}
-                                            onChange={(e) => updateArea(area.id, { domain: { ...area.domain, max: Number(e.target.value) } })}
-                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-
-                    <div className="border border-gray-200 rounded p-2 space-y-2">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-700">{isFrench ? 'Textes' : 'Texts'}</span>
-                            <button
-                                type="button"
-                                onClick={addText}
-                                className="text-xs text-indigo-700 hover:text-indigo-800"
-                            >
-                                {isFrench ? '+ Ajouter un texte' : '+ Add text'}
-                            </button>
-                        </div>
-                        {payload.texts.length === 0 && (
-                            <div className="text-[11px] text-gray-500">{isFrench ? 'Aucun texte' : 'No texts yet'}</div>
-                        )}
-                        {payload.texts.map((text) => (
-                            <div key={text.id} className="flex flex-wrap items-center gap-2 text-xs">
-                                <input
-                                    type="text"
-                                    value={text.text}
-                                    onChange={(e) => updateText(text.id, { text: e.target.value })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-40"
-                                />
-                                <input
-                                    type="number"
-                                    value={text.x}
-                                    onChange={(e) => updateText(text.id, { x: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                />
-                                <input
-                                    type="number"
-                                    value={text.y}
-                                    onChange={(e) => updateText(text.id, { y: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
-                                />
-                                <label className="flex items-center gap-1 text-[11px] text-gray-600">
-                                    <input
-                                        type="checkbox"
-                                        checked={Boolean(text.isMath)}
-                                        onChange={(e) => updateText(text.id, { isMath: e.target.checked })}
-                                    />
-                                    {isFrench ? 'Formule' : 'Math'}
-                                </label>
-                                <button
-                                    type="button"
-                                    onClick={() => handleDeleteClick('text', text.id, () => removeText(text.id))}
-                                    className={`text-[11px] ${
-                                        pendingDelete?.id === text.id && pendingDelete.type === 'text'
-                                            ? 'text-red-800'
-                                            : 'text-red-600'
-                                    }`}
-                                >
-                                    {pendingDelete?.id === text.id && pendingDelete.type === 'text'
-                                        ? (isFrench ? 'Confirmer' : 'Confirm')
-                                        : (isFrench ? 'Supprimer' : 'Delete')}
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="w-72">
-                    <div className="text-[11px] text-gray-500 mb-1">
-                        {isFrench ? 'Aper\u00e7u' : 'Preview'}
-                    </div>
-                    <div ref={previewRef} className="border border-gray-200 rounded p-2 bg-white" />
-                    <div className="mt-2 text-[11px] text-gray-500">
-                        {isFrench
-                            ? 'Expressions accept\u00e9es : sin(x), cos(x), x^2, pi, e'
-                            : 'Accepted expressions: sin(x), cos(x), x^2, pi, e'}
-                    </div>
-                </div>
-            </div>
-
-            <div className="mt-2 pt-2 border-t border-gray-200 flex items-center justify-between">
-                <span className="text-[10px] text-gray-600">
-                    {isFrench ? 'Cliquez sur Enregistrer pour valider' : 'Click Save to apply'}
-                </span>
-                <button
-                    type="button"
-                    onClick={onDelete}
-                    className="text-xs text-red-700 hover:text-red-800 hover:underline"
-                >
-                    Delete
-                </button>
-            </div>
-        </div>
-    )
-}
-
 
 // ------------------------------------------------------------------
 // SegmentedMathField: contentEditable-based editor
@@ -2427,7 +1434,7 @@ function InsertMenu({
 
     const buttonPadding = compactToolbar ? 'px-1.5 py-0.5' : toolbarSize === 'md' ? 'px-3 py-1.5' : 'px-2 py-1'
     const iconSize = compactToolbar ? 'h-3 w-3' : toolbarSize === 'md' ? 'h-4 w-4' : 'h-3.5 w-3.5'
-    const label = isFrench ? 'Insérer' : 'Insert'
+    const label = isFrench ? 'InsÃ©rer' : 'Insert'
 
     return (
         <div ref={menuRef} className="relative">
@@ -2439,8 +1446,8 @@ function InsertMenu({
                 disabled={disabled}
                 aria-haspopup="menu"
                 aria-expanded={open}
-                aria-label="Insérer"
-                title="Insérer"
+                aria-label="InsÃ©rer"
+                title="InsÃ©rer"
             >
                 <Plus className={iconSize} />
             </button>
@@ -2531,7 +1538,7 @@ type HoverMathButtonProps = {
 
 function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip }: HoverMathButtonProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const buttonRef = useRef<HTMLButtonElement>(null)
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
 
@@ -2615,7 +1622,7 @@ function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip 
                                 onClick={onInsertMathChip}
                                 className="w-full text-left px-2 py-1.5 text-xs text-brand-600 hover:bg-brand-50 rounded transition-colors"
                             >
-                                {isFrench ? '+ Editeur de formule avancé' : '+ Advanced formula editor'}
+                                {isFrench ? '+ Editeur de formule avancÃ©' : '+ Advanced formula editor'}
                             </button>
                         </div>
                     </div>
@@ -2666,6 +1673,79 @@ function ImageButton({ isFrench, disabled, onImageUploaded }: ImageButtonProps) 
                         className="mt-2 w-full text-center px-2 py-1 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded transition-colors"
                     >
                         {isFrench ? 'Annuler' : 'Cancel'}
+                    </button>
+                </div>
+            )}
+        </div>
+    )
+}
+
+type GraphModeDropdownProps = {
+    isFrench: boolean
+    disabled?: boolean
+    onInsertGraph: (mode: EditorMode) => void
+}
+
+function GraphModeDropdown({ isFrench, disabled, onInsertGraph }: GraphModeDropdownProps) {
+    const [open, setOpen] = useState(false)
+    const menuRef = useRef<HTMLDivElement | null>(null)
+
+    useEffect(() => {
+        if (!open) return
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!menuRef.current) return
+            if (menuRef.current.contains(event.target as Node)) return
+            setOpen(false)
+        }
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setOpen(false)
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        document.addEventListener('keydown', handleKeyDown)
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+            document.removeEventListener('keydown', handleKeyDown)
+        }
+    }, [open])
+
+    return (
+        <div ref={menuRef} className="relative inline-block">
+            <button
+                type="button"
+                onClick={() => setOpen((prev) => !prev)}
+                disabled={disabled}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 hover:border-amber-300 disabled:opacity-50"
+                title={isFrench ? 'InsÃ©rer un graphique' : 'Insert graph'}
+            >
+                <LineChart className="w-3.5 h-3.5" />
+                {isFrench ? 'Graphique' : 'Graph'}
+                <ChevronDown className="w-3 h-3" />
+            </button>
+            {open && (
+                <div className="absolute left-0 z-10 mt-1 w-44 rounded-md border border-gray-200 bg-white p-1 shadow-lg">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onInsertGraph('simple')
+                            setOpen(false)
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-amber-50"
+                        disabled={disabled}
+                    >
+                        {isFrench ? 'Mode simple' : 'Simple mode'}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onInsertGraph('advanced')
+                            setOpen(false)
+                        }}
+                        className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-gray-700 hover:bg-amber-50"
+                        disabled={disabled}
+                    >
+                        {isFrench ? 'Mode avancÃ©' : 'Advanced mode'}
                     </button>
                 </div>
             )}
@@ -2738,6 +1818,8 @@ export default function SegmentedMathField({
     const [draftLatexById, setDraftLatexById] = useState<Record<string, string>>({})
     const [draftTableById, setDraftTableById] = useState<Record<string, TablePayload>>({})
     const [draftGraphById, setDraftGraphById] = useState<Record<string, GraphPayload>>({})
+    // Store initial mode for graph editor
+    const [graphEditorInitialMode, setGraphEditorInitialMode] = useState<EditorMode>('simple')
     // Store original latex when editing starts (for cancel to revert to)
     const originalLatexRef = useRef<string>('')
     const originalTableRef = useRef<TablePayload>(normalizeTablePayload())
@@ -3610,7 +2692,7 @@ export default function SegmentedMathField({
         // Remove column button
         const removeColBtn = document.createElement('button')
         removeColBtn.type = 'button'
-        removeColBtn.innerHTML = '−'
+        removeColBtn.innerHTML = 'âˆ’'
         removeColBtn.title = 'Supprimer une colonne'
         removeColBtn.style.cssText = `
             width: 24px;
@@ -3684,7 +2766,7 @@ export default function SegmentedMathField({
         // Remove row button
         const removeRowBtn = document.createElement('button')
         removeRowBtn.type = 'button'
-        removeRowBtn.innerHTML = '−'
+        removeRowBtn.innerHTML = 'âˆ’'
         removeRowBtn.title = 'Supprimer une ligne'
         removeRowBtn.style.cssText = `
             width: 24px;
@@ -4382,6 +3464,7 @@ export default function SegmentedMathField({
                 }
                 editingGraphRef.current = graph as HTMLDivElement
                 setEditingGraphId(graphId)
+                setGraphEditorInitialMode('simple') // Default to simple mode for existing graphs
                 setEditingMathId(null)
                 setEditingTableId(null)
                 setTableFocusCell(null)
@@ -4902,11 +3985,14 @@ export default function SegmentedMathField({
     // Insert a new graph at current caret position (always on next line)
     // ------------------------------------------------------------------
 
-    const insertGraph = useCallback(() => {
+    const insertGraph = useCallback((mode: EditorMode = 'simple') => {
         if (disabled) return
 
         const editor = editorRef.current
         if (!editor) return
+
+        // Set the initial mode for the graph editor
+        setGraphEditorInitialMode(mode)
 
         const selection = window.getSelection()
         let range: Range | null = null
@@ -5576,26 +4662,8 @@ export default function SegmentedMathField({
     }, [editingTableId, handleCancelTable])
 
     // ------------------------------------------------------------------
-    // Close graph editor when clicking outside
+    // Note: Click-outside for graph editor is handled by GraphEditorPopup itself
     // ------------------------------------------------------------------
-
-    useEffect(() => {
-        if (!editingGraphId) return
-
-        const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as Node
-
-            const editorPopup = document.querySelector('.inline-graph-editor-popup')
-            if (editorPopup?.contains(target)) return
-
-            if (editingGraphRef.current?.contains(target)) return
-
-            handleCancelGraph()
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [editingGraphId, handleCancelGraph])
 
     // ------------------------------------------------------------------
 
@@ -6316,7 +5384,7 @@ export default function SegmentedMathField({
                             onClick={insertTable}
                             disabled={disabled}
                             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-md hover:bg-emerald-100 hover:border-emerald-300 disabled:opacity-50"
-                            title={isFrench ? 'Insérer un tableau' : 'Insert table'}
+                            title={isFrench ? 'InsÃ©rer un tableau' : 'Insert table'}
                         >
                             <Table className="w-3.5 h-3.5" />
                             {isFrench ? 'Tableau' : 'Table'}
@@ -6324,16 +5392,11 @@ export default function SegmentedMathField({
                     )}
                     {/* Graph Button */}
                     {showGraphButton && (
-                        <button
-                            type="button"
-                            onClick={insertGraph}
+                        <GraphModeDropdown
+                            isFrench={isFrench}
                             disabled={disabled}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md hover:bg-amber-100 hover:border-amber-300 disabled:opacity-50"
-                            title={isFrench ? 'Insérer un graphique' : 'Insert graph'}
-                        >
-                            <LineChart className="w-3.5 h-3.5" />
-                            {isFrench ? 'Graphique' : 'Graph'}
-                        </button>
+                            onInsertGraph={insertGraph}
+                        />
                     )}
                 </div>
             )}
@@ -6445,7 +5508,7 @@ export default function SegmentedMathField({
             )}
 
             {editingGraphId && (
-                <InlineGraphEditor
+                <GraphEditorPopup
                     value={draftGraphById[editingGraphId] ?? createDefaultGraphPayload()}
                     onChangeDraft={handleChangeGraphDraft}
                     onConfirm={handleSaveGraph}
@@ -6453,6 +5516,7 @@ export default function SegmentedMathField({
                     onDelete={handleDeleteGraph}
                     anchorRef={editingGraphRef}
                     locale={locale}
+                    initialMode={graphEditorInitialMode}
                 />
             )}
 
@@ -6470,7 +5534,7 @@ export default function SegmentedMathField({
                                 onClick={() => handleTableContextMenuAction('insert-above')}
                             >
                                 <Plus className="w-4 h-4 text-gray-500" />
-                                {isFrench ? 'Insérer une ligne au-dessus' : 'Insert row above'}
+                                {isFrench ? 'InsÃ©rer une ligne au-dessus' : 'Insert row above'}
                             </button>
                             <button
                                 type="button"
@@ -6478,7 +5542,7 @@ export default function SegmentedMathField({
                                 onClick={() => handleTableContextMenuAction('insert-below')}
                             >
                                 <Plus className="w-4 h-4 text-gray-500" />
-                                {isFrench ? 'Insérer une ligne en-dessous' : 'Insert row below'}
+                                {isFrench ? 'InsÃ©rer une ligne en-dessous' : 'Insert row below'}
                             </button>
                             <div className="border-t border-gray-200 my-1" />
                             <button
@@ -6498,7 +5562,7 @@ export default function SegmentedMathField({
                                 onClick={() => handleTableContextMenuAction('insert-left')}
                             >
                                 <Plus className="w-4 h-4 text-gray-500" />
-                                {isFrench ? 'Insérer une colonne à gauche' : 'Insert column left'}
+                                {isFrench ? 'InsÃ©rer une colonne Ã  gauche' : 'Insert column left'}
                             </button>
                             <button
                                 type="button"
@@ -6506,7 +5570,7 @@ export default function SegmentedMathField({
                                 onClick={() => handleTableContextMenuAction('insert-right')}
                             >
                                 <Plus className="w-4 h-4 text-gray-500" />
-                                {isFrench ? 'Insérer une colonne à droite' : 'Insert column right'}
+                                {isFrench ? 'InsÃ©rer une colonne Ã  droite' : 'Insert column right'}
                             </button>
                             <div className="border-t border-gray-200 my-1" />
                             <button
@@ -6645,7 +5709,7 @@ export default function SegmentedMathField({
                                     type="button"
                                     onClick={handleCellMathConfirm}
                                     className="p-1 text-green-600 hover:bg-green-50 rounded"
-                                    title={isFrench ? 'Enregistrer (Entrée)' : 'Save (Enter)'}
+                                    title={isFrench ? 'Enregistrer (EntrÃ©e)' : 'Save (Enter)'}
                                 >
                                     <Check className="w-4 h-4" />
                                 </button>
@@ -6719,7 +5783,7 @@ export default function SegmentedMathField({
 
                         {/* Hint */}
                         <div className="mt-2 pt-2 border-t border-gray-200">
-                            <span className="text-[10px] text-gray-400">{isFrench ? 'Entrée pour enregistrer - Échap pour annuler' : 'Enter to save - Escape to cancel'}</span>
+                            <span className="text-[10px] text-gray-400">{isFrench ? 'EntrÃ©e pour enregistrer - Ã‰chap pour annuler' : 'Enter to save - Escape to cancel'}</span>
                         </div>
                     </div>
                 )
