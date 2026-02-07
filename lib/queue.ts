@@ -12,31 +12,33 @@ import Redis from 'ioredis'
 
 let connection: Redis | null = null
 
-try {
-    const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379'
-
-    connection = new Redis(redisUrl, {
-        maxRetriesPerRequest: null, // Required for BullMQ
-        retryStrategy: (times) => {
-            if (times > 3) {
-                console.error('[Queue] Redis connection failed after 3 retries')
-                return null // Stop retrying
+const redisUrl = process.env.REDIS_URL
+if (redisUrl) {
+    try {
+        connection = new Redis(redisUrl, {
+            maxRetriesPerRequest: null, // Required for BullMQ
+            retryStrategy: (times) => {
+                if (times > 3) {
+                    console.error('[Queue] Redis connection failed after 3 retries')
+                    return null // Stop retrying
+                }
+                const delay = Math.min(times * 50, 2000)
+                return delay
             }
-            const delay = Math.min(times * 50, 2000)
-            return delay
-        }
-    })
+        })
 
-    connection.on('error', (error) => {
-        console.error('[Queue] Redis connection error:', error.message)
-    })
+        connection.on('error', (error) => {
+            console.error('[Queue] Redis connection error:', error.message)
+        })
 
-    connection.on('connect', () => {
-        console.log('[Queue] Redis connected successfully')
-    })
-
-} catch (error) {
-    console.error('[Queue] Failed to initialize Redis connection:', error)
+        connection.on('connect', () => {
+            console.log('[Queue] Redis connected successfully')
+        })
+    } catch (error) {
+        console.error('[Queue] Failed to initialize Redis connection:', error)
+    }
+} else {
+    console.info('[Queue] REDIS_URL not set — queues disabled')
 }
 
 /**

@@ -68,6 +68,7 @@ export default $config({
         // CSRF
         CSRF_SECRET: csrfSecret.value,
         CSRF_ENABLED: "true",
+        CSRF_ALLOWED_ORIGINS: "https://correcta.app",
 
         // Institution cookie
         INSTITUTION_COOKIE_SECRET: institutionCookieSecret.value,
