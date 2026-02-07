@@ -2,7 +2,7 @@ import { execSync } from "node:child_process";
 
 export async function handler() {
   try {
-    const output = execSync("npx prisma migrate deploy", {
+    const output = execSync("node ./node_modules/prisma/build/index.js migrate deploy", {
       env: { ...process.env },
       encoding: "utf-8",
       timeout: 90_000,

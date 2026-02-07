@@ -80,6 +80,7 @@ export default $config({
         MINIO_ENDPOINT: "s3.eu-west-3.amazonaws.com",
         MINIO_PORT: "443",
         MINIO_USE_SSL: "true",
+        MINIO_REGION: "eu-west-3",
         MINIO_ACCESS_KEY: minioAccessKey.value,
         MINIO_SECRET_KEY: minioSecretKey.value,
         MINIO_BUCKET: assetsBucket.name,

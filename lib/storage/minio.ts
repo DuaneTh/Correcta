@@ -22,6 +22,7 @@ const minioPort = parseInt(process.env.MINIO_PORT || '9000', 10)
 const minioUseSSL = process.env.MINIO_USE_SSL === 'true'
 const minioAccessKey = process.env.MINIO_ACCESS_KEY || ''
 const minioSecretKey = process.env.MINIO_SECRET_KEY || ''
+const minioRegion = process.env.MINIO_REGION || ''
 
 /**
  * Check if MinIO is configured
@@ -46,6 +47,7 @@ export function getMinioClient(): Minio.Client {
       useSSL: minioUseSSL,
       accessKey: minioAccessKey,
       secretKey: minioSecretKey,
+      ...(minioRegion ? { region: minioRegion } : {}),
     })
   }
   return minioClient
