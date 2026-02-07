@@ -1,7 +1,5 @@
+import { PageSpinner } from '@/components/ui/Skeleton'
+
 export default function SchoolAdminLoading() {
-    return (
-        <div className="flex items-center justify-center min-h-[400px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-900" />
-        </div>
-    )
+    return <PageSpinner />
 }

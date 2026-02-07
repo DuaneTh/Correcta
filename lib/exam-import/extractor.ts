@@ -1,7 +1,7 @@
 import { zodResponseFormat } from 'openai/helpers/zod'
 import { getOpenAIClient, GRADING_MODEL } from '@/lib/grading/openai-client'
 import { ExamExtractionSchema, type ExamExtraction } from './schemas'
-import { getPresignedDownloadUrl, DEFAULT_BUCKET } from '@/lib/storage/minio'
+import { downloadFile } from '@/lib/storage/minio'
 import { logAIInteraction } from '@/lib/grading/ai-logger'
 
 /**
@@ -22,28 +22,69 @@ export async function extractExamFromPDF(params: {
   const startTime = Date.now()
   const openai = await getOpenAIClient()
 
-  // Generate presigned download URL from MinIO (1 hour expiry)
-  const pdfUrl = await getPresignedDownloadUrl(DEFAULT_BUCKET, params.pdfKey, 3600)
+  // Download PDF and convert to base64 for inline sending
+  // (presigned URLs point to localhost which OpenAI cannot access)
+  const pdfBuffer = await downloadFile(params.pdfKey)
+  const pdfBase64 = pdfBuffer.toString('base64')
+  const pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`
 
-  // System prompt - Guide GPT-4o on extraction task
-  const systemPrompt = `Tu es un assistant specialise dans l'extraction de structure d'examens depuis des documents PDF.
+  // System prompt - Guide GPT-4o on hierarchical exercise extraction with rich content
+  const systemPrompt = `Tu es un assistant specialise dans l'extraction de structure d'examens.
 
-Ton role est d'analyser le PDF fourni et d'extraire :
-1. Le titre de l'examen
-2. Les questions avec leur numero, type (TEXT ou MCQ), contenu, et points
-3. Les baremes ou corriges s'ils sont presents
-4. Pour les MCQ, les options avec indication de reponse correcte si disponible
+Analyse le PDF et extrais la structure HIERARCHIQUE de l'examen.
 
-Regles importantes :
-- Si une information est ambigue ou absente, utilise null plutot que d'inventer
-- Les formules mathematiques doivent etre en LaTeX avec $...$
-- Distingue les questions ouvertes (TEXT) des questions a choix multiple (MCQ)
-- Pour les MCQ, extrais toutes les options et marque isCorrect=true pour les reponses correctes si le corrige est present
-- Si le corrige n'est pas present, utilise isCorrect=null pour les options
-- Inclus des warnings dans metadata.warnings pour tout ce qui est ambigu ou manquant
-- Evalue ton niveau de confiance dans l'extraction (high/medium/low)`
+## STRUCTURE ATTENDUE
+- Un examen contient des EXERCICES (numerotes 1, 2, 3...)
+- Chaque exercice a un enonce/contexte commun (preamble) et des SOUS-QUESTIONS
+- Les sous-questions sont labellisees (1), 2), a), b), etc.)
 
-  const userPrompt = `Analyse ce document PDF d'examen et extrais sa structure complete.`
+## APLATISSEMENT DES PARTIES IMBRIQUEES (TRES IMPORTANT)
+Si un exercice a des sous-parties (ex: Partie A, Partie B chacune avec des questions a, b, c) :
+- NE PAS essayer de representer la hierarchie intermediaire
+- APLATIR en une seule liste sequentielle de sous-questions
+- Exemple : Exercice 1, Partie A (a,b,c), Partie B (a,b) → sous-questions: A.a, A.b, A.c, B.a, B.b
+- Inclure le contexte de chaque partie au debut de la premiere sous-question correspondante
+- Le label doit refléter l'origine : "A.1)", "A.a)", "B.1)", etc.
+
+## FORMAT DU CONTENU (TRES IMPORTANT)
+Chaque segment est un objet PLAT avec TOUS les champs — mettre null pour les champs non utilises selon le type.
+
+Exemples :
+- Texte : {"type": "text", "text": "Calculer la valeur de", "latex": null, "rows": null, "pageNumber": null, "boundingBox": null, "alt": null}
+- Math : {"type": "math", "text": null, "latex": "\\\\frac{x^2+1}{x-1}", "rows": null, "pageNumber": null, "boundingBox": null, "alt": null}
+- Tableau : {"type": "table", "text": null, "latex": null, "rows": [[[{"type":"text","text":"A","latex":null}]]], "pageNumber": null, "boundingBox": null, "alt": null}
+- Figure : {"type": "image_ref", "text": null, "latex": null, "rows": null, "pageNumber": 1, "boundingBox": {"xPercent": 10, "yPercent": 30, "widthPercent": 80, "heightPercent": 40}, "alt": "Graphique de f(x)"}
+
+REGLES pour le contenu :
+- TOUJOURS inclure TOUS les champs dans chaque segment (type, text, latex, rows, pageNumber, boundingBox, alt)
+- Mettre null pour les champs non pertinents au type
+- ALTERNER segments text et math — ne jamais mettre de LaTeX dans un segment text
+- Le LaTeX est BRUT sans delimiteurs $ — juste la formule : "x^2 + 1" et non "$x^2 + 1$"
+- Si du texte contient "Calculer $\\int_0^1 f(x) dx$" → 3 segments text, math, text
+- Les tableaux dans le PDF → segment table avec rows[ligne][colonne] = [segments]
+- Les cellules de tableau = {"type":"text"|"math", "text": ..., "latex": ...} (tous les champs presents, null si non utilise)
+
+## FIGURES ET IMAGES (TRES IMPORTANT)
+Quand le PDF contient des figures, graphiques, schemas ou photos :
+- Inserer un segment image_ref A L'ENDROIT ou la figure apparait dans le contenu de la question/preamble
+- pageNumber = numero de la page (1-indexed) ou se trouve la figure
+- boundingBox = zone de la figure en POURCENTAGES (0-100) de la page :
+  - xPercent, yPercent = coin superieur-gauche
+  - widthPercent, heightPercent = dimensions de la zone
+- alt = description courte et utile de la figure (ex: "Schema du circuit electrique", "Graphique de f(x)=x^2")
+- Etre PRECIS sur le cadrage : la zone doit contenir TOUTE la figure sans trop de marge
+- Ne PAS inclure le texte autour de la figure dans la zone de crop
+
+## REGLES GENERALES
+- Si l'examen n'a pas d'exercices explicites, creer un seul exercice contenant toutes les questions
+- Le preamble = texte d'introduction/contexte AVANT les sous-questions (en segments riches)
+- maxPoints = points par sous-question si indique, sinon null
+- Pour les MCQ, extraire les choix (content en segments riches) et isCorrect si le corrige est fourni
+- N'inventer rien : null si l'info est absente
+- Inclure des warnings dans metadata.warnings pour tout ce qui est ambigu
+- Evaluer le niveau de confiance (high/medium/low)`
+
+  const userPrompt = `Analyse ce document PDF d'examen et extrais sa structure hierarchique complete (exercices et sous-questions) avec le formatage riche (segments text/math/table).`
 
   let rawResponse: string | undefined
   let tokensInput: number | undefined
@@ -59,18 +100,18 @@ Regles importantes :
           content: [
             { type: 'text', text: userPrompt },
             {
-              type: 'image_url',
-              image_url: {
-                url: pdfUrl,
-                detail: 'high' // High detail for better text extraction
+              type: 'file',
+              file: {
+                filename: 'exam.pdf',
+                file_data: pdfDataUrl,
               }
-            }
+            } as never // SDK types may not include 'file' content type yet
           ]
         }
       ],
       response_format: zodResponseFormat(ExamExtractionSchema, 'exam_extraction'),
       temperature: 0.1, // Low temperature for more consistent extraction
-      max_tokens: 4000
+      max_tokens: 8000
     })
 
     rawResponse = JSON.stringify(completion.choices[0]?.message)

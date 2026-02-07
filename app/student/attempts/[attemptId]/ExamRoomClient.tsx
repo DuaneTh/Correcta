@@ -215,9 +215,9 @@ export default function ExamRoomClient({
     const [showStickyHeader, setShowStickyHeader] = useState(false)
     const [pendingSubmit, setPendingSubmit] = useState(false)
 
-    const saveTimeoutRefs = useRef<Record<string, NodeJS.Timeout>>({})
+    const saveTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
     const prefilledTemplateRef = useRef<Set<string>>(new Set())
-    const honorSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const honorSaveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const dict = dictionary.student.examRunner
     const honorStorageKey = `attempt:${attempt.id}:honorStatement`
     const examHeaderRef = useRef<HTMLDivElement | null>(null)

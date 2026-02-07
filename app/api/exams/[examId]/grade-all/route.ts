@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma"
 import { getAuthSession, isTeacher } from "@/lib/api-auth"
 import { aiGradingQueue } from "@/lib/queue"
 import { getAllowedOrigins, getCsrfCookieName, verifyCsrf } from "@/lib/csrf"
+import { flags } from "@/lib/featureFlags"
 import { generateRubric } from "@/lib/grading/rubric-generator"
 import { segmentsToLatexString, parseContent } from "@/lib/content"
 
@@ -73,7 +74,7 @@ export async function POST(
         // Note: Queue-based grading requires Redis + worker process running separately
         // Default to indicating queue not available so frontend uses sync grading
         // To enable queue-based grading, set ENABLE_GRADING_QUEUE=true
-        const useQueue = process.env.ENABLE_GRADING_QUEUE === 'true' && aiGradingQueue
+        const useQueue = flags.gradingQueue && aiGradingQueue
 
         if (!useQueue) {
             return NextResponse.json({
@@ -131,15 +132,18 @@ export async function POST(
         const questionMap = new Map(questions.map(q => [q.id, q]))
         const questionIds = [...new Set(answersToGrade.map(a => a.questionId))]
 
+        // Batch-fetch all questions that need rubric check (avoids N+1)
+        const questionsWithRubrics = await prisma.question.findMany({
+            where: { id: { in: questionIds } },
+            select: { id: true, generatedRubric: true, content: true, segments: true }
+        })
+        const rubricMap = new Map(questionsWithRubrics.map(q => [q.id, q]))
+
         for (const questionId of questionIds) {
             const question = questionMap.get(questionId)
             if (!question) continue
 
-            // Check if rubric already exists
-            const existingRubric = await prisma.question.findUnique({
-                where: { id: questionId },
-                select: { generatedRubric: true, content: true, segments: true }
-            })
+            const existingRubric = rubricMap.get(questionId)
 
             if (!existingRubric?.generatedRubric) {
                 // Generate rubric for this question

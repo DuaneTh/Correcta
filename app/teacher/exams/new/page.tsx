@@ -38,7 +38,7 @@ export default async function TeacherNewExamPage() {
                     }
                 },
                 // Or user is ADMIN (can see all courses in institution)
-                session.user.role === 'ADMIN' || session.user.role === 'SCHOOL_ADMIN' ? {
+                session.user.role === 'SCHOOL_ADMIN' || session.user.role === 'PLATFORM_ADMIN' ? {
                     institutionId: session.user.institutionId
                 } : {}
             ],

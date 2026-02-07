@@ -17,6 +17,7 @@ import { cn } from '@/components/ui/cn'
 
 type SchoolEnrollmentsClientProps = {
     dictionary: Dictionary
+    institutionId?: string
     teachers: PersonRow[]
     students: PersonRow[]
     courses: CourseRow[]
@@ -42,6 +43,7 @@ type EnrollmentView = {
 
 export default function SchoolEnrollmentsClient({
     dictionary,
+    institutionId,
     teachers: initialTeachers,
     students: initialStudents,
     courses,
@@ -131,9 +133,10 @@ export default function SchoolEnrollmentsClient({
 
     const refreshUsers = useCallback(async () => {
         try {
+            const instParam = institutionId ? `&institutionId=${institutionId}` : ''
             const [teachersRes, studentsRes] = await Promise.all([
-                fetch('/api/admin/school/users?role=TEACHER&includeArchived=false'),
-                fetch('/api/admin/school/users?role=STUDENT&includeArchived=false'),
+                fetch(`/api/admin/school/users?role=TEACHER&includeArchived=false${instParam}`),
+                fetch(`/api/admin/school/users?role=STUDENT&includeArchived=false${instParam}`),
             ])
             const [teachersData, studentsData] = await Promise.all([teachersRes.json(), studentsRes.json()])
             if (!teachersRes.ok || !studentsRes.ok) {
@@ -145,7 +148,7 @@ export default function SchoolEnrollmentsClient({
             console.error('[Enrollments] Load users failed', err)
             setError(dict.loadError)
         }
-    }, [dict.loadError])
+    }, [dict.loadError, institutionId])
 
     useEffect(() => {
         void refreshUsers()

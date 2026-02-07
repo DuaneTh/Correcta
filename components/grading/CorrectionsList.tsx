@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Search } from 'lucide-react'
+import { usePolling } from '@/lib/usePolling'
 import { useRouter } from 'next/navigation'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import { CourseCodeBadge } from '@/components/teacher/CourseCodeBadge'
@@ -36,18 +37,7 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
     const [showArchived, setShowArchived] = useState(false)
     const dict = dictionary.teacher.correctionsPage
 
-    useEffect(() => {
-        fetchExamsWithGradingStatus(true)
-
-        // Auto-refresh every 30 seconds (silent refresh)
-        const interval = setInterval(() => {
-            fetchExamsWithGradingStatus(false)
-        }, 30000)
-
-        return () => clearInterval(interval)
-    }, [showArchived])
-
-    const fetchExamsWithGradingStatus = async (showLoadingState = true) => {
+    const fetchExamsWithGradingStatus = useCallback(async (showLoadingState = true) => {
         try {
             if (showLoadingState) {
                 setLoading(true)
@@ -72,7 +62,11 @@ export default function CorrectionsList({ dictionary }: CorrectionsListProps) {
                 setLoading(false)
             }
         }
-    }
+    }, [showArchived])
+
+    // Initial fetch + silent refresh every 30s
+    useEffect(() => { fetchExamsWithGradingStatus(true) }, [fetchExamsWithGradingStatus])
+    usePolling(() => fetchExamsWithGradingStatus(false), { intervalMs: 30000, immediate: false })
 
     const filteredExams = exams.filter((exam) => {
         if (!searchQuery) return true

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useCallback } from 'react'
-import { Text as KonvaText } from 'react-konva'
+import { Text as KonvaText, Group, Rect } from 'react-konva'
 import { GraphText, GraphAxes } from '@/types/exams'
 import { graphToPixel, pixelToGraph, snapToGrid } from '../../coordinate-utils'
 
@@ -12,6 +12,7 @@ interface EditableTextProps {
     height: number
     isSelected: boolean
     onUpdate: (text: GraphText) => void
+    onSelect?: (id: string) => void
 }
 
 /**
@@ -24,6 +25,7 @@ export const EditableText = React.memo<EditableTextProps>(({
     height,
     isSelected,
     onUpdate,
+    onSelect,
 }) => {
     const pixel = graphToPixel({ x: text.x, y: text.y }, axes, width, height)
 
@@ -47,18 +49,47 @@ export const EditableText = React.memo<EditableTextProps>(({
         })
     }, [text, axes, width, height, onUpdate])
 
+    const handleClick = useCallback(() => {
+        if (onSelect) {
+            onSelect(text.id)
+        }
+    }, [text.id, onSelect])
+
+    // Estimate text dimensions for selection highlight
+    const textWidth = text.text.length * 7
+    const textHeight = 14
+
     return (
-        <KonvaText
+        <Group
             x={pixel.x}
             y={pixel.y}
-            text={text.text}
-            fontSize={12}
-            fill="#111827"
-            offsetX={0}
-            offsetY={6}
             draggable
             onDragEnd={handleDragEnd}
-        />
+            onClick={handleClick}
+            onTap={handleClick}
+        >
+            {/* Selection highlight */}
+            {isSelected && (
+                <Rect
+                    x={-2}
+                    y={-8}
+                    width={textWidth + 4}
+                    height={textHeight + 4}
+                    stroke="#3b82f6"
+                    strokeWidth={1}
+                    fill="transparent"
+                    cornerRadius={2}
+                    listening={false}
+                />
+            )}
+            <KonvaText
+                text={text.text}
+                fontSize={12}
+                fill={isSelected ? '#3b82f6' : '#111827'}
+                offsetX={0}
+                offsetY={6}
+            />
+        </Group>
     )
 })
 

@@ -26,8 +26,29 @@ export interface ShapeTemplate {
     createElements: (axes: GraphAxes) => Partial<GraphPayload>
 }
 
+// Counter for generating sequential point labels
+let pointLabelCounter = 0
+
 /**
- * Library of 12 predefined shapes across 4 categories.
+ * Get next point label in sequence A, B, C, ... Z, A₁, B₁, etc.
+ */
+function getNextPointLabel(): string {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    const index = pointLabelCounter % 26
+    const suffix = pointLabelCounter >= 26 ? `_{${Math.floor(pointLabelCounter / 26)}}` : ''
+    pointLabelCounter++
+    return alphabet[index] + suffix
+}
+
+/**
+ * Reset point label counter (useful for tests or new sessions)
+ */
+export function resetPointLabelCounter(): void {
+    pointLabelCounter = 0
+}
+
+/**
+ * Library of 13 predefined shapes across 4 categories.
  */
 export const PREDEFINED_SHAPES: ShapeTemplate[] = [
     // Functions (4)
@@ -46,6 +67,9 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     expression: 'x^2',
                     domain: { min: axes.xMin, max: axes.xMax },
                     style: { color: '#2563eb', width: 1.5 },
+                    label: 'f',
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
@@ -65,6 +89,9 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     expression: 'sin(x)',
                     domain: { min: axes.xMin, max: axes.xMax },
                     style: { color: '#2563eb', width: 1.5 },
+                    label: 'g',
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
@@ -84,6 +111,9 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     expression: 'x',
                     domain: { min: axes.xMin, max: axes.xMax },
                     style: { color: '#2563eb', width: 1.5 },
+                    label: 'h',
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
@@ -103,6 +133,9 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     expression: 'exp(x)',
                     domain: { min: axes.xMin, max: axes.xMax },
                     style: { color: '#2563eb', width: 1.5 },
+                    label: '\\mathcal{C}_f',
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
@@ -165,6 +198,8 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     start: { type: 'coord', x: -2, y: 0 },
                     end: { type: 'coord', x: 2, y: 0 },
                     style: { color: '#111827', width: 1.5 },
+                    label: '(d)',
+                    showLabel: true,
                 },
             ],
         }),
@@ -188,7 +223,9 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     color: '#111827',
                     size: 4,
                     filled: true,
-                    label: '',
+                    label: getNextPointLabel(),
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
@@ -210,13 +247,15 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     color: '#111827',
                     size: 4,
                     filled: false,
-                    label: '',
+                    label: getNextPointLabel(),
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
     },
 
-    // Geometric (3)
+    // Geometric (4)
     {
         id: 'bezier-curve',
         category: 'geometric',
@@ -233,62 +272,34 @@ export const PREDEFINED_SHAPES: ShapeTemplate[] = [
                     end: { type: 'coord', x: 3, y: 1 },
                     curvature: 2,
                     style: { color: '#7c3aed', width: 1.5 },
+                    label: '\\Gamma',
+                    labelIsMath: true,
+                    showLabel: true,
                 },
             ],
         }),
     },
     {
-        id: 'polygon-triangle',
+        id: 'smart-area',
         category: 'geometric',
-        label: 'Polygon Surface',
-        labelFr: 'Surface polygone',
-        icon: '▲',
-        description: 'Triangular shaded area',
-        descriptionFr: 'Surface triangulaire',
+        label: 'Area',
+        labelFr: 'Aire',
+        icon: '▨',
+        description: 'Smart area - drag the control point onto curves/lines',
+        descriptionFr: 'Aire intelligente - glissez le point sur les courbes/lignes',
         createElements: () => ({
             areas: [
                 {
                     id: createId(),
-                    mode: 'polygon',
-                    points: [
-                        { type: 'coord', x: -2, y: 0 },
-                        { type: 'coord', x: 0, y: 2 },
-                        { type: 'coord', x: 2, y: 0 },
-                    ],
-                    fill: { color: '#6366f1', opacity: 0.2 },
+                    mode: 'polygon' as const,
+                    points: [], // Empty - will be generated when control point is placed
+                    fill: { color: '#8b5cf6', opacity: 0.35 },
+                    label: '\\mathcal{A}',
+                    labelIsMath: true,
+                    showLabel: true,
+                    labelPos: { x: 0, y: 1 }, // Initial control point position
                 },
             ],
         }),
-    },
-    {
-        id: 'area-under-curve',
-        category: 'geometric',
-        label: 'Area Under Curve',
-        labelFr: 'Surface sous courbe',
-        icon: '⌠',
-        description: 'Shaded area under x² function',
-        descriptionFr: 'Surface sous la fonction x²',
-        createElements: (axes) => {
-            const functionId = createId()
-            return {
-                functions: [
-                    {
-                        id: functionId,
-                        expression: 'x^2',
-                        domain: { min: axes.xMin, max: axes.xMax },
-                        style: { color: '#2563eb', width: 1.5 },
-                    },
-                ],
-                areas: [
-                    {
-                        id: createId(),
-                        mode: 'under-function',
-                        functionId,
-                        domain: { min: -2, max: 2 },
-                        fill: { color: '#2563eb', opacity: 0.2 },
-                    },
-                ],
-            }
-        },
     },
 ]

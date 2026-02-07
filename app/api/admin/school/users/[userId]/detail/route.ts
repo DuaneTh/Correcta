@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthSession, isSchoolAdmin } from '@/lib/api-auth'
+import { getAuthSession, isAdmin, isPlatformAdmin } from '@/lib/api-auth'
 import { resolvePublishedExamsForClasses } from '@/lib/exam-variants'
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
@@ -8,7 +8,7 @@ const DEFAULT_SECTION_NAME = '__DEFAULT__'
 export async function GET(req: NextRequest, { params }: { params: Promise<{ userId: string }> }) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
         select: { id: true, name: true, email: true, role: true, institutionId: true },
     })
 
-    if (!user || user.institutionId !== session.user.institutionId) {
+    if (!user || (!isPlatformAdmin(session) && user.institutionId !== session.user.institutionId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
@@ -28,8 +28,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ user
         where: {
             userId,
             class: includeArchived
-                ? { course: { institutionId: session.user.institutionId } }
-                : { archivedAt: null, course: { archivedAt: null, institutionId: session.user.institutionId } },
+                ? { course: { institutionId: user.institutionId! } }
+                : { archivedAt: null, course: { archivedAt: null, institutionId: user.institutionId! } },
         },
         select: {
             class: {

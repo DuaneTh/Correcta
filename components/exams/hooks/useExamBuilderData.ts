@@ -700,21 +700,18 @@ export function useExamBuilderData({ examId, initialData, dict, locale }: UseExa
             try {
                 setLoading(true)
 
-                const res = await fetch(`/api/exams/${examId}/questions`, {
+                await fetchJsonWithCsrf(`/api/exams/${examId}/questions`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
+                    body: {
                         content: serializeContent(parseContent('')),
                         answerTemplate: serializeContent(parseContent('')),
                         type,
                         atTop,
                         afterQuestionId,
                         outsideSection,
-                        // When sectionId is undefined, the API will create or use a default section
                         ...(sectionId ? { sectionId } : {}),
-                    }),
+                    },
                 })
-                if (!res.ok) throw new Error('Failed to create question')
                 await reloadExam()
             } catch (err) {
                 setError(err instanceof Error ? err.message : 'Network error')

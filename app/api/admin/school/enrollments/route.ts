@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthSession, isSchoolAdmin } from '@/lib/api-auth'
+import { getAuthSession, isAdmin, isPlatformAdmin } from '@/lib/api-auth'
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 const isValidRole = (role: string) => role === 'TEACHER' || role === 'STUDENT'
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
@@ -9,7 +10,7 @@ const DEFAULT_SECTION_NAME = '__DEFAULT__'
 export async function POST(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
         select: { id: true, role: true, institutionId: true, archivedAt: true }
     })
 
-    if (userId && (!user || user.archivedAt || user.institutionId !== session.user.institutionId)) {
+    if (userId && (!user || user.archivedAt || (!isPlatformAdmin(session) && user.institutionId !== session.user.institutionId))) {
         return NextResponse.json({ error: 'Invalid user' }, { status: 400 })
     }
 
@@ -60,7 +61,7 @@ export async function POST(req: NextRequest) {
             },
         })
 
-        if (!course || course.archivedAt || course.institutionId !== session.user.institutionId) {
+        if (!course || course.archivedAt || (!isPlatformAdmin(session) && course.institutionId !== session.user.institutionId)) {
             return NextResponse.json({ error: 'Invalid course' }, { status: 400 })
         }
 
@@ -92,7 +93,7 @@ export async function POST(req: NextRequest) {
             const normalizedEmails = emails.map((email: string) => email.toLowerCase())
             const users = await prisma.user.findMany({
                 where: {
-                    institutionId: session.user.institutionId,
+                    institutionId: course.institutionId,
                     archivedAt: null,
                     email: { in: normalizedEmails },
                 },
@@ -132,6 +133,15 @@ export async function POST(req: NextRequest) {
                 skipDuplicates: true,
             })
 
+            logAudit({
+                action: 'ENROLLMENT_CREATE',
+                actorId: session.user.id,
+                institutionId: course.institutionId,
+                targetType: 'ENROLLMENT',
+                metadata: { bulk: true, createdCount: created.count, skippedCount: userIds.length - created.count, role, classId: targetSectionId },
+                ipAddress: getClientIp(req),
+            })
+
             return NextResponse.json(
                 {
                     createdCount: created.count,
@@ -165,6 +175,16 @@ export async function POST(req: NextRequest) {
             }
         })
 
+        logAudit({
+            action: 'ENROLLMENT_CREATE',
+            actorId: session.user.id,
+            institutionId: course.institutionId,
+            targetType: 'ENROLLMENT',
+            targetId: enrollment.id,
+            metadata: { userId, classId: targetSectionId, role },
+            ipAddress: getClientIp(req),
+        })
+
         return NextResponse.json({ enrollment }, { status: 201 })
     } catch (error) {
         console.error('[AdminEnrollments] Create failed', error)
@@ -175,7 +195,7 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -208,11 +228,21 @@ export async function DELETE(req: NextRequest) {
             select: { id: true, class: { select: { course: { select: { institutionId: true } } } } }
         })
 
-    if (!enrollment || enrollment.class.course.institutionId !== session.user.institutionId) {
+    if (!enrollment || (!isPlatformAdmin(session) && enrollment.class.course.institutionId !== session.user.institutionId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
     await prisma.enrollment.delete({ where: { id: enrollment.id } })
+
+    logAudit({
+        action: 'ENROLLMENT_DELETE',
+        actorId: session.user.id,
+        institutionId: enrollment.class.course.institutionId,
+        targetType: 'ENROLLMENT',
+        targetId: enrollment.id,
+        metadata: enrollmentId ? { enrollmentId } : { userId, classId },
+        ipAddress: getClientIp(req),
+    })
 
     return NextResponse.json({ success: true })
 }

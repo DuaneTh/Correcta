@@ -4,9 +4,11 @@ import { useCallback } from 'react'
 import { FileText, ListChecks, Trash2 } from 'lucide-react'
 import { useExamStore, useAllQuestions } from './store'
 import { deleteQuestion } from '@/lib/actions/exam-editor'
+import { useToast } from '@/components/ui/Toast'
 import AddQuestionButton from './AddQuestionButton'
 
 export default function ExamSidebar() {
+  const { toast } = useToast()
   const exam = useExamStore((state) => state.exam)
   const activeQuestionId = useExamStore((state) => state.activeQuestionId)
   const setActiveQuestion = useExamStore((state) => state.setActiveQuestion)
@@ -30,7 +32,7 @@ export default function ExamSidebar() {
       removeQuestion(questionId)
     } catch (error) {
       console.error('Failed to delete question:', error)
-      // TODO: Show error toast
+      toast('Failed to delete question', 'error')
     }
   }, [removeQuestion])
 

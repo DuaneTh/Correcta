@@ -420,11 +420,11 @@ export function SectionList({
     const outlineUntitledLabel =
         locale === 'fr' ? 'Sans titre' : 'Untitled'
     const sectionIntroLabel =
-        locale === 'fr' ? 'Mention de la partie (facultatif)' : 'Section note (optional)'
+        locale === 'fr' ? 'Énoncé de l\'exercice (facultatif)' : 'Exercise preamble (optional)'
     const sectionIntroPlaceholder =
         locale === 'fr'
-            ? 'Ex. Consignes globales pour cette partie...'
-            : 'e.g. General instructions for this section...'
+            ? 'Ex. Consignes globales pour cet exercice...'
+            : 'e.g. General instructions for this exercise...'
     const mcqOptionPointsPlaceholder =
         locale === 'fr' ? 'Pts option (ex. 0, +2, -1)' : 'Option pts (e.g. 0, +2, -1)'
     const mcqTotalPointsHint =
@@ -444,12 +444,12 @@ export function SectionList({
     const lockedBlockClass = isLocked ? 'opacity-60 pointer-events-none' : ''
 
     const deleteSectionLabel =
-        dict.deleteSectionTooltip || (locale === 'fr' ? 'Supprimer la partie' : 'Delete section')
+        dict.deleteSectionTooltip || (locale === 'fr' ? 'Supprimer l\'exercice' : 'Delete exercise')
     const showDeleteSectionLabel = deleteSectionLabel.trim().length > 0
     const deleteQuestionLabel =
         dict.deleteQuestionTooltip || (locale === 'fr' ? 'Supprimer la question' : 'Delete question')
     const confirmDeleteSectionLabel =
-        dict.confirmDeleteSection || (locale === 'fr' ? 'Supprimer cette partie ?' : 'Delete this section?')
+        dict.confirmDeleteSection || (locale === 'fr' ? 'Supprimer cet exercice ?' : 'Delete this exercise?')
     const confirmDeleteSectionAction =
         dict.confirmDeleteSectionAction || (locale === 'fr' ? 'Confirmer' : 'Confirm')
     const confirmDeleteSectionCancel =
@@ -1026,7 +1026,7 @@ export function SectionList({
                         key="exit-up"
                         type="button"
                         className={specialClass}
-                        title={locale === 'fr' ? 'Sortir de la partie (avant)' : 'Move out of section (before)'}
+                        title={locale === 'fr' ? 'Sortir de l\'exercice (avant)' : 'Move out of exercise (before)'}
                         onClick={async () => {
                             const target = await ensureDefaultSectionBefore(sectionIndex)
                             if (!target) return
@@ -1059,7 +1059,7 @@ export function SectionList({
                         key="exit-down"
                         type="button"
                         className={specialClass}
-                        title={locale === 'fr' ? 'Sortir de la partie (apres)' : 'Move out of section (after)'}
+                        title={locale === 'fr' ? 'Sortir de l\'exercice (après)' : 'Move out of exercise (after)'}
                         onClick={async () => {
                             const target = await ensureDefaultSectionAfter(sectionIndex)
                             if (!target) return
@@ -1108,7 +1108,7 @@ export function SectionList({
                         key="enter-prev-part"
                         type="button"
                         className={specialClass}
-                        title={locale === 'fr' ? 'Entrer dans la partie' : 'Move into section'}
+                        title={locale === 'fr' ? 'Entrer dans l\'exercice' : 'Move into exercise'}
                         onClick={async () => {
                             const order = getInsertOrder(prevSection, 'end')
                             await moveQuestionToSection(section.id, sortedQuestions[questionIndex].id, prevSection.id, order)
@@ -1123,7 +1123,7 @@ export function SectionList({
                         key="before-prev-part"
                         type="button"
                         className={baseClass}
-                        title={locale === 'fr' ? 'Placer avant la partie' : 'Move before the section'}
+                        title={locale === 'fr' ? 'Placer avant l\'exercice' : 'Move before the exercise'}
                         onClick={async () => {
                             const target = await ensureDefaultSectionBefore(sectionIndex - 1)
                             if (!target) return
@@ -1172,7 +1172,7 @@ export function SectionList({
                         key="enter-next-part"
                         type="button"
                         className={specialClass}
-                        title={locale === 'fr' ? 'Entrer dans la partie' : 'Move into section'}
+                        title={locale === 'fr' ? 'Entrer dans l\'exercice' : 'Move into exercise'}
                         onClick={async () => {
                             const order = getInsertOrder(nextSection, 'start')
                             await moveQuestionToSection(section.id, sortedQuestions[questionIndex].id, nextSection.id, order)
@@ -1187,7 +1187,7 @@ export function SectionList({
                         key="after-next-part"
                         type="button"
                         className={baseClass}
-                        title={locale === 'fr' ? 'Placer apres la partie' : 'Move after the section'}
+                        title={locale === 'fr' ? 'Placer après l\'exercice' : 'Move after the exercise'}
                         onClick={async () => {
                             const target = await ensureDefaultSectionAfter(sectionIndex + 1)
                             if (!target) return
@@ -1237,11 +1237,11 @@ export function SectionList({
     const getOutlineInsertGroups = useCallback(
         (node: FocusNode) => {
             const isFrench = locale === 'fr'
-            const inSectionLabel = isFrench ? 'Dans cette partie' : 'In this section'
-            const outSectionLabel = isFrench ? 'Hors partie' : 'Outside section'
+            const inSectionLabel = isFrench ? 'Dans cet exercice' : 'In this exercise'
+            const outSectionLabel = isFrench ? 'Hors exercice' : 'Outside exercise'
             const addQuestionLabel = isFrench ? 'Question' : 'Question'
             const addMcqLabel = isFrench ? 'QCM' : 'MCQ'
-            const addSectionLabel = isFrench ? 'Partie' : 'Section'
+            const addSectionLabel = isFrench ? 'Exercice' : 'Exercise'
             const sectionId = node.sectionId
             const section = sectionId ? outlineSectionMap.get(sectionId) : undefined
             const isDefaultWithoutLabel = Boolean(
@@ -1408,11 +1408,11 @@ export function SectionList({
         isLastInSection: boolean
     }) => {
         const isFrench = locale === 'fr'
-        const inSectionLabel = isFrench ? 'Dans cette partie' : 'In this section'
-        const outSectionLabel = isFrench ? 'Hors partie' : 'Outside section'
+        const inSectionLabel = isFrench ? 'Dans cet exercice' : 'In this exercise'
+        const outSectionLabel = isFrench ? 'Hors exercice' : 'Outside exercise'
         const addQuestionLabel = isFrench ? 'Question' : 'Question'
         const addMcqLabel = isFrench ? 'QCM' : 'MCQ'
-        const addSectionLabel = isFrench ? 'Partie' : 'Section'
+        const addSectionLabel = isFrench ? 'Exercice' : 'Exercise'
 
         const inSectionItems: AddInsertMenuItem[] = [
             {
@@ -2711,7 +2711,7 @@ export function SectionList({
                                 <input
                                     type="text"
                                     defaultValue={currentLabel}
-                                    placeholder={locale === 'fr' ? 'ex. Partie I' : 'e.g. Section I'}
+                                    placeholder={locale === 'fr' ? 'ex. Exercice 1' : 'e.g. Exercise 1'}
                                     className={`${labelInputClass} placeholder:opacity-100`}
                                     disabled={isLocked}
                                     onChange={(e) => updateLiveSectionLabel(section.id, e.target.value || null)}
@@ -2720,7 +2720,7 @@ export function SectionList({
                                 <input
                                     type="text"
                                     defaultValue={currentTitle}
-                                    placeholder={locale === 'fr' ? 'Titre de la partie' : 'Section title'}
+                                    placeholder={locale === 'fr' ? 'Titre de l\'exercice' : 'Exercise title'}
                                     className={`${titleInputClass} placeholder:opacity-100`}
                                     disabled={isLocked}
                                     onChange={(e) => updateLiveSectionTitle(section.id, e.target.value)}
@@ -2742,7 +2742,7 @@ export function SectionList({
                                                 onClick={() => moveSection(sectionIndex, 'up')}
                                                 className="rounded border border-gray-200 bg-white p-1 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                                 disabled={loading || isLocked}
-                                                title={locale === 'fr' ? 'Monter la partie' : 'Move section up'}
+                                                title={locale === 'fr' ? 'Monter l\'exercice' : 'Move exercise up'}
                                             >
                                                 <ArrowUp className="h-3 w-3" />
                                             </button>
@@ -2753,7 +2753,7 @@ export function SectionList({
                                                 onClick={() => moveSection(sectionIndex, 'down')}
                                                 className="rounded border border-gray-200 bg-white p-1 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                                 disabled={loading || isLocked}
-                                                title={locale === 'fr' ? 'Descendre la partie' : 'Move section down'}
+                                                title={locale === 'fr' ? 'Descendre l\'exercice' : 'Move exercise down'}
                                             >
                                                 <ArrowDown className="h-3 w-3" />
                                             </button>
@@ -2829,7 +2829,7 @@ export function SectionList({
                             (sectionQuestions.length === 0 ? (
                                 <div className="p-4 group/empty-section">
                                     <p className="text-gray-500 italic text-sm">
-                                        {locale === 'fr' ? 'Aucune question dans cette partie.' : 'No questions in this section.'}
+                                        {locale === 'fr' ? 'Aucune question dans cet exercice.' : 'No questions in this exercise.'}
                                     </p>
                                     <div className="mt-3 flex justify-end">
                                         <div className={hideEmptySectionMenu ? 'opacity-0 pointer-events-none' : ''}>
@@ -2837,7 +2837,7 @@ export function SectionList({
                                                 label={locale === 'fr' ? 'Insérer ici' : 'Insert here'}
                                                 groups={[
                                                     {
-                                                        label: locale === 'fr' ? 'Dans cette partie' : 'In this section',
+                                                        label: locale === 'fr' ? 'Dans cet exercice' : 'In this exercise',
                                                         items: [
                                                             {
                                                                 label: locale === 'fr' ? 'Question' : 'Question',
@@ -2850,7 +2850,7 @@ export function SectionList({
                                                         ],
                                                     },
                                                     {
-                                                        label: locale === 'fr' ? 'Hors partie' : 'Outside section',
+                                                        label: locale === 'fr' ? 'Hors exercice' : 'Outside exercise',
                                                         items: [
                                                             {
                                                                 label: locale === 'fr' ? 'Question' : 'Question',
@@ -2865,7 +2865,7 @@ export function SectionList({
                                                     {
                                                         items: [
                                                             {
-                                                                label: locale === 'fr' ? 'Partie' : 'Section',
+                                                                label: locale === 'fr' ? 'Exercice' : 'Exercise',
                                                                 onSelect: () => handleAddSection(false, undefined, section.id),
                                                             },
                                                         ],
@@ -2942,7 +2942,7 @@ export function SectionList({
                         {
                             items: [
                                 {
-                                    label: locale === 'fr' ? 'Partie' : 'Section',
+                                    label: locale === 'fr' ? 'Exercice' : 'Exercise',
                                     onSelect: () => handleAddSection(true),
                                 },
                                 {
@@ -2973,7 +2973,7 @@ export function SectionList({
                                     {
                                         items: [
                                             {
-                                                label: locale === 'fr' ? 'Partie' : 'Section',
+                                                label: locale === 'fr' ? 'Exercice' : 'Exercise',
                                                 onSelect: () => handleAddSection(true),
                                             },
                                             {
@@ -3097,11 +3097,11 @@ export function SectionList({
                                                     aria-label={
                                                         collapsed
                                                             ? locale === 'fr'
-                                                                ? 'Déplier la partie'
-                                                                : 'Expand section'
+                                                                ? 'Déplier l\'exercice'
+                                                                : 'Expand exercise'
                                                             : locale === 'fr'
-                                                                ? 'Replier la partie'
-                                                                : 'Collapse section'
+                                                                ? 'Replier l\'exercice'
+                                                                : 'Collapse exercise'
                                                     }
                                                 >
                                                     <ChevronDown
@@ -3135,7 +3135,7 @@ export function SectionList({
                                                                         onClick={() => moveSection(sectionIndex ?? 0, 'up')}
                                                                         className="rounded border border-gray-200 bg-white p-1 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                                                         disabled={loading || isLocked}
-                                                                        title={locale === 'fr' ? 'Monter la partie' : 'Move section up'}
+                                                                        title={locale === 'fr' ? 'Monter l\'exercice' : 'Move exercise up'}
                                                                     >
                                                                         <ArrowUp className="h-3 w-3" />
                                                                     </button>
@@ -3146,7 +3146,7 @@ export function SectionList({
                                                                         onClick={() => moveSection(sectionIndex ?? 0, 'down')}
                                                                         className="rounded border border-gray-200 bg-white p-1 text-gray-600 hover:bg-gray-50 disabled:opacity-50"
                                                                         disabled={loading || isLocked}
-                                                                        title={locale === 'fr' ? 'Descendre la partie' : 'Move section down'}
+                                                                        title={locale === 'fr' ? 'Descendre l\'exercice' : 'Move exercise down'}
                                                                     >
                                                                         <ArrowDown className="h-3 w-3" />
                                                                     </button>

@@ -3,8 +3,11 @@ import { getServerSession } from "next-auth"
 import { buildAuthOptions } from "@/lib/auth"
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
 import { prisma } from "@/lib/prisma"
+import { parseBody } from "@/lib/api-validation"
+import { createExamSchema } from "@/lib/schemas/exams"
 import { Prisma } from "@prisma/client"
 import { getExamPermissions } from "@/lib/exam-permissions"
+import { logAudit, getClientIp } from "@/lib/audit"
 
 interface SessionUser {
     id: string
@@ -202,12 +205,14 @@ export async function GET(req: Request) {
                 _count: { id: true }
             })
 
+            // Build lookup maps (avoids O(n²) .find() in loop)
+            const submittedMap = new Map(submittedCounts.map(s => [s.examId, s._count.id]))
+            const gradedMap = new Map(gradedCounts.map(g => [g.examId, g._count.id]))
+
             for (const exam of exams) {
-                const submittedEntry = submittedCounts.find(s => s.examId === exam.id)
-                const gradedEntry = gradedCounts.find(g => g.examId === exam.id)
                 gradingStatusMap.set(exam.id, {
-                    submittedCount: submittedEntry?._count.id ?? 0,
-                    gradedCount: gradedEntry?._count.id ?? 0
+                    submittedCount: submittedMap.get(exam.id) ?? 0,
+                    gradedCount: gradedMap.get(exam.id) ?? 0
                 })
             }
         }
@@ -266,20 +271,13 @@ export async function POST(req: Request) {
             return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
-        const body = (await req.json()) as {
-            title?: string
-            courseId?: string
-            startAt?: string | null
-            durationMinutes?: number | string | null
-            status?: string
-            classIds?: string[]
-            sourceExamId?: string
-        }
-        const { title, courseId, startAt, durationMinutes, status, classIds, sourceExamId } = body
+        const parsed = await parseBody(req, createExamSchema)
+        if ('error' in parsed) return parsed.error
+        const { title, courseId, startAt, durationMinutes, status, classIds, sourceExamId } = parsed.data
 
-        if (!courseId || !title) {
+        if (!title) {
             return NextResponse.json(
-                { error: 'courseId and title are required' },
+                { error: 'title is required' },
                 { status: 400 }
             )
         }
@@ -424,6 +422,16 @@ export async function POST(req: Request) {
                 return created
             })
             : await prisma.exam.create({ data: data as Prisma.ExamCreateInput })
+
+        logAudit({
+            action: 'EXAM_CREATE',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'EXAM',
+            targetId: exam.id,
+            metadata: { title: trimmedTitle, courseId, sourceExamId: sourceExamId || undefined },
+            ipAddress: getClientIp(req),
+        })
 
         return NextResponse.json({ id: exam.id }, { status: 201 })
     } catch (error: unknown) {

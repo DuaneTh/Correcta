@@ -141,6 +141,9 @@ const normalizeGraphPayload = (segment: Partial<ContentSegment> | undefined) => 
             id: fn?.id || createSegmentId(),
             expression: typeof fn?.expression === 'string' ? fn.expression : '',
             domain: fn?.domain,
+            offsetX: typeof fn?.offsetX === 'number' ? fn.offsetX : undefined,
+            offsetY: typeof fn?.offsetY === 'number' ? fn.offsetY : undefined,
+            scaleY: typeof fn?.scaleY === 'number' ? fn.scaleY : undefined,
             style: fn?.style,
         }))
         : []

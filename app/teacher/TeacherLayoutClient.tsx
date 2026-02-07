@@ -1,6 +1,7 @@
 'use client'
 
 import UserMenu from "@/components/UserMenu"
+import { MobileNav } from "@/components/MobileNav"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
@@ -31,7 +32,8 @@ export default function TeacherLayoutClient({ children, dictionary, currentLocal
             <header className="bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-4 md:gap-8">
+                            <MobileNav links={navLinks} isActive={isActive} />
                             <Link href="/teacher/courses" className="flex items-center">
                                 <Image
                                     src="/brand/correcta-logo-header.png"

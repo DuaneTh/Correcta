@@ -5,6 +5,7 @@ import { buildAuthOptions } from '@/lib/auth'
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 import { parseContent, segmentsToPlainText } from '@/lib/content'
 import { getExamPermissions } from '@/lib/exam-permissions'
+import { logAudit, getClientIp } from '@/lib/audit'
 import { assertExamVariantShape, getDraftVariantsForBaseExam, getPublishPolicyResult, PublishPolicy } from '@/lib/exam-variants'
 
 export async function POST(
@@ -252,6 +253,16 @@ export async function POST(
                 return policyResult
             })
 
+            logAudit({
+                action: 'EXAM_PUBLISH',
+                actorId: session.user.id,
+                institutionId: session.user.institutionId,
+                targetType: 'EXAM',
+                targetId: examId,
+                metadata: { policy, updatedClassIds: result.updatedClassIds.length, deletedDrafts: result.deletedDraftVariantIds.length },
+                ipAddress: getClientIp(req),
+            })
+
             return NextResponse.json({
                 baseExamId: examId,
                 updatedClassIds: result.updatedClassIds,
@@ -264,6 +275,15 @@ export async function POST(
         const updated = await prisma.exam.update({
             where: { id: examId },
             data: { status: 'PUBLISHED' }
+        })
+
+        logAudit({
+            action: 'EXAM_PUBLISH',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'EXAM',
+            targetId: examId,
+            ipAddress: getClientIp(req),
         })
 
         return NextResponse.json({ success: true, exam: updated })
@@ -379,6 +399,15 @@ export async function DELETE(
 
         const updated = await prisma.exam.findUnique({
             where: { id: examId },
+        })
+
+        logAudit({
+            action: 'EXAM_UNPUBLISH',
+            actorId: session.user.id,
+            institutionId: session.user.institutionId,
+            targetType: 'EXAM',
+            targetId: examId,
+            ipAddress: getClientIp(req),
         })
 
         return NextResponse.json({ success: true, exam: updated })

@@ -176,6 +176,34 @@ export async function getPresignedDownloadUrl(
 }
 
 /**
+ * Download a file as a Buffer from MinIO or local storage
+ *
+ * @param key - Object key
+ * @param bucket - Optional bucket name (defaults to DEFAULT_BUCKET)
+ * @returns File content as Buffer
+ */
+export async function downloadFile(
+  key: string,
+  bucket: string = DEFAULT_BUCKET
+): Promise<Buffer> {
+  if (!isMinioConfigured()) {
+    // Local storage fallback
+    const filePath = path.join(LOCAL_UPLOAD_DIR, key)
+    return fs.readFileSync(filePath) as Buffer
+  }
+
+  const client = getMinioClient()
+  const stream = await client.getObject(bucket, key)
+
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = []
+    stream.on('data', (chunk: Buffer) => chunks.push(chunk))
+    stream.on('end', () => resolve(Buffer.concat(chunks)))
+    stream.on('error', reject)
+  })
+}
+
+/**
  * Delete an object from MinIO
  *
  * @param bucket - Bucket name

@@ -1,86 +1,15 @@
 'use client'
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { GraphEditorProps, GraphPayload, GraphArea, GraphAnchor } from './types'
+import { GraphEditorProps, GraphPayload, GraphArea, GraphAnchor, GraphStrokeStyle } from './types'
 import { ShapePalette } from './ShapePalette'
 import { GraphCanvas } from './canvas/GraphCanvas'
 import { ShapeTemplate, PREDEFINED_SHAPES } from './templates/predefinedShapes'
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { pixelToGraph } from './coordinate-utils'
-import { compileExpression } from '@/components/exams/graph-utils'
 import { AreaPropertiesPanel } from './AreaPropertiesPanel'
-
-/**
- * Find the function whose curve is closest to a given point.
- */
-function findNearestFunction(
-    point: { x: number; y: number },
-    functions: GraphPayload['functions']
-): { functionId: string; distance: number } | null {
-    let nearest: { functionId: string; distance: number } | null = null
-
-    for (const fn of functions) {
-        const evaluator = compileExpression(fn.expression)
-        if (!evaluator) continue
-
-        const offsetX = fn.offsetX ?? 0
-        const offsetY = fn.offsetY ?? 0
-        const scaleY = fn.scaleY ?? 1
-
-        try {
-            const y = scaleY * evaluator(point.x - offsetX) + offsetY
-            if (!Number.isFinite(y)) continue
-
-            const distance = Math.abs(point.y - y)
-            if (!nearest || distance < nearest.distance) {
-                nearest = { functionId: fn.id, distance }
-            }
-        } catch {
-            continue
-        }
-    }
-
-    return nearest
-}
-
-/**
- * Find the line whose segment is closest to a given point.
- */
-function findNearestLine(
-    point: { x: number; y: number },
-    lines: GraphPayload['lines']
-): { lineId: string; distance: number; minX: number; maxX: number } | null {
-    let nearest: { lineId: string; distance: number; minX: number; maxX: number } | null = null
-
-    const getCoord = (anchor: GraphAnchor) => {
-        if (anchor.type === 'coord') return { x: anchor.x, y: anchor.y }
-        return { x: 0, y: 0 }
-    }
-
-    for (const line of lines) {
-        const start = getCoord(line.start)
-        const end = getCoord(line.end)
-
-        const minX = Math.min(start.x, end.x)
-        const maxX = Math.max(start.x, end.x)
-
-        // Extend range for detection
-        const margin = (maxX - minX) * 0.1 + 0.5
-        if (point.x < minX - margin || point.x > maxX + margin) continue
-
-        const dx = end.x - start.x
-        const clampedX = Math.max(minX, Math.min(maxX, point.x))
-        const t = dx !== 0 ? (clampedX - start.x) / dx : 0
-        const lineY = start.y + t * (end.y - start.y)
-
-        const distance = Math.abs(point.y - lineY)
-        if (!nearest || distance < nearest.distance) {
-            nearest = { lineId: line.id, distance, minX, maxX }
-        }
-    }
-
-    return nearest
-}
+import { StrokePropertiesPanel } from './StrokePropertiesPanel'
+import { findEnclosingRegion, type RegionElement } from './region-detection'
 
 /**
  * SimpleGraphEditor provides a PowerPoint-like drag-and-drop interface.
@@ -93,17 +22,6 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
     const [draggedTemplate, setDraggedTemplate] = useState<ShapeTemplate | null>(null)
     const canvasContainerRef = useRef<HTMLDivElement>(null)
     const isFrench = locale === 'fr'
-
-    // Handle Delete key for removing selected element
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Delete' && selectedId) {
-                handleDeleteSelected()
-            }
-        }
-        window.addEventListener('keydown', handleKeyDown)
-        return () => window.removeEventListener('keydown', handleKeyDown)
-    }, [selectedId])
 
     /**
      * Add a shape from the palette.
@@ -190,58 +108,34 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
             }))
         }
 
-        // Smart area detection: automatically configure area based on nearby elements
+        // Smart area detection: use findEnclosingRegion to calculate polygon at drop
         if (newElements.areas) {
-            const threshold = 2 // Distance threshold in graph units
-            const nearestFunc = findNearestFunction(dropCoord, value.functions || [])
-            const nearestLine = findNearestLine(dropCoord, value.lines || [])
-
-            const funcIsClose = nearestFunc && nearestFunc.distance < threshold
-            const lineIsClose = nearestLine && nearestLine.distance < threshold
+            // Build elements list for region detection (all lines participate, including dashed/asymptotes)
+            const regionElements: RegionElement[] = [
+                ...(value.functions || []).map(fn => ({ type: 'function' as const, id: fn.id, element: fn })),
+                ...(value.lines || []).map(ln => ({ type: 'line' as const, id: ln.id, element: ln })),
+            ]
 
             newElements.areas = newElements.areas.map((a) => {
-                // PRIORITY 1: Both line and function are close - area between them
-                if (funcIsClose && lineIsClose && nearestFunc && nearestLine) {
+                // Try to find enclosing region at drop point
+                const result = findEnclosingRegion(dropCoord, regionElements, value.axes)
+
+                if (result && result.polygon.length >= 3) {
                     return {
                         ...a,
-                        mode: 'between-line-and-function' as const,
-                        functionId: nearestFunc.functionId,
-                        lineId: nearestLine.lineId,
-                        domain: {
-                            min: nearestLine.minX,
-                            max: nearestLine.maxX,
-                        },
+                        mode: 'bounded-region' as const,
+                        boundaryIds: result.boundaryIds,
+                        domain: result.domain,
+                        points: result.polygon.map(pt => ({ type: 'coord' as const, x: pt.x, y: pt.y })),
                         labelPos: dropCoord,
-                        points: undefined,
                     }
                 }
 
-                // PRIORITY 2: Only function is close - fill under function
-                if (funcIsClose && nearestFunc) {
-                    return {
-                        ...a,
-                        mode: 'under-function' as const,
-                        functionId: nearestFunc.functionId,
-                        lineId: undefined,
-                        domain: {
-                            min: dropCoord.x - 2,
-                            max: dropCoord.x + 2,
-                        },
-                        labelPos: dropCoord,
-                        points: undefined,
-                    }
-                }
-
-                // FALLBACK: Create area at drop position, user will drag control point
+                // Fallback: create area with just the control point, user will drag it
                 return {
                     ...a,
-                    mode: 'under-function' as const,
                     labelPos: dropCoord,
-                    domain: {
-                        min: dropCoord.x - 2,
-                        max: dropCoord.x + 2,
-                    },
-                    points: undefined,
+                    points: [],
                 }
             })
         }
@@ -296,6 +190,23 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
         onChange(updated)
         setSelectedId(null)
     }, [selectedId, value, onChange])
+
+    // Handle Delete/Backspace key for removing selected element
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if ((e.key === 'Delete' || e.key === 'Backspace') && selectedId) {
+                // Don't delete if user is typing in an input
+                const target = e.target as HTMLElement
+                if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                    return
+                }
+                e.preventDefault()
+                handleDeleteSelected()
+            }
+        }
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [selectedId, handleDeleteSelected])
 
     /**
      * Find the selected element and its type.
@@ -371,6 +282,24 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
         onChange(updated)
     }, [value, onChange])
 
+    // Handle style update for functions, lines, and curves
+    const handleStyleUpdate = useCallback((newStyle: GraphStrokeStyle) => {
+        if (!selectedId) return
+        const updated: GraphPayload = {
+            ...value,
+            functions: (value.functions || []).map(f =>
+                f.id === selectedId ? { ...f, style: newStyle } : f
+            ),
+            lines: (value.lines || []).map(l =>
+                l.id === selectedId ? { ...l, style: newStyle } : l
+            ),
+            curves: (value.curves || []).map(c =>
+                c.id === selectedId ? { ...c, style: newStyle } : c
+            ),
+        }
+        onChange(updated)
+    }, [selectedId, value, onChange])
+
     return (
         <div className="flex h-full bg-white">
             {/* Left: Shape Palette */}
@@ -432,6 +361,22 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
                                     {isFrench ? 'Supprimer' : 'Delete'}
                                 </button>
                             </div>
+                        ) : (selected.type === 'function' || selected.type === 'line' || selected.type === 'curve') ? (
+                            <div className="flex items-center gap-3">
+                                <StrokePropertiesPanel
+                                    style={(selected.element as { style?: GraphStrokeStyle }).style}
+                                    onStyleChange={handleStyleUpdate}
+                                    locale={locale}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteSelected}
+                                    className="flex items-center gap-1 px-2 py-1 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded shrink-0"
+                                >
+                                    <Trash2 size={14} />
+                                    {isFrench ? 'Supprimer' : 'Delete'}
+                                </button>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-4">
                                 <div className="text-xs font-medium text-gray-700">
@@ -439,9 +384,6 @@ export const SimpleGraphEditor: React.FC<GraphEditorProps> = ({ value, onChange,
                                 </div>
                                 <div className="text-xs text-gray-600 flex-1">
                                     {selected.type === 'point' && `Point (${(selected.element as typeof value.points[0]).x}, ${(selected.element as typeof value.points[0]).y})`}
-                                    {selected.type === 'line' && `${isFrench ? 'Ligne' : 'Line'} - ${(selected.element as typeof value.lines[0]).kind}`}
-                                    {selected.type === 'curve' && `${isFrench ? 'Courbe' : 'Curve'} - ${isFrench ? 'Glissez pour déplacer' : 'Drag to move'}`}
-                                    {selected.type === 'function' && `f(x) = ${(selected.element as typeof value.functions[0]).expression} - ${isFrench ? 'Glissez pour déplacer' : 'Drag to move'}`}
                                     {selected.type === 'text' && `Texte: ${(selected.element as typeof value.texts[0]).text}`}
                                 </div>
                                 <button

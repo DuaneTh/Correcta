@@ -44,7 +44,7 @@ export default function BrowserLockdownMonitor({
 }: BrowserLockdownMonitorProps) {
   const lastCopiedTextRef = useRef<string>("")
   const lastCopiedTimeRef = useRef<number>(0)
-  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingEventRef = useRef<{
     type: ProctorEventType
     metadata: EventMetadata

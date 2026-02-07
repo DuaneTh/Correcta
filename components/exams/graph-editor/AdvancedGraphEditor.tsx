@@ -74,9 +74,11 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload>): GraphPayload => {
                 y: normalizeNumber(point?.y, 0),
                 label: typeof point?.label === 'string' ? point.label : '',
                 labelIsMath: Boolean(point?.labelIsMath),
+                showLabel: point?.showLabel !== false,
                 color: typeof point?.color === 'string' ? point.color : undefined,
                 size: normalizeNumber(point?.size, 4),
                 filled: point?.filled !== false,
+                anchor: point?.anchor,
             }))
             : [],
         lines: Array.isArray(graph.lines)
@@ -86,6 +88,9 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload>): GraphPayload => {
                 end: normalizeGraphAnchor(line?.end),
                 kind: line?.kind === 'line' || line?.kind === 'ray' ? line.kind : 'segment',
                 style: line?.style,
+                label: typeof line?.label === 'string' ? line.label : undefined,
+                labelIsMath: Boolean(line?.labelIsMath),
+                showLabel: line?.showLabel !== false,
             }))
             : [],
         curves: Array.isArray(graph.curves)
@@ -95,6 +100,9 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload>): GraphPayload => {
                 end: normalizeGraphAnchor(curve?.end),
                 curvature: normalizeNumber(curve?.curvature, 0),
                 style: curve?.style,
+                label: typeof curve?.label === 'string' ? curve.label : undefined,
+                labelIsMath: Boolean(curve?.labelIsMath),
+                showLabel: curve?.showLabel !== false,
             }))
             : [],
         functions: Array.isArray(graph.functions)
@@ -103,19 +111,26 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload>): GraphPayload => {
                 expression: typeof fn?.expression === 'string' ? fn.expression : '',
                 domain: fn?.domain,
                 style: fn?.style,
+                label: typeof fn?.label === 'string' ? fn.label : undefined,
+                labelIsMath: Boolean(fn?.labelIsMath),
+                showLabel: fn?.showLabel !== false,
             }))
             : [],
         areas: Array.isArray(graph.areas)
             ? graph.areas.map((area) => ({
                 id: area?.id || createId(),
-                mode: area?.mode === 'under-function' || area?.mode === 'between-functions'
+                mode: area?.mode === 'under-function' || area?.mode === 'between-functions' || area?.mode === 'between-line-and-function'
                     ? area.mode
                     : 'polygon',
                 points: Array.isArray(area?.points) ? area.points.map((point) => normalizeGraphAnchor(point)) : undefined,
                 functionId: typeof area?.functionId === 'string' ? area.functionId : undefined,
                 functionId2: typeof area?.functionId2 === 'string' ? area.functionId2 : undefined,
+                lineId: typeof area?.lineId === 'string' ? area.lineId : undefined,
                 domain: area?.domain,
                 fill: area?.fill,
+                label: typeof area?.label === 'string' ? area.label : undefined,
+                labelIsMath: Boolean(area?.labelIsMath),
+                showLabel: area?.showLabel !== false,
             }))
             : [],
         texts: Array.isArray(graph.texts)
@@ -149,7 +164,7 @@ interface AdvancedGraphEditorProps {
  * - Lines (segments, rays, infinite lines with anchors)
  * - Curves (bezier curves with curvature control)
  * - Functions (mathematical expressions with domains)
- * - Areas (polygon, under-function, between-functions)
+ * - Areas (polygon, under-function, between-functions, between-line-and-function)
  * - Texts (positioned labels)
  *
  * Includes live preview using renderGraphInto from graph-utils.
@@ -555,32 +570,41 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                         )}
                         {payload.points.map((point) => (
                             <div key={point.id} className="flex flex-wrap items-center gap-2 text-xs">
+                                <label className="flex items-center gap-1 text-[11px] text-gray-600" title={isFrench ? 'Afficher le label' : 'Show label'}>
+                                    <input
+                                        type="checkbox"
+                                        checked={point.showLabel !== false}
+                                        onChange={(e) => updatePoint(point.id, { showLabel: e.target.checked })}
+                                    />
+                                </label>
                                 <input
                                     type="text"
                                     value={point.label || ''}
                                     onChange={(e) => updatePoint(point.id, { label: e.target.value })}
-                                    placeholder={isFrench ? 'Nom' : 'Label'}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-24"
+                                    placeholder={isFrench ? 'Label' : 'Label'}
+                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
                                 />
-                                <label className="flex items-center gap-1 text-[11px] text-gray-600">
+                                <label className="flex items-center gap-1 text-[11px] text-gray-600" title="LaTeX">
                                     <input
                                         type="checkbox"
                                         checked={Boolean(point.labelIsMath)}
                                         onChange={(e) => updatePoint(point.id, { labelIsMath: e.target.checked })}
                                     />
-                                    {isFrench ? 'Formule' : 'Math'}
+                                    $
                                 </label>
                                 <input
                                     type="number"
                                     value={point.x}
                                     onChange={(e) => updatePoint(point.id, { x: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
+                                    title="x"
                                 />
                                 <input
                                     type="number"
                                     value={point.y}
                                     onChange={(e) => updatePoint(point.id, { y: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
+                                    title="y"
                                 />
                                 <input
                                     type="color"
@@ -591,7 +615,8 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                     type="number"
                                     value={point.size ?? 4}
                                     onChange={(e) => updatePoint(point.id, { size: Number(e.target.value) })}
-                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
+                                    className="border border-gray-200 rounded px-1 py-0.5 text-xs w-12"
+                                    title={isFrench ? 'Taille' : 'Size'}
                                 />
                                 <label className="flex items-center gap-1 text-[11px] text-gray-600">
                                     <input
@@ -651,6 +676,28 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                     {renderAnchorEditor(line.end, (next) => updateLine(line.id, { end: next }))}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title={isFrench ? 'Afficher le label' : 'Show label'}>
+                                        <input
+                                            type="checkbox"
+                                            checked={line.showLabel !== false}
+                                            onChange={(e) => updateLine(line.id, { showLabel: e.target.checked })}
+                                        />
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={line.label || ''}
+                                        onChange={(e) => updateLine(line.id, { label: e.target.value })}
+                                        placeholder={isFrench ? 'Label' : 'Label'}
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    />
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title="LaTeX">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(line.labelIsMath)}
+                                            onChange={(e) => updateLine(line.id, { labelIsMath: e.target.checked })}
+                                        />
+                                        $
+                                    </label>
                                     <input
                                         type="color"
                                         value={line.style?.color || '#111827'}
@@ -660,7 +707,7 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         type="number"
                                         value={line.style?.width ?? 1.5}
                                         onChange={(e) => updateLine(line.id, { style: { ...line.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
                                     />
                                     <label className="flex items-center gap-1 text-[11px] text-gray-600">
                                         <input
@@ -719,6 +766,28 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                     />
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title={isFrench ? 'Afficher le label' : 'Show label'}>
+                                        <input
+                                            type="checkbox"
+                                            checked={curve.showLabel !== false}
+                                            onChange={(e) => updateCurve(curve.id, { showLabel: e.target.checked })}
+                                        />
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={curve.label || ''}
+                                        onChange={(e) => updateCurve(curve.id, { label: e.target.value })}
+                                        placeholder={isFrench ? 'Label' : 'Label'}
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    />
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title="LaTeX">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(curve.labelIsMath)}
+                                            onChange={(e) => updateCurve(curve.id, { labelIsMath: e.target.checked })}
+                                        />
+                                        $
+                                    </label>
                                     <input
                                         type="color"
                                         value={curve.style?.color || '#2563eb'}
@@ -728,7 +797,7 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         type="number"
                                         value={curve.style?.width ?? 1.5}
                                         onChange={(e) => updateCurve(curve.id, { style: { ...curve.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
                                     />
                                     <label className="flex items-center gap-1 text-[11px] text-gray-600">
                                         <input
@@ -790,7 +859,7 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         type="number"
                                         value={fn.style?.width ?? 1.5}
                                         onChange={(e) => updateFunction(fn.id, { style: { ...fn.style, width: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
                                     />
                                     <label className="flex items-center gap-1 text-[11px] text-gray-600">
                                         <input
@@ -802,6 +871,28 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                     </label>
                                 </div>
                                 <div className="flex flex-wrap items-center gap-2">
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title={isFrench ? 'Afficher le label' : 'Show label'}>
+                                        <input
+                                            type="checkbox"
+                                            checked={fn.showLabel !== false}
+                                            onChange={(e) => updateFunction(fn.id, { showLabel: e.target.checked })}
+                                        />
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={fn.label || ''}
+                                        onChange={(e) => updateFunction(fn.id, { label: e.target.value })}
+                                        placeholder={isFrench ? 'Label' : 'Label'}
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    />
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title="LaTeX">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(fn.labelIsMath)}
+                                            onChange={(e) => updateFunction(fn.id, { labelIsMath: e.target.checked })}
+                                        />
+                                        $
+                                    </label>
                                     <label className="text-[11px] text-gray-500">{isFrench ? 'Domaine' : 'Domain'}</label>
                                     <input
                                         type="number"
@@ -859,7 +950,30 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         <option value="polygon">{isFrench ? 'Polygone' : 'Polygon'}</option>
                                         <option value="under-function">{isFrench ? 'Sous fonction' : 'Under function'}</option>
                                         <option value="between-functions">{isFrench ? 'Entre fonctions' : 'Between functions'}</option>
+                                        <option value="between-line-and-function">{isFrench ? 'Entre ligne et fonction' : 'Between line and function'}</option>
                                     </select>
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title={isFrench ? 'Afficher le label' : 'Show label'}>
+                                        <input
+                                            type="checkbox"
+                                            checked={area.showLabel !== false}
+                                            onChange={(e) => updateArea(area.id, { showLabel: e.target.checked })}
+                                        />
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={area.label || ''}
+                                        onChange={(e) => updateArea(area.id, { label: e.target.value })}
+                                        placeholder={isFrench ? 'Label' : 'Label'}
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                    />
+                                    <label className="flex items-center gap-1 text-[11px] text-gray-600" title="LaTeX">
+                                        <input
+                                            type="checkbox"
+                                            checked={Boolean(area.labelIsMath)}
+                                            onChange={(e) => updateArea(area.id, { labelIsMath: e.target.checked })}
+                                        />
+                                        $
+                                    </label>
                                     <input
                                         type="color"
                                         value={area.fill?.color || '#6366f1'}
@@ -869,7 +983,9 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         type="number"
                                         value={area.fill?.opacity ?? 0.2}
                                         onChange={(e) => updateArea(area.id, { fill: { ...area.fill, opacity: Number(e.target.value) } })}
-                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-16"
+                                        className="border border-gray-200 rounded px-1 py-0.5 text-xs w-14"
+                                        step="0.1"
+                                        title={isFrench ? 'Opacité' : 'Opacity'}
                                     />
                                     <button
                                         type="button"
@@ -916,7 +1032,7 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                         </button>
                                     </div>
                                 )}
-                                {area.mode !== 'polygon' && (
+                                {(area.mode === 'under-function' || area.mode === 'between-functions') && (
                                     <div className="flex flex-wrap items-center gap-2">
                                         <select
                                             value={area.functionId || ''}
@@ -955,6 +1071,48 @@ export function AdvancedGraphEditor({ value, onChange, locale = 'fr' }: Advanced
                                             value={area.domain?.max ?? payload.axes.xMax}
                                             onChange={(e) => updateArea(area.id, { domain: { ...area.domain, max: Number(e.target.value) } })}
                                             className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
+                                        />
+                                    </div>
+                                )}
+                                {area.mode === 'between-line-and-function' && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <select
+                                            value={area.lineId || ''}
+                                            onChange={(e) => updateArea(area.id, { lineId: e.target.value })}
+                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs"
+                                        >
+                                            <option value="">{isFrench ? 'Ligne' : 'Line'}</option>
+                                            {payload.lines.map((line) => (
+                                                <option key={line.id} value={line.id}>
+                                                    {line.label || `${line.kind} ${line.id.slice(0, 4)}`}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <select
+                                            value={area.functionId || ''}
+                                            onChange={(e) => updateArea(area.id, { functionId: e.target.value })}
+                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs"
+                                        >
+                                            <option value="">{isFrench ? 'Fonction' : 'Function'}</option>
+                                            {payload.functions.map((fn) => (
+                                                <option key={fn.id} value={fn.id}>
+                                                    {fn.expression || fn.id.slice(0, 4)}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <input
+                                            type="number"
+                                            value={area.domain?.min ?? payload.axes.xMin}
+                                            onChange={(e) => updateArea(area.id, { domain: { ...area.domain, min: Number(e.target.value) } })}
+                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
+                                            title={isFrench ? 'x min' : 'x min'}
+                                        />
+                                        <input
+                                            type="number"
+                                            value={area.domain?.max ?? payload.axes.xMax}
+                                            onChange={(e) => updateArea(area.id, { domain: { ...area.domain, max: Number(e.target.value) } })}
+                                            className="border border-gray-200 rounded px-1 py-0.5 text-xs w-20"
+                                            title={isFrench ? 'x max' : 'x max'}
                                         />
                                     </div>
                                 )}

@@ -99,7 +99,7 @@ export default function PDFImportUploader({ courseId, onCancel }: PDFImportUploa
     useEffect(() => {
         if (status !== 'processing' || !jobId) return
 
-        let timeoutId: NodeJS.Timeout
+        let timeoutId: ReturnType<typeof setTimeout>
 
         const poll = async () => {
             try {

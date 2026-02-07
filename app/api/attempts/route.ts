@@ -5,6 +5,8 @@ import { getExamEndAt } from "@/lib/exam-time"
 import { assertExamVariantShape, examAppliesToClassIds } from "@/lib/exam-variants"
 import { ensureAttemptNonce } from "@/lib/attemptIntegrity"
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from "@/lib/csrf"
+import { parseBody } from "@/lib/api-validation"
+import { createAttemptSchema } from "@/lib/schemas/attempts"
 
 // POST /api/attempts - Start a new exam attempt
 export async function POST(req: NextRequest) {
@@ -29,12 +31,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "CSRF" }, { status: 403 })
         }
 
-        const body = await req.json()
-        const { examId } = body
-
-        if (!examId) {
-            return NextResponse.json({ error: "Missing examId" }, { status: 400 })
-        }
+        const parsed = await parseBody(req, createAttemptSchema)
+        if ('error' in parsed) return parsed.error
+        const { examId } = parsed.data
 
         // Verify exam exists and student has access
         const exam = await prisma.exam.findUnique({

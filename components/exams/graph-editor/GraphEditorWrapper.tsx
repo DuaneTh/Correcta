@@ -1,10 +1,20 @@
 'use client'
 
 import React, { useState } from 'react'
+import dynamic from 'next/dynamic'
 import { GraphPayload, EditorMode } from './types'
-import { SimpleGraphEditor } from './SimpleGraphEditor'
-import { AdvancedGraphEditor } from './AdvancedGraphEditor'
 import { Check, X, Trash2 } from 'lucide-react'
+import { PageSpinner } from '@/components/ui/Skeleton'
+
+const SimpleGraphEditor = dynamic(
+    () => import('./SimpleGraphEditor').then(m => m.SimpleGraphEditor),
+    { ssr: false, loading: () => <PageSpinner /> }
+)
+
+const AdvancedGraphEditor = dynamic(
+    () => import('./AdvancedGraphEditor').then(m => m.AdvancedGraphEditor),
+    { ssr: false, loading: () => <PageSpinner /> }
+)
 
 interface GraphEditorWrapperProps {
     value: GraphPayload

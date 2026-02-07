@@ -6,8 +6,13 @@ import { ArrowLeft, Save, ChevronDown, Check } from 'lucide-react'
 import type { Dictionary } from '@/lib/i18n/dictionaries'
 import type { Locale } from '@/lib/i18n/config'
 import { fetchJsonWithCsrf } from '@/lib/fetchJsonWithCsrf'
-import PDFImportUploader from '@/components/exam-import/PDFImportUploader'
+import dynamic from 'next/dynamic'
 import DatePicker, { registerLocale } from 'react-datepicker'
+
+const PDFImportUploader = dynamic(
+    () => import('@/components/exam-import/PDFImportUploader'),
+    { ssr: false }
+)
 import "react-datepicker/dist/react-datepicker.css"
 import { fr, enUS } from 'date-fns/locale'
 import { Listbox, Transition } from '@headlessui/react'

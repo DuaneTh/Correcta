@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { getAuthSession, isAdmin, isPlatformAdmin, isSchoolAdmin } from '@/lib/api-auth'
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 import { buildRateLimitResponse, getClientIdentifier, hashRateLimitKey, rateLimit } from '@/lib/rateLimit'
+import { unauthorized, forbidden, notFound, badRequest, internal } from '@/lib/api-validation'
 
 const normalizeDomain = (value: string): string =>
     value.trim().toLowerCase().replace(/^@+/, '')
@@ -70,29 +71,20 @@ const canAccessInstitution = (
 export async function GET(req: Request, { params }: { params: Promise<{ institutionId: string }> }) {
     const session = await getAuthSession(req as unknown as NextRequest)
 
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    if (!isAdmin(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!session) return unauthorized()
+    if (!isAdmin(session)) return forbidden()
 
     const activeSession = session as { user: { institutionId?: string } }
 
     const { institutionId } = await params
-    if (!canAccessInstitution(activeSession, institutionId)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!canAccessInstitution(activeSession, institutionId)) return forbidden()
 
     const institution = await prisma.institution.findUnique({
         where: { id: institutionId },
         include: { domains: { select: { domain: true } } }
     })
 
-    if (!institution) {
-        return NextResponse.json({ institution: null }, { status: 404 })
-    }
+    if (!institution) return notFound('Institution not found')
     const { publicConfig, hasClientSecret } = sanitizeSsoConfig(institution.ssoConfig)
     return NextResponse.json({
         institution: {
@@ -106,20 +98,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ institut
 export async function PATCH(req: Request, { params }: { params: Promise<{ institutionId: string }> }) {
     const session = await getAuthSession()
 
-    if (!session) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    if (!isAdmin(session)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!session) return unauthorized()
+    if (!isAdmin(session)) return forbidden()
 
     const activeSession = session as { user: { institutionId?: string } }
 
     const { institutionId } = await params
-    if (!canAccessInstitution(activeSession, institutionId)) {
-        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!canAccessInstitution(activeSession, institutionId)) return forbidden()
 
     const csrfResult = verifyCsrf({
         req,
@@ -127,9 +112,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
         headerToken: req.headers.get('x-csrf-token'),
         allowedOrigins: getAllowedOrigins()
     })
-    if (!csrfResult.ok) {
-        return NextResponse.json({ error: 'CSRF' }, { status: 403 })
-    }
+    if (!csrfResult.ok) return forbidden('CSRF')
 
     const rateKey = hashRateLimitKey(`${session.user.id}:${institutionId}:${getClientIdentifier(req)}`)
     const rateResult = await rateLimit(rateKey, {
@@ -163,7 +146,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
         ? body.domains.map((domain: string) => normalizeDomain(domain)).filter(Boolean)
         : undefined
     if (domains && domains.some((domain) => !isValidDomain(domain))) {
-        return NextResponse.json({ error: 'Invalid domain format' }, { status: 400 })
+        return badRequest('Invalid domain format')
     }
 
     try {
@@ -237,9 +220,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
             include: { domains: { select: { domain: true } } }
         })
 
-        if (!withDomains) {
-            return NextResponse.json({ error: 'Failed to load institution' }, { status: 500 })
-        }
+        if (!withDomains) return internal('Failed to load institution')
         const { publicConfig, hasClientSecret } = sanitizeSsoConfig(withDomains.ssoConfig)
         return NextResponse.json({
             institution: {
@@ -250,6 +231,6 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ instit
         })
     } catch (error) {
         console.error('[Institutions] Update failed', error)
-        return NextResponse.json({ error: 'Failed to update institution' }, { status: 500 })
+        return internal('Failed to update institution')
     }
 }

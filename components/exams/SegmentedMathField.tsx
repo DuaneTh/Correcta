@@ -312,13 +312,16 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload> | ContentSegment): 
                 id: fn?.id || createId(),
                 expression: typeof fn?.expression === 'string' ? fn.expression : '',
                 domain: fn?.domain,
+                offsetX: typeof fn?.offsetX === 'number' ? fn.offsetX : undefined,
+                offsetY: typeof fn?.offsetY === 'number' ? fn.offsetY : undefined,
+                scaleY: typeof fn?.scaleY === 'number' ? fn.scaleY : undefined,
                 style: fn?.style,
             }))
             : [],
         areas: Array.isArray(graph.areas)
             ? graph.areas.map((area) => ({
                 id: area?.id || createId(),
-                mode: area?.mode === 'under-function' || area?.mode === 'between-functions'
+                mode: area?.mode === 'under-function' || area?.mode === 'between-functions' || area?.mode === 'bounded-region'
                     ? area.mode
                     : 'polygon',
                 points: Array.isArray(area?.points) ? area.points.map((point) => normalizeGraphAnchor(point)) : undefined,
@@ -326,6 +329,12 @@ const normalizeGraphPayload = (input?: Partial<GraphPayload> | ContentSegment): 
                 functionId2: typeof area?.functionId2 === 'string' ? area.functionId2 : undefined,
                 domain: area?.domain,
                 fill: area?.fill,
+                label: typeof area?.label === 'string' ? area.label : undefined,
+                labelIsMath: area?.labelIsMath === true ? true : undefined,
+                showLabel: area?.showLabel === false ? false : undefined,
+                labelPos: area?.labelPos,
+                boundaryIds: Array.isArray(area?.boundaryIds) ? area.boundaryIds : undefined,
+                ignoredBoundaries: Array.isArray(area?.ignoredBoundaries) ? area.ignoredBoundaries : undefined,
             }))
             : [],
         texts: Array.isArray(graph.texts)
@@ -1529,7 +1538,7 @@ type HoverMathButtonProps = {
 
 function HoverMathButton({ isFrench, disabled, onInsertSymbol, onInsertMathChip }: HoverMathButtonProps) {
     const [isOpen, setIsOpen] = useState(false)
-    const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+    const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const buttonRef = useRef<HTMLButtonElement>(null)
     const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 })
 
@@ -4653,26 +4662,8 @@ export default function SegmentedMathField({
     }, [editingTableId, handleCancelTable])
 
     // ------------------------------------------------------------------
-    // Close graph editor when clicking outside
+    // Note: Click-outside for graph editor is handled by GraphEditorPopup itself
     // ------------------------------------------------------------------
-
-    useEffect(() => {
-        if (!editingGraphId) return
-
-        const handleClickOutside = (e: MouseEvent) => {
-            const target = e.target as Node
-
-            const editorPopup = document.querySelector('.inline-graph-editor-popup')
-            if (editorPopup?.contains(target)) return
-
-            if (editingGraphRef.current?.contains(target)) return
-
-            handleCancelGraph()
-        }
-
-        document.addEventListener('mousedown', handleClickOutside)
-        return () => document.removeEventListener('mousedown', handleClickOutside)
-    }, [editingGraphId, handleCancelGraph])
 
     // ------------------------------------------------------------------
 

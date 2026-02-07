@@ -85,9 +85,14 @@ export async function generateGradesCSV(options: CSVExportOptions): Promise<stri
 
     let total = 0
 
+    // Build answer lookup map (avoids O(n²) .find() in loop)
+    const answerByQuestionId = new Map(
+      attempt.answers.map(a => [a.questionId, a])
+    )
+
     // Add question scores in order
     questions.forEach((q, idx) => {
-      const answer = attempt.answers.find(a => a.questionId === q.id)
+      const answer = answerByQuestionId.get(q.id)
       const score = answer?.grades[0]?.score
       const colName = `Q${idx + 1}`
 

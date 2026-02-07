@@ -1,6 +1,7 @@
 'use client'
 
-import { useMemo, useState, useEffect } from "react"
+import { useMemo, useState } from "react"
+import { usePolling } from '@/lib/usePolling'
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { getExamEndAt } from "@/lib/exam-time"
@@ -91,13 +92,7 @@ export default function StudentExamsClient({ exams, dictionary, locale }: Studen
     const localeString = locale === 'fr' ? 'fr-FR' : 'en-US'
 
     // Auto-refresh every 30 seconds to catch exam start/end events
-    useEffect(() => {
-        const interval = setInterval(() => {
-            router.refresh()
-        }, 30000)
-
-        return () => clearInterval(interval)
-    }, [router])
+    usePolling(() => router.refresh(), { intervalMs: 30000, immediate: false })
 
     const filteredExams = useMemo(() => {
         if (!searchTerm) return exams

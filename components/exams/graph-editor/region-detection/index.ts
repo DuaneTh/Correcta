@@ -1,16 +1,13 @@
-// Intersection solver exports
+// Intersection solver exports (UNCHANGED)
 export {
   findFunctionIntersections,
   findLineFunctionIntersection,
   findLineLineIntersection
 } from './intersection-solver'
 
-// Boundary tracer exports
+// Region finder (NEW, replaces boundary-tracer)
 export {
-  generatePolygonBetweenCurves,
-  generatePolygonBoundedByElements,
-  sampleFunctionInDomain
-} from './boundary-tracer'
+  findEnclosingRegion,
+} from './region-finder'
 
-// Type exports
-export type { BoundaryElement } from './boundary-tracer'
+export type { RegionElement, RegionResult } from './region-finder'

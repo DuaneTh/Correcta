@@ -1,11 +1,23 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { Surface, Stack, Grid, Inline } from "@/components/ui/Layout"
 import { Badge } from "@/components/ui/Badge"
 import { Button } from "@/components/ui/Button"
 import { Text } from "@/components/ui/Text"
+
+interface ProctoringHistoryEntry {
+    attemptId: string
+    examId: string
+    examTitle: string
+    courseCode: string
+    date: string
+    totalEvents: number
+    antiCheatScore: number
+    focusLossFlag: string
+}
 
 interface ProctorEvent {
     id: string
@@ -51,6 +63,30 @@ interface ProctoringDetailProps {
 
 export default function ProctoringDetail({ attempt, examId }: ProctoringDetailProps) {
     const router = useRouter()
+    const [history, setHistory] = useState<ProctoringHistoryEntry[]>([])
+    const [historyLoading, setHistoryLoading] = useState(true)
+
+    useEffect(() => {
+        fetch(`/api/students/${attempt.student.id}/proctoring-history`)
+            .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+            .then(data => setHistory(data.history || []))
+            .catch(err => console.error('Error fetching proctoring history:', err))
+            .finally(() => setHistoryLoading(false))
+    }, [attempt.student.id])
+
+    const getSuspicionColor = (score: number) => {
+        if (score === 0) return 'bg-green-100 text-green-800'
+        if (score <= 3) return 'bg-yellow-100 text-yellow-800'
+        if (score <= 8) return 'bg-orange-100 text-orange-800'
+        return 'bg-red-100 text-red-800'
+    }
+
+    const getSuspicionLabel = (score: number) => {
+        if (score === 0) return 'Aucun'
+        if (score <= 3) return 'Faible'
+        if (score <= 8) return 'Moyen'
+        return 'Élevé'
+    }
 
     const getMetadataString = (metadata: Record<string, unknown> | null, key: string) => {
         const value = metadata?.[key]
@@ -234,6 +270,73 @@ export default function ProctoringDetail({ attempt, examId }: ProctoringDetailPr
                         <Text variant="xsMuted" className="mt-1 text-indigo-600">Total</Text>
                     </Surface>
                 </div>
+            </Surface>
+
+            {/* Student Proctoring History */}
+            <Surface className="p-6 mb-6 shadow-sm">
+                <Text variant="sectionTitle" className="mb-1">Historique anti-triche</Text>
+                <Text variant="muted" className="mb-4">{attempt.student.name || attempt.student.email}</Text>
+                {historyLoading ? (
+                    <Text variant="muted" className="text-center py-4">Chargement...</Text>
+                ) : history.filter(h => h.attemptId !== attempt.id).length === 0 ? (
+                    <Text variant="muted" className="text-center py-4">Aucun autre examen avec proctoring</Text>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Examen
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Événements
+                                    </th>
+                                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Score
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {history.map((entry) => {
+                                    const isCurrent = entry.attemptId === attempt.id
+                                    return (
+                                        <tr
+                                            key={entry.attemptId}
+                                            onClick={() => !isCurrent && router.push(`/dashboard/exams/${entry.examId}/proctoring/${entry.attemptId}`)}
+                                            className={`transition-colors ${isCurrent ? 'bg-indigo-50 font-medium' : 'hover:bg-gray-50 cursor-pointer'}`}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <Stack gap="xs">
+                                                    <Text variant="body" className={isCurrent ? 'font-medium' : ''}>
+                                                        {entry.examTitle}
+                                                        {isCurrent && <Text as="span" variant="caption" className="ml-2">(actuel)</Text>}
+                                                    </Text>
+                                                    <Text variant="xsMuted">{entry.courseCode}</Text>
+                                                </Stack>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <Text variant="caption">
+                                                    {new Date(entry.date).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                </Text>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <Text variant="caption">{entry.totalEvents}</Text>
+                                            </td>
+                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                <span className={`px-2 py-0.5 inline-flex text-xs font-semibold rounded-full ${getSuspicionColor(entry.antiCheatScore)}`}>
+                                                    {entry.antiCheatScore} - {getSuspicionLabel(entry.antiCheatScore)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </Surface>
 
             {/* Timeline */}

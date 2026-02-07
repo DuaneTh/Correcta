@@ -160,6 +160,7 @@ export default function GradeEditModal({
                             type="button"
                             onClick={() => setContextExpanded(!contextExpanded)}
                             className="w-full px-4 py-3 flex items-center justify-between bg-gray-50 hover:bg-gray-100 transition-colors"
+                            aria-expanded={contextExpanded}
                         >
                             <Text variant="label">Contexte</Text>
                             {contextExpanded ? (

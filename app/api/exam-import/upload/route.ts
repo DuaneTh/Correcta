@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAuthSession, isTeacher } from '@/lib/api-auth'
 import { uploadFile, generateUploadKey } from '@/lib/storage/minio'
 import { pdfImportQueue } from '@/lib/queue'
-import { verifyCsrf, getCsrfCookieToken } from '@/lib/csrf'
+import { verifyCsrf, getCsrfCookieToken, getAllowedOrigins } from '@/lib/csrf'
+import { buildRateLimitResponse, rateLimit } from '@/lib/rateLimit'
 
 /**
  * POST /api/exam-import/upload
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
       req: request,
       cookieToken,
       headerToken,
+      allowedOrigins: getAllowedOrigins(),
     })
 
     if (!csrfResult.ok) {
@@ -56,6 +58,18 @@ export async function POST(request: NextRequest) {
         { error: 'CSRF verification failed' },
         { status: 403 }
       )
+    }
+
+    // Rate limit: 10 PDF imports per 60 seconds per user
+    const rlOpts = { windowSeconds: 60, max: 10, prefix: 'exam_import' }
+    try {
+      const rl = await rateLimit(session.user.id, rlOpts)
+      if (!rl.ok) {
+        const limited = buildRateLimitResponse(rl, rlOpts)
+        return NextResponse.json(limited.body, { status: limited.status, headers: limited.headers })
+      }
+    } catch {
+      // Redis unavailable — allow through
     }
 
     // Check if queue is available

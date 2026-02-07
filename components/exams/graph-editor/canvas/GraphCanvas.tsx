@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { Stage, Layer, Rect } from 'react-konva'
 import { GraphPayload } from '../types'
 import { CanvasGrid } from './CanvasGrid'
@@ -35,54 +35,66 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
     selectedId,
     onSelect,
 }) => {
+    // Use refs to avoid stale closure issues
+    const graphRef = useRef(graph)
+    const onUpdateRef = useRef(onUpdate)
+    graphRef.current = graph
+    onUpdateRef.current = onUpdate
+
     const handleBackgroundClick = () => {
         if (onSelect) {
             onSelect(null)
         }
     }
 
-    // Update handlers for each element type
+    // Update handlers using refs to always get latest graph
     const handleAreaUpdate = useCallback((updatedArea: typeof graph.areas[0]) => {
-        onUpdate({
-            ...graph,
-            areas: graph.areas.map((a) => (a.id === updatedArea.id ? updatedArea : a)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            areas: currentGraph.areas.map((a) => (a.id === updatedArea.id ? updatedArea : a)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     const handleFunctionUpdate = useCallback((updatedFunc: typeof graph.functions[0]) => {
-        onUpdate({
-            ...graph,
-            functions: graph.functions.map((f) => (f.id === updatedFunc.id ? updatedFunc : f)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            functions: currentGraph.functions.map((f) => (f.id === updatedFunc.id ? updatedFunc : f)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     const handleLineUpdate = useCallback((updatedLine: typeof graph.lines[0]) => {
-        onUpdate({
-            ...graph,
-            lines: graph.lines.map((l) => (l.id === updatedLine.id ? updatedLine : l)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            lines: currentGraph.lines.map((l) => (l.id === updatedLine.id ? updatedLine : l)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     const handleCurveUpdate = useCallback((updatedCurve: typeof graph.curves[0]) => {
-        onUpdate({
-            ...graph,
-            curves: graph.curves.map((c) => (c.id === updatedCurve.id ? updatedCurve : c)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            curves: currentGraph.curves.map((c) => (c.id === updatedCurve.id ? updatedCurve : c)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     const handlePointUpdate = useCallback((updatedPoint: typeof graph.points[0]) => {
-        onUpdate({
-            ...graph,
-            points: graph.points.map((p) => (p.id === updatedPoint.id ? updatedPoint : p)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            points: currentGraph.points.map((p) => (p.id === updatedPoint.id ? updatedPoint : p)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     const handleTextUpdate = useCallback((updatedText: typeof graph.texts[0]) => {
-        onUpdate({
-            ...graph,
-            texts: graph.texts.map((t) => (t.id === updatedText.id ? updatedText : t)),
+        const currentGraph = graphRef.current
+        onUpdateRef.current({
+            ...currentGraph,
+            texts: currentGraph.texts.map((t) => (t.id === updatedText.id ? updatedText : t)),
         })
-    }, [graph, onUpdate])
+    }, [])
 
     return (
         <Stage width={width} height={height}>
@@ -110,11 +122,13 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         key={area.id}
                         area={area}
                         functions={graph.functions}
+                        lines={graph.lines}
                         axes={graph.axes}
                         width={width}
                         height={height}
                         isSelected={selectedId === area.id}
                         onUpdate={handleAreaUpdate}
+                        onSelect={onSelect}
                     />
                 ))}
 
@@ -128,6 +142,7 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         height={height}
                         isSelected={selectedId === func.id}
                         onUpdate={handleFunctionUpdate}
+                        onSelect={onSelect}
                     />
                 ))}
 
@@ -141,6 +156,10 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         height={height}
                         isSelected={selectedId === line.id}
                         onUpdate={handleLineUpdate}
+                        onSelect={onSelect}
+                        lines={graph.lines}
+                        curves={graph.curves}
+                        functions={graph.functions}
                     />
                 ))}
 
@@ -154,6 +173,7 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         height={height}
                         isSelected={selectedId === curve.id}
                         onUpdate={handleCurveUpdate}
+                        onSelect={onSelect}
                     />
                 ))}
 
@@ -167,6 +187,10 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         height={height}
                         isSelected={selectedId === point.id}
                         onUpdate={handlePointUpdate}
+                        onSelect={onSelect}
+                        lines={graph.lines}
+                        curves={graph.curves}
+                        functions={graph.functions}
                     />
                 ))}
 
@@ -180,6 +204,24 @@ export const GraphCanvas = React.memo<GraphCanvasProps>(({
                         height={height}
                         isSelected={selectedId === text.id}
                         onUpdate={handleTextUpdate}
+                        onSelect={onSelect}
+                    />
+                ))}
+
+                {/* Area boundary buttons overlay (rendered last so they appear above all shapes) */}
+                {graph.areas.map((area) => (
+                    <EditableArea
+                        key={`${area.id}-overlay`}
+                        area={area}
+                        functions={graph.functions}
+                        lines={graph.lines}
+                        axes={graph.axes}
+                        width={width}
+                        height={height}
+                        isSelected={selectedId === area.id}
+                        onUpdate={handleAreaUpdate}
+                        onSelect={onSelect}
+                        renderOverlayOnly
                     />
                 ))}
             </Layer>

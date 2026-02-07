@@ -144,7 +144,7 @@ export default function ExamPlayer({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [timeExpired, setTimeExpired] = useState(false)
 
-  const saveTimeoutRefs = useRef<Record<string, NodeJS.Timeout>>({})
+  const saveTimeoutRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const dict = {
     submitting: locale === 'fr' ? 'Soumission...' : 'Submitting...',

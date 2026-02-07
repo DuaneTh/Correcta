@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
+import { usePolling } from '@/lib/usePolling'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ChevronDown, Filter, FileDown, FileText, Eye, List, BarChart3 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Filter, FileDown, FileText, Eye, List, BarChart3, Shield } from 'lucide-react'
 import { getCsrfToken } from '@/lib/csrfClient'
 import { GradeAllButton } from '@/components/grading/GradeAllButton'
 import { ExportProgressModal } from '@/components/export/ExportProgressModal'
@@ -56,7 +57,29 @@ interface GradingStatusData {
 type SortField = 'name' | 'submittedAt' | 'score'
 type SortOrder = 'asc' | 'desc'
 type FilterOption = 'all' | 'ungraded' | 'graded' | 'modified'
-type ViewMode = 'list' | 'stats'
+type ViewMode = 'list' | 'stats' | 'proctoring'
+
+interface ProctoringStudentSummary {
+    attemptId: string
+    student: {
+        id: string
+        name: string | null
+        email: string
+    }
+    startedAt: string
+    submittedAt: string | null
+    status: string
+    eventCounts: Record<string, number>
+    totalEvents: number
+    antiCheatScore: number
+    focusLossPattern: {
+        flag: string
+        ratio: number
+        suspiciousPairs: number
+        totalAnswers: number
+    }
+    externalPastes: number
+}
 
 export default function GradingDashboard({ examId, examTitle }: GradingDashboardProps) {
     const router = useRouter()
@@ -78,6 +101,9 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
     const [gradesReleased, setGradesReleased] = useState(false)
     const [rubricStatus, setRubricStatus] = useState<RubricStatus | undefined>(undefined)
     const [gradingStatusData, setGradingStatusData] = useState<GradingStatusData | undefined>(undefined)
+    const [proctoringData, setProctoringData] = useState<ProctoringStudentSummary[]>([])
+    const [proctoringLoading, setProctoringLoading] = useState(false)
+    const [proctoringFetched, setProctoringFetched] = useState(false)
 
     const fetchAttempts = useCallback(async (showLoading = true) => {
         try {
@@ -103,16 +129,36 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
         }
     }, [examId])
 
+    useEffect(() => { fetchAttempts(true) }, [fetchAttempts])
+    usePolling(() => fetchAttempts(false), { intervalMs: 30000, immediate: false })
+
     useEffect(() => {
-        fetchAttempts(true)
+        if (viewMode === 'proctoring' && !proctoringFetched) {
+            setProctoringLoading(true)
+            fetch(`/api/exams/${examId}/proctoring`)
+                .then(res => res.ok ? res.json() : Promise.reject('Failed'))
+                .then(data => {
+                    setProctoringData(data.summary || [])
+                    setProctoringFetched(true)
+                })
+                .catch(err => console.error('Error fetching proctoring data:', err))
+                .finally(() => setProctoringLoading(false))
+        }
+    }, [viewMode, proctoringFetched, examId])
 
-        // Auto-refresh every 30 seconds to catch grading updates (silent refresh)
-        const interval = setInterval(() => {
-            fetchAttempts(false)
-        }, 30000)
+    const getSuspicionColor = (score: number) => {
+        if (score === 0) return 'bg-green-100 text-green-800'
+        if (score <= 3) return 'bg-yellow-100 text-yellow-800'
+        if (score <= 8) return 'bg-orange-100 text-orange-800'
+        return 'bg-red-100 text-red-800'
+    }
 
-        return () => clearInterval(interval)
-    }, [fetchAttempts])
+    const getSuspicionLabel = (score: number) => {
+        if (score === 0) return 'Aucun'
+        if (score <= 3) return 'Faible'
+        if (score <= 8) return 'Moyen'
+        return 'Élevé'
+    }
 
     const handleSort = (field: SortField) => {
         if (sortField === field) {
@@ -460,6 +506,11 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                                 value: 'stats',
                                 label: 'Statistiques et harmonisation',
                                 icon: <BarChart3 className="w-4 h-4" />
+                            },
+                            {
+                                value: 'proctoring',
+                                label: 'Anti-triche',
+                                icon: <Shield className="w-4 h-4" />
                             }
                         ]}
                     />
@@ -523,6 +574,95 @@ export default function GradingDashboard({ examId, examTitle }: GradingDashboard
                         maxPoints={stats.avgMaxPoints || 20}
                         onHarmonizationApplied={fetchAttempts}
                     />
+                )}
+
+                {/* Proctoring View - Anti-cheat ranking */}
+                {viewMode === 'proctoring' && (
+                    <>
+                        {proctoringLoading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Text variant="body" className="text-gray-600">Chargement des données anti-triche...</Text>
+                            </div>
+                        ) : proctoringData.length === 0 ? (
+                            <div className="p-12">
+                                <EmptyState
+                                    title="Aucune donnée anti-triche disponible pour cet examen."
+                                    size="full"
+                                />
+                            </div>
+                        ) : (
+                            <Card overflow="hidden">
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-50 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Étudiant
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Événements
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Patterns
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    Score
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {[...proctoringData].sort((a, b) => b.antiCheatScore - a.antiCheatScore).map((item, index) => (
+                                                <tr
+                                                    key={item.attemptId}
+                                                    onClick={() => router.push(`/dashboard/exams/${examId}/proctoring/${item.attemptId}`)}
+                                                    className={`hover:bg-indigo-50 transition-colors cursor-pointer ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                                                >
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Stack gap="xs">
+                                                            <Text variant="body" className="font-medium">{item.student.name || 'Sans nom'}</Text>
+                                                            <Text variant="caption">{item.student.email}</Text>
+                                                        </Stack>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <Text variant="caption">
+                                                            FOCUS: {item.eventCounts.FOCUS_LOST || 0} · TAB: {item.eventCounts.TAB_SWITCH || 0} · PASTE: {(item.eventCounts.PASTE || 0)} · Total: {item.totalEvents}
+                                                        </Text>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <Inline align="start" gap="xs">
+                                                            {item.focusLossPattern.flag === 'SUSPICIOUS' && (
+                                                                <Badge variant="warning" className="bg-orange-50 text-orange-700 border-orange-200">
+                                                                    Focus suspect
+                                                                </Badge>
+                                                            )}
+                                                            {item.focusLossPattern.flag === 'HIGHLY_SUSPICIOUS' && (
+                                                                <Badge className="bg-red-50 text-red-700 border-red-200">
+                                                                    Focus très suspect
+                                                                </Badge>
+                                                            )}
+                                                            {item.externalPastes > 0 && (
+                                                                <Badge className="bg-purple-50 text-purple-700 border-purple-200">
+                                                                    {item.externalPastes} collage{item.externalPastes > 1 ? 's' : ''} ext.
+                                                                </Badge>
+                                                            )}
+                                                            {item.focusLossPattern.flag === 'NONE' && item.externalPastes === 0 && (
+                                                                <Text variant="xsMuted">Aucun</Text>
+                                                            )}
+                                                        </Inline>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-3 py-1 inline-flex text-sm font-semibold rounded-full ${getSuspicionColor(item.antiCheatScore)}`}>
+                                                            {item.antiCheatScore} - {getSuspicionLabel(item.antiCheatScore)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+                        )}
+                    </>
                 )}
 
                 {/* List View - Filter dropdown and table */}

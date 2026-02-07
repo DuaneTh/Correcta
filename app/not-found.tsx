@@ -1,14 +1,12 @@
-import { cookies } from 'next/headers'
 import { Button } from '@/components/ui/Button'
 import { Card, CardBody } from '@/components/ui/Card'
 import { Text } from '@/components/ui/Text'
+import { getDictionary } from '@/lib/i18n/server'
 import Link from 'next/link'
 
 export default async function NotFound() {
-    // Try to get locale from cookie
-    const cookieStore = await cookies()
-    const locale = cookieStore.get('locale')?.value || 'fr'
-    const isFrench = locale === 'fr'
+    const dict = await getDictionary()
+    const t = dict.errors.notFound
 
     return (
         <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
@@ -17,16 +15,14 @@ export default async function NotFound() {
                     <div className="text-center">
                         <div className="mb-4 text-6xl">🔍</div>
                         <Text variant="sectionTitle" className="mb-2">
-                            {isFrench ? 'Page non trouvée' : 'Page not found'}
+                            {t.title}
                         </Text>
                         <Text variant="muted" className="mb-6">
-                            {isFrench
-                                ? "La page que vous recherchez n'existe pas ou a été déplacée."
-                                : "The page you're looking for doesn't exist or has been moved."}
+                            {t.description}
                         </Text>
                         <Link href="/">
                             <Button variant="primary">
-                                {isFrench ? "Retour à l'accueil" : 'Go Home'}
+                                {t.goHome}
                             </Button>
                         </Link>
                     </div>

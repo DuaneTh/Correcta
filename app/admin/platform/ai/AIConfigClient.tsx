@@ -9,6 +9,7 @@ import { Inline, Stack } from '@/components/ui/Layout'
 import { Textarea } from '@/components/ui/Form'
 import { Text } from '@/components/ui/Text'
 import { Badge } from '@/components/ui/Badge'
+import { Pagination } from '@/components/ui/Pagination'
 
 type Prompt = {
     id: string | null
@@ -395,30 +396,13 @@ export default function AIConfigClient() {
                                 </Card>
                             ))}
 
-                            {/* Pagination */}
-                            {logTotal > 20 && (
-                                <Inline align="center" gap="sm" className="pt-4">
-                                    <Button
-                                        onClick={() => setLogPage(p => Math.max(1, p - 1))}
-                                        disabled={logPage === 1}
-                                        variant="secondary"
-                                        size="xs"
-                                    >
-                                        Precedent
-                                    </Button>
-                                    <Text variant="muted">
-                                        Page {logPage} / {Math.ceil(logTotal / 20)}
-                                    </Text>
-                                    <Button
-                                        onClick={() => setLogPage(p => p + 1)}
-                                        disabled={logPage >= Math.ceil(logTotal / 20)}
-                                        variant="secondary"
-                                        size="xs"
-                                    >
-                                        Suivant
-                                    </Button>
-                                </Inline>
-                            )}
+                            <Pagination
+                                page={logPage}
+                                total={logTotal}
+                                pageSize={20}
+                                onPageChange={setLogPage}
+                                className="pt-4"
+                            />
                         </>
                     )}
                 </Stack>

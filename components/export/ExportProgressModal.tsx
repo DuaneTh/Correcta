@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { X, Download, Loader2, CheckCircle, XCircle } from 'lucide-react'
+import { usePolling } from '@/lib/usePolling'
 import { Button } from '@/components/ui/Button'
 import { Text } from '@/components/ui/Text'
 import { Stack } from '@/components/ui/Layout'
@@ -31,30 +32,20 @@ export function ExportProgressModal({ examId, jobId, onClose }: ExportProgressMo
     const [status, setStatus] = useState<StatusResponse>({ status: 'queued', progress: 0 })
     const [polling, setPolling] = useState(true)
 
-    useEffect(() => {
-        if (!polling) return
-
-        const pollStatus = async () => {
-            try {
-                const res = await fetch(`/api/exams/${examId}/export/status?jobId=${jobId}`)
-                if (res.ok) {
-                    const data: StatusResponse = await res.json()
-                    setStatus(data)
-
-                    if (data.status === 'completed' || data.status === 'failed') {
-                        setPolling(false)
-                    }
+    usePolling(async () => {
+        try {
+            const res = await fetch(`/api/exams/${examId}/export/status?jobId=${jobId}`)
+            if (res.ok) {
+                const data: StatusResponse = await res.json()
+                setStatus(data)
+                if (data.status === 'completed' || data.status === 'failed') {
+                    setPolling(false)
                 }
-            } catch (error) {
-                console.error('Error polling export status:', error)
             }
+        } catch (error) {
+            console.error('Error polling export status:', error)
         }
-
-        pollStatus()
-        const interval = setInterval(pollStatus, 1000)
-
-        return () => clearInterval(interval)
-    }, [examId, jobId, polling])
+    }, { intervalMs: 1000, enabled: polling })
 
     const getPhaseLabel = (phase?: string) => {
         switch (phase) {
@@ -74,7 +65,7 @@ export function ExportProgressModal({ examId, jobId, onClose }: ExportProgressMo
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Export en cours">
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
                 onClick={status.status === 'completed' || status.status === 'failed' ? onClose : undefined}
@@ -85,6 +76,7 @@ export function ExportProgressModal({ examId, jobId, onClose }: ExportProgressMo
                     <button
                         onClick={onClose}
                         className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                        aria-label="Fermer"
                     >
                         <X className="w-5 h-5" />
                     </button>

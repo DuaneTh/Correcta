@@ -17,6 +17,8 @@ import { Badge } from '@/components/ui/Badge'
 import { Input } from '@/components/ui/Form'
 import { SearchField } from '@/components/ui/SearchField'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { Pagination } from '@/components/ui/Pagination'
+import { validateFields, required, email } from '@/lib/validation'
 
 type CsvUser = { email: string; name: string }
 type CsvUserStatus = 'valid' | 'invalid-email' | 'duplicate'
@@ -87,6 +89,9 @@ export default function SchoolUsersClient({
     const [csvImporting, setCsvImporting] = useState(false)
     const [csvResult, setCsvResult] = useState<{ created: number; skipped: number; errors: string[] } | null>(null)
 
+    const [userPage, setUserPage] = useState(1)
+    const PAGE_SIZE = 50
+
     const drawerReturnFocusRef = useRef<HTMLElement | null>(null)
     const closingRef = useRef(false)
 
@@ -103,6 +108,14 @@ export default function SchoolUsersClient({
             return name.includes(query) || email.includes(query)
         })
     }, [users, search, showArchived])
+
+    // Reset to page 1 when filters change
+    useEffect(() => { setUserPage(1) }, [search, showArchived, activeRole])
+
+    const pagedUsers = useMemo(() => {
+        const start = (userPage - 1) * PAGE_SIZE
+        return filteredUsers.slice(start, start + PAGE_SIZE)
+    }, [filteredUsers, userPage, PAGE_SIZE])
 
     const buildUrl = useCallback(
         (update: (params: URLSearchParams) => void) => {
@@ -181,8 +194,12 @@ export default function SchoolUsersClient({
     }, [actionParam, userIdParam, drawerOpen, openCreateDrawer, openEditDrawer])
 
     const handleSave = async () => {
-        if (!form.email.trim()) {
-            setError(dict.bulk.missingEmail)
+        const { errors, valid } = validateFields(
+            { email: form.email },
+            { email: [required(dict.bulk.missingEmail), email(dict.bulk.missingEmail)] }
+        )
+        if (!valid) {
+            setError(errors.email!)
             return
         }
 
@@ -436,7 +453,7 @@ export default function SchoolUsersClient({
 
             {/* Users table */}
             <Card>
-                {filteredUsers.length === 0 ? (
+                {pagedUsers.length === 0 ? (
                     <CardBody padding="md">
                         <EmptyState
                             title={activeRole === 'teacher' ? dict.emptyTeachers : dict.emptyStudents}
@@ -455,7 +472,7 @@ export default function SchoolUsersClient({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200">
-                                {filteredUsers.map((user) => {
+                                {pagedUsers.map((user) => {
                                     const archived = isArchived(user.archivedAt)
                                     const enrollmentCount = user.enrollments.length
 
@@ -534,6 +551,13 @@ export default function SchoolUsersClient({
                     </div>
                 )}
             </Card>
+
+            <Pagination
+                page={userPage}
+                total={filteredUsers.length}
+                pageSize={PAGE_SIZE}
+                onPageChange={setUserPage}
+            />
 
             {/* Create/Edit Drawer */}
             <Drawer

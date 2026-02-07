@@ -3,6 +3,9 @@ import { prisma } from '@/lib/prisma'
 import { getAuthSession, isPlatformAdmin } from '@/lib/api-auth'
 import { encrypt, decrypt, maskApiKey } from '@/lib/encryption'
 import { verifyCsrf, getCsrfCookieToken, getAllowedOrigins } from '@/lib/csrf'
+import { parseBody } from '@/lib/api-validation'
+import { updateSettingSchema } from '@/lib/schemas/admin'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 // Setting keys that can be managed via API
 const ALLOWED_SETTINGS = ['OPENAI_API_KEY'] as const
@@ -93,15 +96,12 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'CSRF' }, { status: 403 })
         }
 
-        const body = await req.json()
-        const { key, value } = body
+        const parsed = await parseBody(req, updateSettingSchema)
+        if ('error' in parsed) return parsed.error
+        const { key, value } = parsed.data
 
-        if (!key || typeof key !== 'string' || !isAllowedSetting(key)) {
+        if (!isAllowedSetting(key)) {
             return NextResponse.json({ error: 'Invalid setting key' }, { status: 400 })
-        }
-
-        if (value !== undefined && typeof value !== 'string') {
-            return NextResponse.json({ error: 'Invalid value' }, { status: 400 })
         }
 
         // Validate OpenAI API key format
@@ -148,6 +148,15 @@ export async function PUT(req: NextRequest) {
                 encrypted: true,
                 updatedBy: session.user.id
             }
+        })
+
+        logAudit({
+            action: 'SETTING_UPDATE',
+            actorId: session.user.id,
+            targetType: 'SETTING',
+            targetId: key,
+            metadata: { updated: true },
+            ipAddress: getClientIp(req),
         })
 
         return NextResponse.json({ success: true })

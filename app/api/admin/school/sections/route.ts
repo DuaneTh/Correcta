@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthSession, isSchoolAdmin } from '@/lib/api-auth'
+import { getAuthSession, isAdmin, isPlatformAdmin } from '@/lib/api-auth'
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
 
 const DEFAULT_SECTION_NAME = '__DEFAULT__'
@@ -8,15 +8,18 @@ const DEFAULT_SECTION_NAME = '__DEFAULT__'
 export async function GET(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true'
+    const institutionId = isPlatformAdmin(session)
+        ? (req.nextUrl.searchParams.get('institutionId') ?? session.user.institutionId)
+        : session.user.institutionId
 
     const sections = await prisma.class.findMany({
         where: {
-            course: { institutionId: session.user.institutionId },
+            course: { institutionId },
             ...(includeArchived ? {} : { archivedAt: null }),
         },
         select: {
@@ -48,7 +51,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -65,8 +68,11 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
 
     if (Array.isArray(body?.sections)) {
+        const postInstitutionId = isPlatformAdmin(session)
+            ? (typeof body?.institutionId === 'string' ? body.institutionId : session.user.institutionId)
+            : session.user.institutionId
         const courses = await prisma.course.findMany({
-            where: { institutionId: session.user.institutionId, archivedAt: null },
+            where: { institutionId: postInstitutionId, archivedAt: null },
             select: { id: true, code: true }
         })
         const courseByCode = new Map(
@@ -138,7 +144,7 @@ export async function POST(req: NextRequest) {
         select: { id: true, institutionId: true, archivedAt: true }
     })
 
-    if (!course || course.institutionId !== session.user.institutionId || course.archivedAt) {
+    if (!course || (!isPlatformAdmin(session) && course.institutionId !== session.user.institutionId) || course.archivedAt) {
         return NextResponse.json({ error: 'Invalid course' }, { status: 400 })
     }
 
@@ -190,7 +196,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -227,7 +233,7 @@ export async function PATCH(req: NextRequest) {
         }
     })
 
-    if (!section || section.course.institutionId !== session.user.institutionId) {
+    if (!section || (!isPlatformAdmin(session) && section.course.institutionId !== session.user.institutionId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
@@ -350,7 +356,7 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -381,7 +387,7 @@ export async function DELETE(req: NextRequest) {
         }
     })
 
-    if (!section || section.course.institutionId !== session.user.institutionId) {
+    if (!section || (!isPlatformAdmin(session) && section.course.institutionId !== session.user.institutionId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 

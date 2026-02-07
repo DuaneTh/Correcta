@@ -110,7 +110,7 @@ export function GraphEditorPopup({
     return (
         <div
             ref={editorRef}
-            className="fixed z-[9999] w-[56rem] max-h-[85vh]"
+            className="inline-graph-editor-popup fixed z-[9999] w-[56rem] max-h-[85vh]"
             style={{
                 top: `${position.top}px`,
                 left: `${position.left}px`,

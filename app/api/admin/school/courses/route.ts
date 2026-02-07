@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getAuthSession, isSchoolAdmin } from '@/lib/api-auth'
+import { getAuthSession, isAdmin, isPlatformAdmin } from '@/lib/api-auth'
 import { getAllowedOrigins, getCsrfCookieToken, verifyCsrf } from '@/lib/csrf'
+import { logAudit, getClientIp } from '@/lib/audit'
 
 export async function GET(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const includeArchived = req.nextUrl.searchParams.get('includeArchived') === 'true'
+    const institutionId = isPlatformAdmin(session)
+        ? (req.nextUrl.searchParams.get('institutionId') ?? session.user.institutionId)
+        : session.user.institutionId
 
     const rawCourses = await prisma.course.findMany({
         where: {
-            institutionId: session.user.institutionId,
+            institutionId,
             ...(includeArchived ? {} : { archivedAt: null }),
         },
         select: {
@@ -59,7 +63,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -74,10 +78,13 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
+    const institutionId = isPlatformAdmin(session)
+        ? (typeof body?.institutionId === 'string' ? body.institutionId : session.user.institutionId)
+        : session.user.institutionId
 
     if (Array.isArray(body?.courses)) {
         const existingCourses = await prisma.course.findMany({
-            where: { institutionId: session.user.institutionId },
+            where: { institutionId },
             select: { code: true }
         })
         const existingCodes = new Set(existingCourses.map((course) => course.code.toLowerCase()))
@@ -103,7 +110,7 @@ export async function POST(req: NextRequest) {
                 return {
                     code: rawCode,
                     name: rawName,
-                    institutionId: session.user.institutionId,
+                    institutionId,
                 }
             })
             .filter(Boolean) as Array<{ code: string; name: string; institutionId: string }>
@@ -116,6 +123,14 @@ export async function POST(req: NextRequest) {
             const result = await prisma.course.createMany({ data })
             const createdCount = result.count
             const skippedCount = data.length - createdCount
+            logAudit({
+                action: 'COURSE_CREATE',
+                actorId: session.user.id,
+                institutionId,
+                targetType: 'COURSE',
+                metadata: { bulk: true, createdCount, skippedCount },
+                ipAddress: getClientIp(req),
+            })
             return NextResponse.json({ createdCount, skippedCount, errors })
         } catch (error) {
             console.error('[AdminCourses] Bulk create failed', error)
@@ -137,7 +152,7 @@ export async function POST(req: NextRequest) {
                 data: {
                     code,
                     name,
-                    institutionId: session.user.institutionId,
+                    institutionId,
                 },
                 select: {
                     id: true,
@@ -171,6 +186,16 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        logAudit({
+            action: 'COURSE_CREATE',
+            actorId: session.user.id,
+            institutionId,
+            targetType: 'COURSE',
+            targetId: result.course.id,
+            metadata: { code, name },
+            ipAddress: getClientIp(req),
+        })
+
         return NextResponse.json({ course, defaultSectionId: result.defaultSectionId }, { status: 201 })
     } catch (error) {
         console.error('[AdminCourses] Create failed', error)
@@ -181,7 +206,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
     const session = await getAuthSession(req)
 
-    if (!session || !session.user || !isSchoolAdmin(session)) {
+    if (!session || !session.user || !isAdmin(session)) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -210,7 +235,7 @@ export async function PATCH(req: NextRequest) {
         select: { id: true, institutionId: true }
     })
 
-    if (!course || course.institutionId !== session.user.institutionId) {
+    if (!course || (!isPlatformAdmin(session) && course.institutionId !== session.user.institutionId)) {
         return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
 
@@ -301,6 +326,16 @@ export async function PATCH(req: NextRequest) {
             exams: courseCounts?.exams.length ?? 0,
         }
     }
+
+    logAudit({
+        action: 'COURSE_UPDATE',
+        actorId: session.user.id,
+        institutionId: course.institutionId,
+        targetType: 'COURSE',
+        targetId: courseId,
+        metadata: { ...(code !== undefined && { code }), ...(name !== undefined && { name }), ...(archived !== undefined && { archived }) },
+        ipAddress: getClientIp(req),
+    })
 
     return NextResponse.json({ course: coursePayload })
 }

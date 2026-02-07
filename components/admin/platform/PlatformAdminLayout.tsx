@@ -28,7 +28,7 @@ export default function PlatformAdminLayout({
 
     const links = useMemo(() => ([
         { href: '/admin/platform/dashboard', label: 'Dashboard', isActive: (path: string) => path.startsWith('/admin/platform/dashboard') },
-        { href: '/admin/platform', label: dictionary.admin.institutions.title, isActive: (path: string) => path === '/admin/platform' },
+        { href: '/admin/platform', label: dictionary.admin.institutions.title, isActive: (path: string) => path === '/admin/platform' || path.startsWith('/admin/platform/institutions') },
         { href: '/admin/platform/ai', label: 'Configuration IA', isActive: (path: string) => path.startsWith('/admin/platform/ai') },
         { href: '/admin/platform/audit', label: 'Audit', isActive: (path: string) => path.startsWith('/admin/platform/audit') },
         { href: '/admin/platform/system', label: 'System', isActive: (path: string) => path.startsWith('/admin/platform/system') },

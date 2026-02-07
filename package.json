@@ -21,13 +21,16 @@
     "test:security-headers": "tsx --test tests/security-headers.test.ts",
     "test:csrf": "tsx --test tests/csrf.test.ts",
     "test:attempt-integrity": "tsx --test tests/attempt-integrity.test.ts",
+    "test:validation": "tsx --test tests/validation.test.ts",
+    "test:content": "tsx --test tests/content.test.ts",
     "test:ci": "node scripts/run-tests-ci.mjs",
     "typecheck:api": "tsc -p tsconfig.api.json --pretty false",
     "seed:demo-users": "node scripts/seed-demo-users.js",
     "queue:test-ai": "tsx scripts/test-ai-queue.ts",
     "worker:ai-grading": "tsx scripts/ai-grading-worker.ts",
     "worker:export": "tsx scripts/export-worker.ts",
-    "worker:pdf-import": "dotenv -e .env.local -- tsx scripts/pdf-import-worker.ts"
+    "worker:pdf-import": "dotenv -e .env.local -- tsx scripts/pdf-import-worker.ts",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -36,6 +39,7 @@
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
     "@react-pdf/renderer": "^4.3.2",
+    "@sentry/nextjs": "^10.38.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/react-datepicker": "^7.0.0",
     "axios": "^1.13.2",
@@ -78,6 +82,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.0.3",
     "prisma": "^7.2.0",
+    "sst": "latest",
+    "string-replace-loader": "^3.3.0",
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5"

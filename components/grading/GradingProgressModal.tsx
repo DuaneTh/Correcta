@@ -37,7 +37,7 @@ export function GradingProgressModal({
     const [isSwitchingToSync, setIsSwitchingToSync] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [isStuck, setIsStuck] = useState(false)
-    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
+    const pollIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastCompletedRef = useRef<number>(0)
     const stuckCheckCountRef = useRef<number>(0)
 
@@ -201,7 +201,7 @@ export function GradingProgressModal({
     const isComplete = progress?.status === 'COMPLETED'
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center" role="dialog" aria-modal="true" aria-label="Progression de la correction">
             {/* Backdrop */}
             <div
                 className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -214,6 +214,7 @@ export function GradingProgressModal({
                 <button
                     onClick={handleClose}
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                    aria-label="Fermer"
                 >
                     <X className="w-5 h-5" />
                 </button>
